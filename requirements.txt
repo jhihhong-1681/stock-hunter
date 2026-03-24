@@ -1,0 +1,7 @@
+streamlit
+yfinance
+pandas
+lxml
+requests
+yahoo_fin
+yahooquery
