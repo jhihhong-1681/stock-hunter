@@ -5,6 +5,7 @@ import datetime
 import urllib.request
 import yahoo_fin.stock_info as si
 from yahooquery import Ticker
+from deep_translator import GoogleTranslator
 # --- 頁面設定 ---
 st.set_page_config(
     page_title="Stock Hunter 股票獵人",
@@ -29,9 +30,10 @@ market_choice = st.sidebar.selectbox(
 st.sidebar.markdown("---")
 
 # 1. 下跌天數
-drop_days = st.sidebar.number_input(
+drop_days = st.sidebar.selectbox(
     "1. 計算跌幅的天數 (Days)", 
-    min_value=1, max_value=30, value=5, step=1,
+    options=[5, 15, 30, 60, 90, 180],
+    index=0,
     help="計算過去幾天的累積跌幅。例如：5 代表比較今天與 5 天前的收盤價。"
 )
 
@@ -51,20 +53,7 @@ rebound_pct_threshold = st.sidebar.slider(
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("基本面條件")
-
-# 4. 營收成長率
-rev_growth_min = st.sidebar.number_input(
-    "4. 最低營收成長率 (%)",
-    min_value=-50, max_value=200, value=0, step=1,
-    help="例如：設定 0 代表要求營收必須正成長 (>0%)。"
-)
-
-# 5. 淨利率
-profit_margin_min = st.sidebar.number_input(
-    "5. 最低淨利率 (%)",
-    min_value=-50, max_value=100, value=0, step=1,
-    help="例如：設定 0 代表要求公司必須是賺錢的 (淨利率 > 0%)。"
-)
+st.sidebar.info("採用 Rule of 30：\n(營收 YoY 成長率 + 淨利率) > 30%")
 
 run_button = st.sidebar.button("🚀 開始篩選", type="primary", use_container_width=True)
 
@@ -127,7 +116,7 @@ def get_all_us_tickers():
         return []
 
 @st.cache_data(ttl=3600) # 快取 1 小時 (股價資料)
-def download_stock_data(tickers, days_needed):
+def fetch_stock_prices_new(tickers, days_needed):
     """批次下載股票歷史價格"""
     end_date = datetime.date.today()
     # 往前推足夠的天數以計算 RSI (14天) + 使用者指定的下跌天數 + 週末假日緩衝
@@ -180,7 +169,7 @@ if run_button:
     st.info(f"✅ 成功獲取 {len(tickers)} 檔 {market_choice} 股票名單。")
     
     with st.spinner(f"正在下載 {len(tickers)} 檔股票近期的價格資料，這可能需要一點時間..."):
-        close_data = download_stock_data(tickers, drop_days)
+        close_data = fetch_stock_prices_new(tickers, drop_days)
         
     if close_data is None or close_data.empty:
         st.error("無法取得收盤價資料。")
@@ -265,10 +254,11 @@ if run_button:
     # 使用 yahooquery 進行非同步批量查詢
     try:
         yq_tickers = Ticker(surviving_tickers, asynchronous=True)
-        # 一次抓取所有基本財報數據
+        # 一次抓取所有基本財報數據與公司簡介
         fin_data_dict = yq_tickers.financial_data
-        # 一次抓取所有 income statement (避免每檔股票單獨請求)
-        income_df = yq_tickers.income_statement(frequency='a')
+        profiles_dict = yq_tickers.asset_profile
+        # 一次抓取 cash flow (季報) 以取得近三季資本支出
+        cash_flow_q = yq_tickers.cash_flow(frequency='q')
     except Exception as e:
         st.error(f"取得基本面資料時發生錯誤: {e}")
         st.stop()
@@ -290,55 +280,49 @@ if run_button:
         op_cashflow = f_data.get('operatingCashflow')
         curr_ratio = f_data.get('currentRatio')
         
-        # 準備進行條件判斷
-        target_rev_growth = rev_growth_min / 100.0
-        target_prof_margin = profit_margin_min / 100.0
-        
-        # 1. 基本條件: 營收成長與淨利率
-        if rev_growth is None or rev_growth < target_rev_growth:
-            continue
-        if prof_margin is None or prof_margin < target_prof_margin:
+        # 1. 基本條件: Rule of 30 (營收成長率+淨利率 > 30%)
+        if rev_growth is None or prof_margin is None:
             continue
             
-        # 2. 現金流與流動比率 (防禦力測試)
-        if op_cashflow is None or op_cashflow <= 0:
-            continue
-        if curr_ratio is None or curr_ratio <= 1.2:
+        rule_of_30_val = rev_growth + prof_margin
+        if rule_of_30_val <= 0.3:
             continue
             
-        # 3. 研發佔比持續上升測試
-        # 確認 income_df 不是字串(錯誤訊息) 並且有包含這檔股票的資料
-        if isinstance(income_df, str) or ticker not in income_df.index:
-            continue
+        # 3. 取得近三季資本支出 (不作為篩選條件，僅顯示)
+        capex_str = "無資料"
+        if not isinstance(cash_flow_q, str) and ticker in cash_flow_q.index:
+            try:
+                ticker_cf = cash_flow_q.loc[ticker]
+                if isinstance(ticker_cf, pd.DataFrame) and 'CapitalExpenditure' in ticker_cf.columns and 'periodType' in ticker_cf.columns:
+                    capex_3m = ticker_cf[ticker_cf['periodType'] == '3M']['CapitalExpenditure'].dropna()
+                    last_3_capex = capex_3m.tail(3)
+                    capex_vals = []
+                    for val in last_3_capex:
+                        abs_val = abs(val) # 資本支出通常是現金流出(負數)
+                        if abs_val >= 1e9:
+                            capex_vals.append(f"{abs_val/1e9:.1f}B")
+                        else:
+                            capex_vals.append(f"{abs_val/1e6:.1f}M")
+                    if capex_vals:
+                        capex_str = " -> ".join(capex_vals)
+            except Exception:
+                pass
             
-        try:
-            ticker_income = income_df.loc[ticker]
-            # 確認欄位存在
-            if 'ResearchAndDevelopment' not in ticker_income.columns or 'TotalRevenue' not in ticker_income.columns:
-                continue
-                
-            rnd = ticker_income['ResearchAndDevelopment']
-            rev = ticker_income['TotalRevenue']
-            
-            # 計算每年佔比並剔除空值 (除以 0 處理)
-            ratios = (rnd / rev).replace([float('inf'), -float('inf')], float('nan')).dropna()
-            
-            if len(ratios) < 2:
-                continue
-                
-            is_increasing = True
-            for j in range(len(ratios)-1):
-                # 容許 5% 的微幅落差：如果「新的一年 (j+1)」比「舊的一年 (j)」少了超過 5%，代表衰退
-                if ratios.iloc[j+1] < (ratios.iloc[j] * 0.95):
-                    is_increasing = False
-                    break
-                    
-            if not is_increasing:
-                continue
-                
-        except Exception:
-            # 解析 dataframe 發生未預期的錯誤則略過
-            continue
+        # 取得公司簡介並翻譯
+        biz_summary = "無簡介"
+        p_data = profiles_dict.get(ticker, {})
+        if isinstance(p_data, dict):
+            eng_summary = p_data.get('longBusinessSummary', "")
+            if eng_summary:
+                try:
+                    # 翻譯成繁體中文 (為了避免過長，最多取前1500字元翻譯)
+                    translator = GoogleTranslator(source='auto', target='zh-TW')
+                    biz_summary = translator.translate(eng_summary[:1500])
+                    # 若翻譯成功，加上前綴說明，確保包含業務與優勢
+                    biz_summary = f"【業務與優勢】\n{biz_summary}"
+                except Exception as e:
+                    biz_summary = f"翻譯失敗: {eng_summary[:100]}..."
+
             
         # 通過所有深層測試
         short_name = f_data.get('shortName', ticker)
@@ -348,9 +332,11 @@ if run_button:
             '最新收盤價': f"${item['Last_Price']:.2f}",
             f'過去 {drop_days} 天最大跌幅': f"{item['Drop_Pct']*100:.2f}%",
             '谷底反彈幅度': f"{item['Rebound_Pct']*100:.2f}%",
-            '營收成長率': f"{rev_growth*100:.2f}%",
-            '淨利率': f"{prof_margin*100:.2f}%",
-            '財務體質': "合格 (現金流>0, 流動比>1.2, R&D穩定提升)"
+            'Rule of 30 (%)': f"{rule_of_30_val*100:.1f}%",
+            '營收成長 YoY': f"{rev_growth*100:.1f}%",
+            '淨利率': f"{prof_margin*100:.1f}%",
+            '近三季資本支出': capex_str,
+            '公司簡介': biz_summary
         })
                 
     progress_bar.progress(1.0)
@@ -376,5 +362,5 @@ else:
     st.markdown("""
     這個工具結合了**左側交易（抄底）**與**基本面過濾**的策略：
     1. **跌深反彈**：找出短期內被大量拋售（累積跌幅大）的股票。
-    2. **基本面保護**：為了避免買到真正出問題的公司（即所謂的「接刀子」），我們加入營收成長及淨利率的門檻，確保這家公司仍在賺錢且持續成長。
+    2. **基本面保護 (Rule of 30)**：結合營收成長(YoY)與淨利率，要求相加 > 30%，確保找到具備高成長或高獲利能力的好公司，避免買到真正出問題的股票（接刀子）。
     """)
