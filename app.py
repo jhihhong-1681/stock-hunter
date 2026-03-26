@@ -498,50 +498,68 @@ if st.session_state.get('scanned', False):
             selected_option = st.selectbox("請選擇要查看的近期股票線圖：", chart_options)
             selected_ticker = selected_option.split(" - ")[0]
             
-            tv_symbol = selected_ticker
-            if selected_ticker.endswith(".TW"):
-                tv_symbol = f"TWSE:{selected_ticker.replace('.TW', '')}"
-            elif selected_ticker.endswith(".TWO"):
-                tv_symbol = f"TPEX:{selected_ticker.replace('.TWO', '')}"
+            is_tw = selected_ticker.endswith('.TW') or selected_ticker.endswith('.TWO')
+            
+            if is_tw:
+                st.info("ℹ️ 由於【台灣證交所】的嚴格版權限制，TradingView 官方禁止任何包含此工具在內的第三方網站『直接嵌入』台股的線圖，這就是為什麼強制顯示出來會被 TradingView 封鎖的緣故！因此，以下為您拉取本地端資料繪製近期走勢：")
                 
-            html_code = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-            <style>
-              body {{ margin: 0; padding: 0; overflow: hidden; }}
-            </style>
-            </head>
-            <body>
-            <!-- TradingView Widget BEGIN -->
-            <div class="tradingview-widget-container">
-              <div id="tradingview_12345" style="height: 600px; width: 100%;"></div>
-              <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-              <script type="text/javascript">
-              new TradingView.widget(
-              {{
-              "autosize": true,
-              "symbol": "{tv_symbol}",
-              "interval": "D",
-              "timezone": "Asia/Taipei",
-              "theme": "light",
-              "style": "1",
-              "locale": "zh_TW",
-              "enable_publishing": false,
-              "hide_top_toolbar": false,
-              "hide_legend": false,
-              "save_image": false,
-              "container_id": "tradingview_12345"
-            }}
-              );
-              </script>
-            </div>
-            <!-- TradingView Widget END -->
-            </body>
-            </html>
-            """
-            import streamlit.components.v1 as components
-            components.html(html_code, height=600)
+                # 本地繪圖
+                local_data = get_historical_data(selected_ticker)
+                if local_data is not None:
+                    st.line_chart(local_data)
+                else:
+                    st.warning("暫時無法取得本地走勢圖資料。")
+                
+                # 將 YF Ticker 轉換為 TradingView 格式以產生連結
+                tv_symbol = selected_ticker
+                if selected_ticker.endswith(".TW"):
+                    tv_symbol = f"TWSE:{selected_ticker.replace('.TW', '')}"
+                elif selected_ticker.endswith(".TWO"):
+                    tv_symbol = f"TPEX:{selected_ticker.replace('.TWO', '')}"
+                    
+                tv_url = f"https://www.tradingview.com/chart/?symbol={tv_symbol}"
+                st.markdown(f"👉 **[請點擊這裡，直接在 TradingView 官網開啟 {selected_option} 完整線圖]({tv_url})**")
+            else:
+                tv_symbol = selected_ticker
+                
+                html_code = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                <style>
+                  body {{ margin: 0; padding: 0; overflow: hidden; }}
+                </style>
+                </head>
+                <body>
+                <!-- TradingView Widget BEGIN -->
+                <div class="tradingview-widget-container">
+                  <div id="tradingview_12345" style="height: 600px; width: 100%;"></div>
+                  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+                  <script type="text/javascript">
+                  new TradingView.widget(
+                  {{
+                  "autosize": true,
+                  "symbol": "{tv_symbol}",
+                  "interval": "D",
+                  "timezone": "Asia/Taipei",
+                  "theme": "light",
+                  "style": "1",
+                  "locale": "zh_TW",
+                  "enable_publishing": false,
+                  "hide_top_toolbar": false,
+                  "hide_legend": false,
+                  "save_image": false,
+                  "container_id": "tradingview_12345"
+                }}
+                  );
+                  </script>
+                </div>
+                <!-- TradingView Widget END -->
+                </body>
+                </html>
+                """
+                import streamlit.components.v1 as components
+                components.html(html_code, height=600)
     else:
         st.warning("沒有股票同時符合您的「技術面」與「基本面」條件，請嘗試放寬標準。")
     
