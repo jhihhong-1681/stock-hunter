@@ -69,15 +69,28 @@ run_button = st.sidebar.button("🚀 開始篩選", type="primary", use_containe
 
 
 # --- 核心邏輯與快取 (Caching) ---
+import requests
+import io
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+def fetch_url(url, as_json=False):
+    """使用 requests 並且關閉 SSL 憑證驗證，解決在 Linux 伺服器上的憑證報錯問題"""
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+    response = requests.get(url, headers=headers, verify=False, timeout=20)
+    response.raise_for_status()
+    if as_json:
+        return response.json()
+    return response.text
+
 # 使用 st.cache_data 避免每次調整參數都重新下載資料
 @st.cache_data(ttl=3600*24) # 快取 24 小時
 def get_sp500_tickers():
     """從維基百科獲取 S&P 500 股票代號"""
     url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
-    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     try:
-        html = urllib.request.urlopen(req).read()
-        table = pd.read_html(html)
+        html = fetch_url(url)
+        table = pd.read_html(io.StringIO(html))
         df = table[0]
         tickers = df['Symbol'].str.replace('.', '-', regex=False).tolist()
         return tickers
@@ -89,10 +102,9 @@ def get_sp500_tickers():
 def get_nasdaq100_tickers():
     """從維基百科獲取 Nasdaq 100 代號"""
     url = 'https://en.wikipedia.org/wiki/Nasdaq-100'
-    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     try:
-        html = urllib.request.urlopen(req).read()
-        table = pd.read_html(html)
+        html = fetch_url(url)
+        table = pd.read_html(io.StringIO(html))
         df = table[4] # 通常 Nasdaq-100 表格在第5個位置
         if 'Ticker' in df.columns:
             return df['Ticker'].str.replace('.', '-', regex=False).tolist()
@@ -130,10 +142,7 @@ def get_twse_tickers():
     """獲取台灣上市股票"""
     try:
         url = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        html = urllib.request.urlopen(req).read()
-        import json
-        data = json.loads(html)
+        data = fetch_url(url, as_json=True)
         return [item['Code'] + '.TW' for item in data if len(item['Code']) == 4]
     except Exception as e:
         st.error(f"獲取台灣上市名單失敗: {e}")
@@ -144,10 +153,7 @@ def get_tpex_tickers():
     """獲取台灣上櫃股票"""
     try:
         url = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        html = urllib.request.urlopen(req).read()
-        import json
-        data = json.loads(html)
+        data = fetch_url(url, as_json=True)
         return [item['SecuritiesCompanyCode'] + '.TWO' for item in data if len(item['SecuritiesCompanyCode']) == 4]
     except Exception as e:
         st.error(f"獲取台灣上櫃名單失敗: {e}")
@@ -158,9 +164,8 @@ def get_tw_emerging_tickers():
     """獲取台灣興櫃股票"""
     try:
         url = "https://isin.twse.com.tw/isin/C_public.jsp?strMode=5"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        html = urllib.request.urlopen(req).read()
-        dfs = pd.read_html(html)
+        html = fetch_url(url)
+        dfs = pd.read_html(io.StringIO(html))
         df = dfs[0]
         import re
         series = df.iloc[:, 0].astype(str)
@@ -178,14 +183,11 @@ def get_tw_emerging_tickers():
 def get_tw_name_mapping():
     """獲取台灣股票代號到中文名稱的映射"""
     mapping = {}
-    import json
     import re
     # TWSE
     try:
         url = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        html = urllib.request.urlopen(req).read()
-        data = json.loads(html)
+        data = fetch_url(url, as_json=True)
         for item in data:
             if len(item['Code']) == 4:
                 mapping[item['Code'] + '.TW'] = item['Name']
@@ -194,9 +196,7 @@ def get_tw_name_mapping():
     # TPEx
     try:
         url = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        html = urllib.request.urlopen(req).read()
-        data = json.loads(html)
+        data = fetch_url(url, as_json=True)
         for item in data:
              if len(item['SecuritiesCompanyCode']) == 4:
                  mapping[item['SecuritiesCompanyCode'] + '.TWO'] = item['CompanyName']
@@ -205,9 +205,8 @@ def get_tw_name_mapping():
     # Emerging
     try:
         url = "https://isin.twse.com.tw/isin/C_public.jsp?strMode=5"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        html = urllib.request.urlopen(req).read()
-        dfs = pd.read_html(html)
+        html = fetch_url(url)
+        dfs = pd.read_html(io.StringIO(html))
         df = dfs[0]
         series = df.iloc[:, 0].astype(str)
         for val in series:
