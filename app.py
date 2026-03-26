@@ -25,7 +25,8 @@ st.sidebar.header("⚙️ 篩選條件設定")
 # 0. 選擇市場
 market_choice = st.sidebar.selectbox(
     "0. 選擇掃描的市場",
-    ("S&P 500 (大型股)", "Nasdaq 100 (大型科技股)", "納斯達克全部 (Nasdaq)", "全美市場 (包含羅素2000中小型股)")
+    ("S&P 500 (大型股)", "Nasdaq 100 (大型科技股)", "納斯達克全部 (Nasdaq)", "全美市場 (包含羅素2000中小型股)", 
+     "台灣上市 (TWSE)", "台灣上櫃 (TPEx)", "台灣興櫃 (Emerging)", "台灣全部市場")
 )
 st.sidebar.markdown("---")
 
@@ -115,6 +116,99 @@ def get_all_us_tickers():
         st.error(f"獲取全美市場名單失敗: {e}")
         return []
 
+@st.cache_data(ttl=3600*24)
+def get_twse_tickers():
+    """獲取台灣上市股票"""
+    try:
+        url = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        html = urllib.request.urlopen(req).read()
+        import json
+        data = json.loads(html)
+        return [item['Code'] + '.TW' for item in data if len(item['Code']) == 4]
+    except Exception as e:
+        st.error(f"獲取台灣上市名單失敗: {e}")
+        return []
+
+@st.cache_data(ttl=3600*24)
+def get_tpex_tickers():
+    """獲取台灣上櫃股票"""
+    try:
+        url = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        html = urllib.request.urlopen(req).read()
+        import json
+        data = json.loads(html)
+        return [item['SecuritiesCompanyCode'] + '.TWO' for item in data if len(item['SecuritiesCompanyCode']) == 4]
+    except Exception as e:
+        st.error(f"獲取台灣上櫃名單失敗: {e}")
+        return []
+
+@st.cache_data(ttl=3600*24)
+def get_tw_emerging_tickers():
+    """獲取台灣興櫃股票"""
+    try:
+        url = "https://isin.twse.com.tw/isin/C_public.jsp?strMode=5"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        html = urllib.request.urlopen(req).read()
+        dfs = pd.read_html(html)
+        df = dfs[0]
+        import re
+        series = df.iloc[:, 0].astype(str)
+        tickers = []
+        for val in series:
+            match = re.match(r'^(\d{4})[^\d]', val)
+            if match:
+                tickers.append(match.group(1) + '.TWO')
+        return tickers
+    except Exception as e:
+        st.error(f"獲取台灣興櫃名單失敗: {e}")
+        return []
+
+@st.cache_data(ttl=3600*24)
+def get_tw_name_mapping():
+    """獲取台灣股票代號到中文名稱的映射"""
+    mapping = {}
+    import json
+    import re
+    # TWSE
+    try:
+        url = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        html = urllib.request.urlopen(req).read()
+        data = json.loads(html)
+        for item in data:
+            if len(item['Code']) == 4:
+                mapping[item['Code'] + '.TW'] = item['Name']
+    except Exception:
+        pass
+    # TPEx
+    try:
+        url = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        html = urllib.request.urlopen(req).read()
+        data = json.loads(html)
+        for item in data:
+             if len(item['SecuritiesCompanyCode']) == 4:
+                 mapping[item['SecuritiesCompanyCode'] + '.TWO'] = item['CompanyName']
+    except Exception:
+        pass
+    # Emerging
+    try:
+        url = "https://isin.twse.com.tw/isin/C_public.jsp?strMode=5"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        html = urllib.request.urlopen(req).read()
+        dfs = pd.read_html(html)
+        df = dfs[0]
+        series = df.iloc[:, 0].astype(str)
+        for val in series:
+            match = re.match(r'^(\d{4})[^\d]+(.*)$', val)
+            if match:
+                mapping[match.group(1) + '.TWO'] = match.group(2).strip()
+    except Exception:
+        pass
+    return mapping
+
 @st.cache_data(ttl=3600) # 快取 1 小時 (股價資料)
 def fetch_stock_prices_new(tickers, days_needed):
     """批次下載股票歷史價格"""
@@ -149,6 +243,17 @@ def fetch_stock_prices_new(tickers, days_needed):
 
 # --- 不再使用 get_all_fundamentals，改在迴圈內使用 yahooquery 直接批次抓取 ---
 
+# --- 輔助函數：取得本地歷史資料供台股繪圖 ---
+@st.cache_data(ttl=3600)
+def get_historical_data(ticker):
+    try:
+        hist = yf.download(ticker, period="6mo", progress=False)
+        if not hist.empty and 'Close' in hist:
+            return hist['Close']
+    except:
+        pass
+    return None
+
 # --- 執行篩選 ---
 if run_button:
     with st.spinner(f"正在抓取 {market_choice} 名單..."):
@@ -158,10 +263,20 @@ if run_button:
             tickers = get_nasdaq100_tickers()
         elif "納斯達克全部" in market_choice:
             tickers = get_all_nasdaq_tickers()
-        else:
+        elif "全美市場" in market_choice:
             tickers = get_all_us_tickers()
             if len(tickers) > 3000: # 避免一次抓太多導致 yfinance 卡死或是 API Rate Limit
                 st.warning("全美市場股票數量眾多 (>4000檔)，下載時間會比較久，請耐心等候。")
+        elif "台灣上市" in market_choice:
+            tickers = get_twse_tickers()
+        elif "台灣上櫃" in market_choice:
+            tickers = get_tpex_tickers()
+        elif "台灣興櫃" in market_choice:
+            tickers = get_tw_emerging_tickers()
+        elif "台灣全部市場" in market_choice:
+            tickers = get_twse_tickers() + get_tpex_tickers() + get_tw_emerging_tickers()
+            if len(tickers) > 1000:
+                st.warning("台灣全部市場股票數量較多，下載時間會比較久，請耐心等候。")
         
     if not tickers:
         st.stop()
@@ -242,6 +357,12 @@ if run_button:
     progress_bar.progress(0)
     
     final_results = []
+    
+    # 提前獲取台股中文名稱對應表
+    if "台灣" in market_choice:
+        tw_mapping = get_tw_name_mapping()
+    else:
+        tw_mapping = {}
     
     if not price_survivors:
         st.warning("沒有股票符合技術面條件")
@@ -326,6 +447,9 @@ if run_button:
             
         # 通過所有深層測試
         short_name = f_data.get('shortName', ticker)
+        if ticker in tw_mapping:
+            short_name = tw_mapping[ticker]
+            
         final_results.append({
             '公司名稱': short_name,
             '股票代號': ticker,
@@ -342,6 +466,15 @@ if run_button:
     progress_bar.progress(1.0)
     status_text.empty()
     
+    # 將結果儲存到 session state，即使重整也不會遺失
+    st.session_state['scanned'] = True
+    st.session_state['final_results'] = final_results
+    st.session_state['scanned_market'] = market_choice
+
+# --- 顯示篩選結果與圖表 (獨立於 run_button) ---
+if st.session_state.get('scanned', False):
+    final_results = st.session_state.get('final_results', [])
+    
     # 顯示最終結果
     st.subheader(f"🎉 最終篩選結果 ({len(final_results)} 檔)")
     
@@ -350,7 +483,83 @@ if run_button:
         # 設定 DataFrame 顯示索引為 1 開始
         res_df.index = res_df.index + 1
         st.dataframe(res_df, use_container_width=True)
-        st.balloons()
+        
+        if run_button: # 只在按鈕剛按下的那次放氣球
+            st.balloons()
+            
+        # 新增 TradingView 圖表或本地圖表區塊
+        st.markdown("---")
+        st.subheader("📈 個股近期走勢")
+        
+        # 建立選項清單 (例如: "2330.TW - 台積電")
+        chart_options = [f"{item['股票代號']} - {item['公司名稱']}" for item in final_results]
+        
+        if chart_options:
+            selected_option = st.selectbox("請選擇要查看的近期股票線圖：", chart_options)
+            selected_ticker = selected_option.split(" - ")[0]
+            
+            is_tw = selected_ticker.endswith('.TW') or selected_ticker.endswith('.TWO')
+            
+            if is_tw:
+                st.info("ℹ️ 由於台灣證交所資料授權限制，TradingView 無法在外部網站直接顯示台股即時線圖。以下為您拉取本地資料繪製走勢圖：")
+                
+                # 本地繪圖
+                local_data = get_historical_data(selected_ticker)
+                if local_data is not None:
+                    st.line_chart(local_data)
+                else:
+                    st.warning("暫時無法取得本地走勢圖資料。")
+                
+                # 將 YF Ticker 轉換為 TradingView 格式以產生連結
+                tv_symbol = selected_ticker
+                if selected_ticker.endswith(".TW"):
+                    tv_symbol = f"TWSE:{selected_ticker.replace('.TW', '')}"
+                elif selected_ticker.endswith(".TWO"):
+                    tv_symbol = f"TPEX:{selected_ticker.replace('.TWO', '')}"
+                    
+                tv_url = f"https://www.tradingview.com/chart/?symbol={tv_symbol}"
+                st.markdown(f"👉 **[點擊這裡在 TradingView 官網開啟 {selected_option} 完整線圖]({tv_url})**")
+            else:
+                tv_symbol = selected_ticker
+                
+                html_code = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                <style>
+                  body {{ margin: 0; padding: 0; overflow: hidden; }}
+                </style>
+                </head>
+                <body>
+                <!-- TradingView Widget BEGIN -->
+                <div class="tradingview-widget-container">
+                  <div id="tradingview_12345" style="height: 600px; width: 100%;"></div>
+                  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+                  <script type="text/javascript">
+                  new TradingView.widget(
+                  {{
+                  "autosize": true,
+                  "symbol": "{tv_symbol}",
+                  "interval": "D",
+                  "timezone": "Asia/Taipei",
+                  "theme": "light",
+                  "style": "1",
+                  "locale": "zh_TW",
+                  "enable_publishing": false,
+                  "hide_top_toolbar": false,
+                  "hide_legend": false,
+                  "save_image": false,
+                  "container_id": "tradingview_12345"
+                }}
+                  );
+                  </script>
+                </div>
+                <!-- TradingView Widget END -->
+                </body>
+                </html>
+                """
+                import streamlit.components.v1 as components
+                components.html(html_code, height=600)
     else:
         st.warning("沒有股票同時符合您的「技術面」與「基本面」條件，請嘗試放寬標準。")
     
