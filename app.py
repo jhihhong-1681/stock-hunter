@@ -3,9 +3,18 @@ import yfinance as yf
 import pandas as pd
 import datetime
 import urllib.request
+import ssl
 import yahoo_fin.stock_info as si
 from yahooquery import Ticker
 from deep_translator import GoogleTranslator
+
+# 關閉全域 SSL 憑證驗證 (解決 Streamlit Cloud 抓取台股或是維基百科時的憑證錯誤)
+try:
+    _create_unverified_https_context = ssl._create_unverified_context
+except AttributeError:
+    pass
+else:
+    ssl._create_default_https_context = _create_unverified_https_context
 # --- 頁面設定 ---
 st.set_page_config(
     page_title="Stock Hunter 股票獵人",
@@ -222,7 +231,7 @@ def fetch_stock_prices_new(tickers, days_needed):
     
     for i in range(0, len(tickers), batch_size):
         batch = tickers[i:i + batch_size]
-        data = yf.download(batch, start=start_date, end=end_date, progress=False)
+        data = yf.download(batch, start=start_date, end=end_date, progress=False, threads=True)
         
         if 'Close' in data:
             df_close = data['Close']
@@ -372,14 +381,10 @@ if run_button:
     surviving_tickers = [item['Ticker'] for item in price_survivors]
     total_survivors = len(surviving_tickers)
     
-    # 使用 yahooquery 進行非同步批量查詢
+    # 使用 yahooquery 進行非同步批量查詢 (優化寫法，一次性取得所有需要的 modules)
     try:
         yq_tickers = Ticker(surviving_tickers, asynchronous=True)
-        # 一次抓取所有基本財報數據與公司簡介
-        fin_data_dict = yq_tickers.financial_data
-        profiles_dict = yq_tickers.asset_profile
-        # 一次抓取 cash flow (季報) 以取得近三季資本支出
-        cash_flow_q = yq_tickers.cash_flow(frequency='q')
+        modules_data = yq_tickers.get_modules('price financialData assetProfile cashflowStatementHistoryQuarterly')
     except Exception as e:
         st.error(f"取得基本面資料時發生錯誤: {e}")
         st.stop()
@@ -391,10 +396,57 @@ if run_button:
         progress_bar.progress(i / total_survivors)
         item = price_info_map[ticker]
         
-        # 確認該 Ticker 有回傳資料 (若為 dict 代表成功)
-        f_data = fin_data_dict.get(ticker, {})
-        if not isinstance(f_data, dict):
+        data = modules_data.get(ticker, {})
+        if not isinstance(data, dict):
             continue
+            
+        f_data = data.get('financialData', {})
+        p_data = data.get('assetProfile', {})
+        cf_list = data.get('cashflowStatementHistoryQuarterly', {}).get('cashflowStatements', [])
+        
+        rev_growth = f_data.get('revenueGrowth', {}).get('raw', None) if isinstance(f_data.get('revenueGrowth'), dict) else f_data.get('revenueGrowth')
+        prof_margin = f_data.get('profitMargins', {}).get('raw', None) if isinstance(f_data.get('profitMargins'), dict) else f_data.get('profitMargins')
+        
+        # 1. 基本條件: Rule of 30 (營收成長率+淨利率 > 30%)
+        if rev_growth is None or prof_margin is None:
+            continue
+            
+        rule_of_30_val = rev_growth + prof_margin
+        if rule_of_30_val <= 0.3:
+            continue
+            
+        # 3. 取得近三季資本支出 (不作為篩選條件，僅顯示)
+        capex_str = "無資料"
+        if cf_list:
+            capex_vals = []
+            # cashflowStatements is usually sorted most recent first. We take the first 3
+            for stmt in cf_list[:3]:
+                capex = stmt.get('capitalExpenditures', {}).get('raw')
+                if capex:
+                    abs_val = abs(capex)
+                    if abs_val >= 1e9:
+                        capex_vals.append(f"{abs_val/1e9:.1f}B")
+                    else:
+                        capex_vals.append(f"{abs_val/1e6:.1f}M")
+            if capex_vals:
+                capex_vals.reverse() # chronological
+                capex_str = " -> ".join(capex_vals) # type: ignore
+            
+        # 取得公司簡介並翻譯
+        biz_summary = "無簡介"
+        eng_summary = p_data.get('longBusinessSummary', "")
+        if eng_summary:
+            try:
+                # 翻譯成繁體中文 (為了避免過長，最多取前1500字元翻譯)
+                translator = GoogleTranslator(source='auto', target='zh-TW')
+                biz_summary = translator.translate(eng_summary[:1500])
+                # 若翻譯成功，加上前綴說明，確保包含業務與優勢
+                biz_summary = f"【業務與優勢】\n{biz_summary}"
+            except Exception as e:
+                biz_summary = f"翻譯失敗: {eng_summary[:100]}..."
+            
+        # 通過所有深層測試
+        short_name = data.get('price', {}).get('shortName', ticker)
             
         rev_growth = f_data.get('revenueGrowth')
         prof_margin = f_data.get('profitMargins')
@@ -498,68 +550,50 @@ if st.session_state.get('scanned', False):
             selected_option = st.selectbox("請選擇要查看的近期股票線圖：", chart_options)
             selected_ticker = selected_option.split(" - ")[0]
             
-            is_tw = selected_ticker.endswith('.TW') or selected_ticker.endswith('.TWO')
-            
-            if is_tw:
-                st.info("ℹ️ 由於台灣證交所資料授權限制，TradingView 無法在外部網站直接顯示台股即時線圖。以下為您拉取本地資料繪製走勢圖：")
+            tv_symbol = selected_ticker
+            if selected_ticker.endswith(".TW"):
+                tv_symbol = f"TWSE:{selected_ticker.replace('.TW', '')}"
+            elif selected_ticker.endswith(".TWO"):
+                tv_symbol = f"TPEX:{selected_ticker.replace('.TWO', '')}"
                 
-                # 本地繪圖
-                local_data = get_historical_data(selected_ticker)
-                if local_data is not None:
-                    st.line_chart(local_data)
-                else:
-                    st.warning("暫時無法取得本地走勢圖資料。")
-                
-                # 將 YF Ticker 轉換為 TradingView 格式以產生連結
-                tv_symbol = selected_ticker
-                if selected_ticker.endswith(".TW"):
-                    tv_symbol = f"TWSE:{selected_ticker.replace('.TW', '')}"
-                elif selected_ticker.endswith(".TWO"):
-                    tv_symbol = f"TPEX:{selected_ticker.replace('.TWO', '')}"
-                    
-                tv_url = f"https://www.tradingview.com/chart/?symbol={tv_symbol}"
-                st.markdown(f"👉 **[點擊這裡在 TradingView 官網開啟 {selected_option} 完整線圖]({tv_url})**")
-            else:
-                tv_symbol = selected_ticker
-                
-                html_code = f"""
-                <!DOCTYPE html>
-                <html>
-                <head>
-                <style>
-                  body {{ margin: 0; padding: 0; overflow: hidden; }}
-                </style>
-                </head>
-                <body>
-                <!-- TradingView Widget BEGIN -->
-                <div class="tradingview-widget-container">
-                  <div id="tradingview_12345" style="height: 600px; width: 100%;"></div>
-                  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-                  <script type="text/javascript">
-                  new TradingView.widget(
-                  {{
-                  "autosize": true,
-                  "symbol": "{tv_symbol}",
-                  "interval": "D",
-                  "timezone": "Asia/Taipei",
-                  "theme": "light",
-                  "style": "1",
-                  "locale": "zh_TW",
-                  "enable_publishing": false,
-                  "hide_top_toolbar": false,
-                  "hide_legend": false,
-                  "save_image": false,
-                  "container_id": "tradingview_12345"
-                }}
-                  );
-                  </script>
-                </div>
-                <!-- TradingView Widget END -->
-                </body>
-                </html>
-                """
-                import streamlit.components.v1 as components
-                components.html(html_code, height=600)
+            html_code = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <style>
+              body {{ margin: 0; padding: 0; overflow: hidden; }}
+            </style>
+            </head>
+            <body>
+            <!-- TradingView Widget BEGIN -->
+            <div class="tradingview-widget-container">
+              <div id="tradingview_12345" style="height: 600px; width: 100%;"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+              <script type="text/javascript">
+              new TradingView.widget(
+              {{
+              "autosize": true,
+              "symbol": "{tv_symbol}",
+              "interval": "D",
+              "timezone": "Asia/Taipei",
+              "theme": "light",
+              "style": "1",
+              "locale": "zh_TW",
+              "enable_publishing": false,
+              "hide_top_toolbar": false,
+              "hide_legend": false,
+              "save_image": false,
+              "container_id": "tradingview_12345"
+            }}
+              );
+              </script>
+            </div>
+            <!-- TradingView Widget END -->
+            </body>
+            </html>
+            """
+            import streamlit.components.v1 as components
+            components.html(html_code, height=600)
     else:
         st.warning("沒有股票同時符合您的「技術面」與「基本面」條件，請嘗試放寬標準。")
     
