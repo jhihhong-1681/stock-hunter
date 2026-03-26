@@ -387,16 +387,30 @@ if run_button:
     status_text.text("正在進行第二階段：基本面初篩 (快速抓取營收與淨利率)...")
     fin_modules_data = {}
     import time
-    yq_batch_size = 100
+    yq_batch_size = 50
     try:
-        # 分批抓取以避免 Streamlit Cloud IP 瞬間發出幾千個 Request 被 Yahoo 阻擋 (HTTP 429)
+        # 分批抓取以避免 Streamlit Cloud IP 瞬間發出幾千個 Request 被 Yahoo 阻擋 (HTTP 429)。新增防呆自動重試機制
         for j in range(0, len(surviving_tickers), yq_batch_size):
             batch_tickers = surviving_tickers[j:j + yq_batch_size]
-            yq_batch = Ticker(batch_tickers, asynchronous=True)
-            batch_res = yq_batch.financial_data
-            if isinstance(batch_res, dict):
-                fin_modules_data.update(batch_res)
-            time.sleep(0.5) # 稍微休息防檔
+            
+            max_retries = 2
+            for attempt in range(max_retries):
+                try:
+                    yq_batch = Ticker(batch_tickers, asynchronous=True)
+                    batch_res = yq_batch.financial_data
+                    if isinstance(batch_res, dict):
+                        # 檢查是否被 Yahoo 阻擋 (回傳字串代表出錯)
+                        failed_count = sum(1 for v in batch_res.values() if isinstance(v, str))
+                        if failed_count == len(batch_tickers) and len(batch_tickers) > 0 and attempt < max_retries - 1:
+                            time.sleep(2) # 遇到阻擋，休息 2 秒後重試
+                            continue
+                        fin_modules_data.update(batch_res)
+                        break # 成功，跳出重試迴圈
+                except Exception:
+                    if attempt < max_retries - 1:
+                        time.sleep(2)
+                        
+            time.sleep(1.0) # 穩穩抓，避免下一批被鎖定
             progress_bar.progress(min(1.0, (j + yq_batch_size) / total_survivors * 0.5))
     except Exception as e:
         st.error(f"取得基本面初篩資料時發生錯誤: {e}")
