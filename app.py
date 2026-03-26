@@ -383,32 +383,25 @@ if run_button:
     # 建立一個快速查詢 Ticker -> (Drop_Pct, Last_Price) 的字典
     price_info_map = {item['Ticker']: item for item in price_survivors}
     
-    # 階段 2-1: 為了避免雲端 IP 被 Yahoo 阻擋 (HTTP 429)，且避免下載龐大不必要的資料，我們先「只」抓取 financialData 來判斷 Rule of 30
+    # 階段 2-1: 恢復您原本穩定且絕對不會被 Cloud 阻擋的原生寫法 (financial_data)，但結合最快的「分段懶加載」技術
     status_text.text("正在進行第二階段：基本面初篩 (快速抓取營收與淨利率)...")
-    fin_modules_data = {}
-    import time
-    yq_batch_size = 100
     try:
-        for j in range(0, len(surviving_tickers), yq_batch_size):
-            batch_tickers = surviving_tickers[j:j + yq_batch_size]
-            yq_tickers = Ticker(batch_tickers, asynchronous=True)
-            batch_res = yq_tickers.get_modules('financialData')
-            if isinstance(batch_res, dict):
-                fin_modules_data.update(batch_res)
-            time.sleep(0.5) # 稍微休息避免被擋
-            progress_bar.progress(min(1.0, (j + yq_batch_size) / total_survivors * 0.5)) # 前半段進度
+        yq_tickers = Ticker(surviving_tickers, asynchronous=True)
+        fin_modules_data = yq_tickers.financial_data
     except Exception as e:
         st.error(f"取得基本面初篩資料時發生錯誤: {e}")
         st.stop()
         
+    if not isinstance(fin_modules_data, dict):
+        fin_modules_data = {}
+        
     rule30_passed = []
     for ticker in surviving_tickers:
-        data = fin_modules_data.get(ticker, {})
-        if not isinstance(data, dict): continue
-        f_data = data.get('financialData', {})
+        f_data = fin_modules_data.get(ticker, {})
+        if not isinstance(f_data, dict): continue
         
-        rev_growth = f_data.get('revenueGrowth', {}).get('raw', None) if isinstance(f_data.get('revenueGrowth'), dict) else f_data.get('revenueGrowth')
-        prof_margin = f_data.get('profitMargins', {}).get('raw', None) if isinstance(f_data.get('profitMargins'), dict) else f_data.get('profitMargins')
+        rev_growth = f_data.get('revenueGrowth')
+        prof_margin = f_data.get('profitMargins')
         
         if rev_growth is None or prof_margin is None: continue
         rule_of_30_val = rev_growth + prof_margin
@@ -423,15 +416,20 @@ if run_button:
             
     # 階段 2-2: 只針對「通過」 Rule of 30 的少數菁英股票，去抓取極度耗時的「公司簡介」與「現金流量表」
     status_text.text(f"正在進行第二階段：基本面深層資料獲取 (抓取 {len(rule30_passed)} 檔合格股票的財報與簡介)...")
-    heavy_modules_data = {}
+    heavy_profiles = {}
+    heavy_cf = {}
+    heavy_price = {}
+    
     if rule30_passed:
         passed_tickers = [item['ticker'] for item in rule30_passed]
         try:
-            # 這裡因為數量通常小於 100，所以一口氣抓完即可
             yq_heavy = Ticker(passed_tickers, asynchronous=True)
-            heavy_res = yq_heavy.get_modules('price assetProfile cashflowStatementHistoryQuarterly')
-            if isinstance(heavy_res, dict):
-                heavy_modules_data = heavy_res
+            heavy_profiles = yq_heavy.asset_profile
+            heavy_cf = yq_heavy.cash_flow(frequency='q')
+            heavy_price = yq_heavy.price
+            
+            if not isinstance(heavy_profiles, dict): heavy_profiles = {}
+            if not isinstance(heavy_price, dict): heavy_price = {}
         except Exception:
             pass
             
@@ -441,25 +439,27 @@ if run_button:
     for idx, passed_item in enumerate(rule30_passed):
         ticker = passed_item['ticker']
         tech_item = price_info_map[ticker]
-        heavy_data = heavy_modules_data.get(ticker, {})
-        if not isinstance(heavy_data, dict): heavy_data = {}
         
-        p_data = heavy_data.get('assetProfile', {})
-        cf_list = heavy_data.get('cashflowStatementHistoryQuarterly', {}).get('cashflowStatements', [])
+        p_data = heavy_profiles.get(ticker, {})
+        if not isinstance(p_data, dict): p_data = {}
         
         # 3. 取得近三季資本支出 (不作為篩選條件，僅顯示)
         capex_str = "無資料"
-        if cf_list:
-            capex_vals = []
-            for stmt in cf_list[:3]:
-                capex = stmt.get('capitalExpenditures', {}).get('raw')
-                if capex:
-                    abs_val = abs(capex)
-                    if abs_val >= 1e9: capex_vals.append(f"{abs_val/1e9:.1f}B")
-                    else: capex_vals.append(f"{abs_val/1e6:.1f}M")
-            if capex_vals:
-                capex_vals.reverse() 
-                capex_str = " -> ".join(capex_vals) 
+        if not isinstance(heavy_cf, str) and ticker in heavy_cf.index:
+            try:
+                ticker_cf = heavy_cf.loc[ticker]
+                if isinstance(ticker_cf, pd.DataFrame) and 'CapitalExpenditure' in ticker_cf.columns and 'periodType' in ticker_cf.columns:
+                    capex_3m = ticker_cf[ticker_cf['periodType'] == '3M']['CapitalExpenditure'].dropna()
+                    last_3_capex = capex_3m.tail(3)
+                    capex_vals = []
+                    for val in last_3_capex:
+                        abs_val = abs(val) # 資本支出通常是現金流出(負數)
+                        if abs_val >= 1e9: capex_vals.append(f"{abs_val/1e9:.1f}B")
+                        else: capex_vals.append(f"{abs_val/1e6:.1f}M")
+                    if capex_vals:
+                        capex_str = " -> ".join(capex_vals)
+            except Exception:
+                pass
             
         # 取得公司簡介並翻譯
         biz_summary = "無簡介"
@@ -473,7 +473,7 @@ if run_button:
             except Exception as e:
                 biz_summary = f"翻譯失敗: {eng_summary[:100]}..."
             
-        short_name = heavy_data.get('price', {}).get('shortName', ticker)
+        short_name = heavy_price.get(ticker, {}).get('shortName', ticker)
         if ticker in tw_mapping:
             short_name = tw_mapping[ticker]
             
