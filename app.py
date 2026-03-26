@@ -497,7 +497,11 @@ if run_button:
             except Exception as e:
                 biz_summary = f"翻譯失敗: {eng_summary[:100]}..."
             
-        short_name = heavy_price.get(ticker, {}).get('shortName', ticker)
+        short_name = ticker
+        price_data = heavy_price.get(ticker, {})
+        if isinstance(price_data, dict):
+            short_name = price_data.get('shortName', ticker)
+            
         if ticker in tw_mapping:
             short_name = tw_mapping[ticker]
             
