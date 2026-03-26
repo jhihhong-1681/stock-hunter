@@ -380,64 +380,86 @@ if run_button:
     surviving_tickers = [item['Ticker'] for item in price_survivors]
     total_survivors = len(surviving_tickers)
     
-    # 使用 yahooquery 進行非同步批量查詢 (為了避免雲端 IP 被 Yahoo 阻擋 HTTP 429，將清單分批抓取)
-    modules_data = {}
+    # 建立一個快速查詢 Ticker -> (Drop_Pct, Last_Price) 的字典
+    price_info_map = {item['Ticker']: item for item in price_survivors}
+    
+    # 階段 2-1: 為了避免雲端 IP 被 Yahoo 阻擋 (HTTP 429)，且避免下載龐大不必要的資料，我們先「只」抓取 financialData 來判斷 Rule of 30
+    status_text.text("正在進行第二階段：基本面初篩 (快速抓取營收與淨利率)...")
+    fin_modules_data = {}
     import time
     yq_batch_size = 100
     try:
         for j in range(0, len(surviving_tickers), yq_batch_size):
             batch_tickers = surviving_tickers[j:j + yq_batch_size]
             yq_tickers = Ticker(batch_tickers, asynchronous=True)
-            batch_res = yq_tickers.get_modules('price financialData assetProfile cashflowStatementHistoryQuarterly')
+            batch_res = yq_tickers.get_modules('financialData')
             if isinstance(batch_res, dict):
-                modules_data.update(batch_res)
+                fin_modules_data.update(batch_res)
             time.sleep(0.5) # 稍微休息避免被擋
+            progress_bar.progress(min(1.0, (j + yq_batch_size) / total_survivors * 0.5)) # 前半段進度
     except Exception as e:
-        st.error(f"取得基本面資料時發生錯誤: {e}")
+        st.error(f"取得基本面初篩資料時發生錯誤: {e}")
         st.stop()
-    
-    # 建立一個快速查詢 Ticker -> (Drop_Pct, Last_Price) 的字典
-    price_info_map = {item['Ticker']: item for item in price_survivors}
-    
-    for i, ticker in enumerate(surviving_tickers):
-        progress_bar.progress(i / total_survivors)
-        item = price_info_map[ticker]
         
-        data = modules_data.get(ticker, {})
-        if not isinstance(data, dict):
-            continue
-            
+    rule30_passed = []
+    for ticker in surviving_tickers:
+        data = fin_modules_data.get(ticker, {})
+        if not isinstance(data, dict): continue
         f_data = data.get('financialData', {})
-        p_data = data.get('assetProfile', {})
-        cf_list = data.get('cashflowStatementHistoryQuarterly', {}).get('cashflowStatements', [])
         
         rev_growth = f_data.get('revenueGrowth', {}).get('raw', None) if isinstance(f_data.get('revenueGrowth'), dict) else f_data.get('revenueGrowth')
         prof_margin = f_data.get('profitMargins', {}).get('raw', None) if isinstance(f_data.get('profitMargins'), dict) else f_data.get('profitMargins')
         
-        # 1. 基本條件: Rule of 30 (營收成長率+淨利率 > 30%)
-        if rev_growth is None or prof_margin is None:
-            continue
-            
+        if rev_growth is None or prof_margin is None: continue
         rule_of_30_val = rev_growth + prof_margin
-        if rule_of_30_val <= 0.3:
-            continue
+        
+        if rule_of_30_val > 0.3:
+            rule30_passed.append({
+                'ticker': ticker,
+                'rev_growth': rev_growth,
+                'prof_margin': prof_margin,
+                'rule_of_30_val': rule_of_30_val
+            })
             
+    # 階段 2-2: 只針對「通過」 Rule of 30 的少數菁英股票，去抓取極度耗時的「公司簡介」與「現金流量表」
+    status_text.text(f"正在進行第二階段：基本面深層資料獲取 (抓取 {len(rule30_passed)} 檔合格股票的財報與簡介)...")
+    heavy_modules_data = {}
+    if rule30_passed:
+        passed_tickers = [item['ticker'] for item in rule30_passed]
+        try:
+            # 這裡因為數量通常小於 100，所以一口氣抓完即可
+            yq_heavy = Ticker(passed_tickers, asynchronous=True)
+            heavy_res = yq_heavy.get_modules('price assetProfile cashflowStatementHistoryQuarterly')
+            if isinstance(heavy_res, dict):
+                heavy_modules_data = heavy_res
+        except Exception:
+            pass
+            
+    progress_bar.progress(0.9)
+            
+    # 整合最終資料
+    for idx, passed_item in enumerate(rule30_passed):
+        ticker = passed_item['ticker']
+        tech_item = price_info_map[ticker]
+        heavy_data = heavy_modules_data.get(ticker, {})
+        if not isinstance(heavy_data, dict): heavy_data = {}
+        
+        p_data = heavy_data.get('assetProfile', {})
+        cf_list = heavy_data.get('cashflowStatementHistoryQuarterly', {}).get('cashflowStatements', [])
+        
         # 3. 取得近三季資本支出 (不作為篩選條件，僅顯示)
         capex_str = "無資料"
         if cf_list:
             capex_vals = []
-            # cashflowStatements is usually sorted most recent first. We take the first 3
             for stmt in cf_list[:3]:
                 capex = stmt.get('capitalExpenditures', {}).get('raw')
                 if capex:
                     abs_val = abs(capex)
-                    if abs_val >= 1e9:
-                        capex_vals.append(f"{abs_val/1e9:.1f}B")
-                    else:
-                        capex_vals.append(f"{abs_val/1e6:.1f}M")
+                    if abs_val >= 1e9: capex_vals.append(f"{abs_val/1e9:.1f}B")
+                    else: capex_vals.append(f"{abs_val/1e6:.1f}M")
             if capex_vals:
-                capex_vals.reverse() # chronological
-                capex_str = " -> ".join(capex_vals) # type: ignore
+                capex_vals.reverse() 
+                capex_str = " -> ".join(capex_vals) 
             
         # 取得公司簡介並翻譯
         biz_summary = "無簡介"
@@ -447,26 +469,23 @@ if run_button:
                 # 翻譯成繁體中文 (為了避免過長，最多取前1500字元翻譯)
                 translator = GoogleTranslator(source='auto', target='zh-TW')
                 biz_summary = translator.translate(eng_summary[:1500])
-                # 若翻譯成功，加上前綴說明，確保包含業務與優勢
                 biz_summary = f"【業務與優勢】\n{biz_summary}"
             except Exception as e:
                 biz_summary = f"翻譯失敗: {eng_summary[:100]}..."
             
-        # 通過所有深層測試
-        short_name = data.get('price', {}).get('shortName', ticker)
-        
+        short_name = heavy_data.get('price', {}).get('shortName', ticker)
         if ticker in tw_mapping:
             short_name = tw_mapping[ticker]
             
         final_results.append({
             '公司名稱': short_name,
             '股票代號': ticker,
-            '最新收盤價': f"${item['Last_Price']:.2f}",
-            f'過去 {drop_days} 天最大跌幅': f"{item['Drop_Pct']*100:.2f}%",
-            '谷底反彈幅度': f"{item['Rebound_Pct']*100:.2f}%",
-            'Rule of 30 (%)': f"{rule_of_30_val*100:.1f}%",
-            '營收成長 YoY': f"{rev_growth*100:.1f}%",
-            '淨利率': f"{prof_margin*100:.1f}%",
+            '最新收盤價': f"${tech_item['Last_Price']:.2f}",
+            f'過去 {drop_days} 天最大跌幅': f"{tech_item['Drop_Pct']*100:.2f}%",
+            '谷底反彈幅度': f"{tech_item['Rebound_Pct']*100:.2f}%",
+            'Rule of 30 (%)': f"{passed_item['rule_of_30_val']*100:.1f}%",
+            '營收成長 YoY': f"{passed_item['rev_growth']*100:.1f}%",
+            '淨利率': f"{passed_item['prof_margin']*100:.1f}%",
             '近三季資本支出': capex_str,
             '公司簡介': biz_summary
         })
