@@ -446,58 +446,7 @@ if run_button:
             
         # 通過所有深層測試
         short_name = data.get('price', {}).get('shortName', ticker)
-            
-        rev_growth = f_data.get('revenueGrowth')
-        prof_margin = f_data.get('profitMargins')
-        op_cashflow = f_data.get('operatingCashflow')
-        curr_ratio = f_data.get('currentRatio')
         
-        # 1. 基本條件: Rule of 30 (營收成長率+淨利率 > 30%)
-        if rev_growth is None or prof_margin is None:
-            continue
-            
-        rule_of_30_val = rev_growth + prof_margin
-        if rule_of_30_val <= 0.3:
-            continue
-            
-        # 3. 取得近三季資本支出 (不作為篩選條件，僅顯示)
-        capex_str = "無資料"
-        if not isinstance(cash_flow_q, str) and ticker in cash_flow_q.index:
-            try:
-                ticker_cf = cash_flow_q.loc[ticker]
-                if isinstance(ticker_cf, pd.DataFrame) and 'CapitalExpenditure' in ticker_cf.columns and 'periodType' in ticker_cf.columns:
-                    capex_3m = ticker_cf[ticker_cf['periodType'] == '3M']['CapitalExpenditure'].dropna()
-                    last_3_capex = capex_3m.tail(3)
-                    capex_vals = []
-                    for val in last_3_capex:
-                        abs_val = abs(val) # 資本支出通常是現金流出(負數)
-                        if abs_val >= 1e9:
-                            capex_vals.append(f"{abs_val/1e9:.1f}B")
-                        else:
-                            capex_vals.append(f"{abs_val/1e6:.1f}M")
-                    if capex_vals:
-                        capex_str = " -> ".join(capex_vals)
-            except Exception:
-                pass
-            
-        # 取得公司簡介並翻譯
-        biz_summary = "無簡介"
-        p_data = profiles_dict.get(ticker, {})
-        if isinstance(p_data, dict):
-            eng_summary = p_data.get('longBusinessSummary', "")
-            if eng_summary:
-                try:
-                    # 翻譯成繁體中文 (為了避免過長，最多取前1500字元翻譯)
-                    translator = GoogleTranslator(source='auto', target='zh-TW')
-                    biz_summary = translator.translate(eng_summary[:1500])
-                    # 若翻譯成功，加上前綴說明，確保包含業務與優勢
-                    biz_summary = f"【業務與優勢】\n{biz_summary}"
-                except Exception as e:
-                    biz_summary = f"翻譯失敗: {eng_summary[:100]}..."
-
-            
-        # 通過所有深層測試
-        short_name = f_data.get('shortName', ticker)
         if ticker in tw_mapping:
             short_name = tw_mapping[ticker]
             
