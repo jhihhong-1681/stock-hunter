@@ -385,9 +385,19 @@ if run_button:
     
     # 階段 2-1: 恢復您原本穩定且絕對不會被 Cloud 阻擋的原生寫法 (financial_data)，但結合最快的「分段懶加載」技術
     status_text.text("正在進行第二階段：基本面初篩 (快速抓取營收與淨利率)...")
+    fin_modules_data = {}
+    import time
+    yq_batch_size = 100
     try:
-        yq_tickers = Ticker(surviving_tickers, asynchronous=True)
-        fin_modules_data = yq_tickers.financial_data
+        # 分批抓取以避免 Streamlit Cloud IP 瞬間發出幾千個 Request 被 Yahoo 阻擋 (HTTP 429)
+        for j in range(0, len(surviving_tickers), yq_batch_size):
+            batch_tickers = surviving_tickers[j:j + yq_batch_size]
+            yq_batch = Ticker(batch_tickers, asynchronous=True)
+            batch_res = yq_batch.financial_data
+            if isinstance(batch_res, dict):
+                fin_modules_data.update(batch_res)
+            time.sleep(0.5) # 稍微休息防檔
+            progress_bar.progress(min(1.0, (j + yq_batch_size) / total_survivors * 0.5))
     except Exception as e:
         st.error(f"取得基本面初篩資料時發生錯誤: {e}")
         st.stop()
