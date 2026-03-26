@@ -380,10 +380,18 @@ if run_button:
     surviving_tickers = [item['Ticker'] for item in price_survivors]
     total_survivors = len(surviving_tickers)
     
-    # 使用 yahooquery 進行非同步批量查詢 (優化寫法，一次性取得所有需要的 modules)
+    # 使用 yahooquery 進行非同步批量查詢 (為了避免雲端 IP 被 Yahoo 阻擋 HTTP 429，將清單分批抓取)
+    modules_data = {}
+    import time
+    yq_batch_size = 100
     try:
-        yq_tickers = Ticker(surviving_tickers, asynchronous=True)
-        modules_data = yq_tickers.get_modules('price financialData assetProfile cashflowStatementHistoryQuarterly')
+        for j in range(0, len(surviving_tickers), yq_batch_size):
+            batch_tickers = surviving_tickers[j:j + yq_batch_size]
+            yq_tickers = Ticker(batch_tickers, asynchronous=True)
+            batch_res = yq_tickers.get_modules('price financialData assetProfile cashflowStatementHistoryQuarterly')
+            if isinstance(batch_res, dict):
+                modules_data.update(batch_res)
+            time.sleep(0.5) # 稍微休息避免被擋
     except Exception as e:
         st.error(f"取得基本面資料時發生錯誤: {e}")
         st.stop()
