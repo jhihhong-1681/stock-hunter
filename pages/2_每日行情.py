@@ -23,7 +23,7 @@ INDICES = {
     "^TWII": "台灣加權指數 (TAIEX)",
     "^GSPC": "標普 500 (S&P 500)",
     "^IXIC": "納斯達克 (Nasdaq)",
-    "^DJI": "道瓊工業 (Dow Jones)",
+    "DIA": "道瓊工業ETF (Dow Jones)",
     "^SOX": "費城半導體 (PHLX)"
 }
 
@@ -102,12 +102,13 @@ TWSE_INDUSTRY_MAP = {
 @st.cache_data(ttl=3600*12)
 def get_tw_industry_data():
     try:
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         url_info = "https://openapi.twse.com.tw/v1/opendata/t187ap03_L"
-        info_json = requests.get(url_info, verify=False, timeout=10).json()
+        info_json = requests.get(url_info, headers=headers, verify=False, timeout=20).json()
         industry_map = {item['公司代號']: item['產業別'] for item in info_json if '公司代號' in item}
         
         url_price = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
-        price_json = requests.get(url_price, verify=False, timeout=10).json()
+        price_json = requests.get(url_price, headers=headers, verify=False, timeout=20).json()
         return industry_map, price_json
     except Exception as e:
         return {}, []
