@@ -109,10 +109,11 @@ def get_tw_industry_data():
         valid_tickers = []
         for item in r.get('data', []):
             code = item.get('stock_id', '')
-            if len(code) == 4 and code.isdigit():
+            ind_cat = item.get('industry_category', '其他')
+            if len(code) == 4 and code.isdigit() and ind_cat != 'ETF':
                 suffix = ".TW" if item.get('type') == 'twse' else ".TWO"
                 tkr = f"{code}{suffix}"
-                tw_ind_map[code] = item.get('industry_category', '其他')
+                tw_ind_map[code] = ind_cat
                 name_map[tkr] = f"{code} {item.get('stock_name', '')}"
                 valid_tickers.append(tkr)
         return tw_ind_map, name_map, valid_tickers
@@ -152,10 +153,9 @@ def get_cached_stock_sizes(tickers_tuple):
             if isinstance(price_data, dict):
                 for tkr, data in price_data.items():
                     if isinstance(data, dict):
-                        vol = data.get('regularMarketVolume', 0)
-                        prc = data.get('regularMarketPrice', 0)
-                        if vol and prc:
-                            size_map[tkr] = vol * prc
+                        mcap = data.get('marketCap', 0)
+                        if mcap and mcap > 0:
+                            size_map[tkr] = mcap
         except Exception:
             pass
     return size_map
