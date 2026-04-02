@@ -139,6 +139,27 @@ def fetch_historical_prices(tickers, period):
     df = yf.download(tickers, period=period, progress=False, threads=True)
     return df
 
+@st.cache_data(ttl=3600)
+def get_cached_stock_sizes(tickers_tuple):
+    from yahooquery import Ticker
+    size_map = {}
+    tickers = list(tickers_tuple)
+    for i in range(0, len(tickers), 500):
+        chunk = tickers[i:i+500]
+        try:
+            yq = Ticker(chunk, asynchronous=True)
+            price_data = yq.price
+            if isinstance(price_data, dict):
+                for tkr, data in price_data.items():
+                    if isinstance(data, dict):
+                        vol = data.get('regularMarketVolume', 0)
+                        prc = data.get('regularMarketPrice', 0)
+                        if vol and prc:
+                            size_map[tkr] = vol * prc
+        except Exception:
+            pass
+    return size_map
+
 def calculate_period_change(df, tf_label):
     if df.empty or 'Close' not in df:
         return {}
@@ -182,23 +203,15 @@ if st.button(f"🚀 產生 {selected_market} 熱力圖", type="primary"):
                 st.stop()
                 
             yq_period = timeframe_map[selected_tf]
-            st.info(f"成功抓取全市場 {len(valid_tickers)} 檔活躍股票。正在下載 {selected_tf} 的歷史數據進行運算，這稍微需要一段時間...")
+            st.info(f"成功連線！正在篩選全市場 {len(valid_tickers)} 檔股票的活躍度，這將大幅加速圖表產生...")
 
-            df_hist = fetch_historical_prices(valid_tickers, yq_period)
-            
-            size_map = {}
-            if 'Volume' in df_hist and 'Close' in df_hist:
-                for t in valid_tickers:
-                    if t in df_hist['Volume'] and t in df_hist['Close']:
-                        v = df_hist['Volume'][t].dropna()
-                        c = df_hist['Close'][t].dropna()
-                        if len(v) > 0 and len(c) > 0:
-                            size_map[t] = float(v.iloc[-1]) * float(c.iloc[-1])
-                        else:
-                            size_map[t] = 0
+            size_map = get_cached_stock_sizes(tuple(valid_tickers))
 
             # 為了效能與畫面簡潔，依照估算成交金額取前 N 大
             sorted_valid = sorted([t for t in valid_tickers if size_map.get(t, 0) > 0], key=lambda x: size_map[x], reverse=True)[:top_n]
+            
+            st.info(f"篩選完成！正在下載前 {top_n} 大活躍/權值股的 {selected_tf} 歷史數據...")
+            df_hist = fetch_historical_prices(sorted_valid, yq_period)
             
             change_map = calculate_period_change(df_hist, selected_tf)
             
