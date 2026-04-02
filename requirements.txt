@@ -6,3 +6,4 @@ requests
 yahoo_fin
 yahooquery
 deep_translator
+plotly
