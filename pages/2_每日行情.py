@@ -84,7 +84,6 @@ with col2:
     selected_tf = st.radio("請選擇漲跌幅區間：", list(timeframe_map.keys()), horizontal=True)
 
 st.markdown("---")
-# 優化：增加前 N 大過濾器，確保熱力圖執行順暢並減少 Yahoo API 的負載
 top_n = st.slider("顯示前 N 大活躍/權值股 (縮小範圍可獲得更快的載入速度，並過濾冷門股)", min_value=50, max_value=500, value=150, step=50)
 st.info("💡 **互動提示**：您可以直接點擊下方圖表中的板塊（例如『半導體業』），圖表會自動放大該產業的內部個股！點擊上方標題列即可返回全局。")
 
@@ -102,23 +101,16 @@ TWSE_INDUSTRY_MAP = {
 @st.cache_data(ttl=3600*12)
 def get_tw_industry_data():
     try:
-        finmind_url = "https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo"
-        r = requests.get(finmind_url, timeout=15).json()
-        tw_ind_map = {}
-        name_map = {}
-        valid_tickers = []
-        for item in r.get('data', []):
-            code = item.get('stock_id', '')
-            ind_cat = item.get('industry_category', '其他')
-            if len(code) == 4 and code.isdigit() and ind_cat != 'ETF':
-                suffix = ".TW" if item.get('type') == 'twse' else ".TWO"
-                tkr = f"{code}{suffix}"
-                tw_ind_map[code] = ind_cat
-                name_map[tkr] = f"{code} {item.get('stock_name', '')}"
-                valid_tickers.append(tkr)
-        return tw_ind_map, name_map, valid_tickers
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        url_info = "https://openapi.twse.com.tw/v1/opendata/t187ap03_L"
+        info_json = requests.get(url_info, headers=headers, verify=False, timeout=10).json()
+        industry_map = {item['公司代號']: item['產業別'] for item in info_json if '公司代號' in item}
+        
+        url_price = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
+        price_json = requests.get(url_price, headers=headers, verify=False, timeout=10).json()
+        return industry_map, price_json
     except Exception as e:
-        return {}, {}, []
+        return {}, []
 
 @st.cache_data(ttl=3600*24)
 def get_sp500_components():
@@ -139,24 +131,6 @@ def fetch_historical_prices(tickers, period):
     # 分批避免 Timeout
     df = yf.download(tickers, period=period, progress=False, threads=True)
     return df
-
-@st.cache_data(ttl=3600*12)
-def get_cached_stock_sizes(tickers_tuple):
-    tickers = list(tickers_tuple)
-    # yfinance 快取 5 天的資料來結算活躍度，絕不被封鎖
-    df = yf.download(tickers, period="5d", progress=False, threads=True)
-    size_map = {}
-    if 'Volume' in df and 'Close' in df:
-         for t in tickers:
-             if t in df['Volume'] and t in df['Close']:
-                 v = df['Volume'][t].dropna()
-                 c = df['Close'][t].dropna()
-                 if len(v) > 0 and len(c) > 0:
-                     avg_trade_value = (v[-3:] * c[-3:]).mean()
-                     # 如果大於0，就會被選進排行
-                     if float(avg_trade_value) > 0:
-                         size_map[t] = float(avg_trade_value)
-    return size_map
 
 def calculate_period_change(df, tf_label):
     if df.empty or 'Close' not in df:
@@ -188,44 +162,58 @@ def calculate_period_change(df, tf_label):
     return changes
 
 if st.button(f"🚀 產生 {selected_market} 熱力圖", type="primary"):
-    # 設定紅綠配色 (台灣標準：紅為漲，綠為跌)
-    # 取值區間配置：最綠 -> 黑 -> 最紅
     color_scale = ['#007a00', '#222222', '#d90000']
     
     if selected_market == "台灣股市 (上市櫃全市場)":
-        with st.spinner("正在透過 FinMind 獲取台股清單與產業分類..."):
-            tw_ind_map, tw_name_map, valid_tickers = get_tw_industry_data()
+        with st.spinner("正在獲取台股產業分類與價格..."):
+            tw_ind_map, tw_price = get_tw_industry_data()
             
             if not tw_ind_map:
-                st.error("無法取得台股資料。")
+                st.error("無法取得台股資料 (這通常發生在公開發佈到國外雲端主機時被台灣證交所阻擋)。請嘗試在本機端執行！")
                 st.stop()
                 
             yq_period = timeframe_map[selected_tf]
-            st.info(f"成功連線！正在篩選全市場 {len(valid_tickers)} 檔股票的活躍度，這將大幅加速圖表產生...")
-
-            size_map = get_cached_stock_sizes(tuple(valid_tickers))
-
-            # 為了效能與畫面簡潔，依照估算成交金額取前 N 大
-            sorted_valid = sorted([t for t in valid_tickers if size_map.get(t, 0) > 0], key=lambda x: size_map[x], reverse=True)[:top_n]
             
-            st.info(f"篩選完成！正在下載前 {top_n} 大活躍/權值股的 {selected_tf} 歷史數據...")
+            # 過濾只取有產業別的有價證券
+            valid_tickers = []
+            size_map = {}
+            name_map = {}
+            
+            for item in tw_price:
+                code = item.get('Code', '')
+                try:
+                    t_val = float(item.get('TradeValue', 0))
+                except:
+                    t_val = 0
+                    
+                # 過濾掉交易額過低(防雷) 或沒有產業代碼的
+                if code in tw_ind_map and t_val > 1000000:
+                    valid_tickers.append(f"{code}.TW")
+                    size_map[f"{code}.TW"] = t_val
+                    name_map[f"{code}.TW"] = f"{code} {item.get('Name', '')}"
+
+            # 為了效能與畫面簡潔，只取成交金額前 N 大的股票
+            sorted_valid = sorted(valid_tickers, key=lambda x: size_map[x], reverse=True)[:top_n]
+
+            st.info(f"成功抓取全市場最活躍之 {len(sorted_valid)} 檔股票。正在下載 {selected_tf} 的歷史數據進行運算...")
+
             df_hist = fetch_historical_prices(sorted_valid, yq_period)
-            
             change_map = calculate_period_change(df_hist, selected_tf)
             
             plot_data = []
             for tkr in sorted_valid:
                 if tkr in change_map and tkr in size_map:
-                    raw_code = tkr.replace('.TW', '').replace('.TWO', '')
-                    ind_name = tw_ind_map.get(raw_code, '其他')
+                    raw_code = tkr.replace('.TW', '')
+                    ind_code = tw_ind_map.get(raw_code, '')
+                    ind_name = TWSE_INDUSTRY_MAP.get(ind_code, '其他')
                     
                     plot_data.append({
                         "Market": "台灣股市",
                         "Industry": ind_name,
-                        "Stock": tw_name_map.get(tkr, tkr),
+                        "Stock": name_map.get(tkr, tkr),
                         "Size": size_map[tkr],
                         "Change": change_map[tkr],
-                        "Label": f"{tw_name_map.get(tkr, tkr)}<br>{change_map[tkr]:+.2f}%"
+                        "Label": f"{name_map.get(tkr, tkr)}<br>{change_map[tkr]:+.2f}%"
                     })
                     
             if plot_data:
@@ -295,10 +283,10 @@ if st.button(f"🚀 產生 {selected_market} 熱力圖", type="primary"):
                     "Market": "S&P 500",
                     "Sector": sector,
                     "Stock": name_sym,
-                        "Size": size_map[tkr],
-                        "Change": change_map[tkr],
-                        "Label": f"{name_sym}<br>{change_map[tkr]:+.2f}%"
-                    })
+                    "Size": size_map[tkr],
+                    "Change": change_map[tkr],
+                    "Label": f"{name_sym}<br>{change_map[tkr]:+.2f}%"
+                })
                     
             if plot_data:
                 plot_df = pd.DataFrame(plot_data)
