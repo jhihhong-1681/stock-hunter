@@ -140,24 +140,22 @@ def fetch_historical_prices(tickers, period):
     df = yf.download(tickers, period=period, progress=False, threads=True)
     return df
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600*12)
 def get_cached_stock_sizes(tickers_tuple):
-    from yahooquery import Ticker
-    size_map = {}
     tickers = list(tickers_tuple)
-    for i in range(0, len(tickers), 500):
-        chunk = tickers[i:i+500]
-        try:
-            yq = Ticker(chunk, asynchronous=True)
-            price_data = yq.price
-            if isinstance(price_data, dict):
-                for tkr, data in price_data.items():
-                    if isinstance(data, dict):
-                        mcap = data.get('marketCap', 0)
-                        if mcap and mcap > 0:
-                            size_map[tkr] = mcap
-        except Exception:
-            pass
+    # yfinance 快取 5 天的資料來結算活躍度，絕不被封鎖
+    df = yf.download(tickers, period="5d", progress=False, threads=True)
+    size_map = {}
+    if 'Volume' in df and 'Close' in df:
+         for t in tickers:
+             if t in df['Volume'] and t in df['Close']:
+                 v = df['Volume'][t].dropna()
+                 c = df['Close'][t].dropna()
+                 if len(v) > 0 and len(c) > 0:
+                     avg_trade_value = (v[-3:] * c[-3:]).mean()
+                     # 如果大於0，就會被選進排行
+                     if float(avg_trade_value) > 0:
+                         size_map[t] = float(avg_trade_value)
     return size_map
 
 def calculate_period_change(df, tf_label):
