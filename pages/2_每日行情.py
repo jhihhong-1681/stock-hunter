@@ -102,16 +102,22 @@ TWSE_INDUSTRY_MAP = {
 @st.cache_data(ttl=3600*12)
 def get_tw_industry_data():
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        url_info = "https://openapi.twse.com.tw/v1/opendata/t187ap03_L"
-        info_json = requests.get(url_info, headers=headers, verify=False, timeout=20).json()
-        industry_map = {item['公司代號']: item['產業別'] for item in info_json if '公司代號' in item}
-        
-        url_price = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
-        price_json = requests.get(url_price, headers=headers, verify=False, timeout=20).json()
-        return industry_map, price_json
+        finmind_url = "https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo"
+        r = requests.get(finmind_url, timeout=15).json()
+        tw_ind_map = {}
+        name_map = {}
+        valid_tickers = []
+        for item in r.get('data', []):
+            code = item.get('stock_id', '')
+            if len(code) == 4 and code.isdigit():
+                suffix = ".TW" if item.get('type') == 'twse' else ".TWO"
+                tkr = f"{code}{suffix}"
+                tw_ind_map[code] = item.get('industry_category', '其他')
+                name_map[tkr] = f"{code} {item.get('stock_name', '')}"
+                valid_tickers.append(tkr)
+        return tw_ind_map, name_map, valid_tickers
     except Exception as e:
-        return {}, []
+        return {}, {}, []
 
 @st.cache_data(ttl=3600*24)
 def get_sp500_components():
@@ -168,55 +174,47 @@ if st.button(f"🚀 產生 {selected_market} 熱力圖", type="primary"):
     color_scale = ['#007a00', '#222222', '#d90000']
     
     if selected_market == "台灣股市 (上市櫃全市場)":
-        with st.spinner("正在獲取台股產業分類與價格..."):
-            tw_ind_map, tw_price = get_tw_industry_data()
+        with st.spinner("正在透過 FinMind 獲取台股清單與產業分類..."):
+            tw_ind_map, tw_name_map, valid_tickers = get_tw_industry_data()
             
             if not tw_ind_map:
                 st.error("無法取得台股資料。")
                 st.stop()
                 
             yq_period = timeframe_map[selected_tf]
+            st.info(f"成功抓取全市場 {len(valid_tickers)} 檔活躍股票。正在下載 {selected_tf} 的歷史數據進行運算，這稍微需要一段時間...")
+
+            df_hist = fetch_historical_prices(valid_tickers, yq_period)
             
-            # 過濾只取有產業別的有價證券
-            valid_tickers = []
             size_map = {}
-            name_map = {}
+            if 'Volume' in df_hist and 'Close' in df_hist:
+                for t in valid_tickers:
+                    if t in df_hist['Volume'] and t in df_hist['Close']:
+                        v = df_hist['Volume'][t].dropna()
+                        c = df_hist['Close'][t].dropna()
+                        if len(v) > 0 and len(c) > 0:
+                            size_map[t] = float(v.iloc[-1]) * float(c.iloc[-1])
+                        else:
+                            size_map[t] = 0
+
+            # 為了效能與畫面簡潔，依照估算成交金額取前 N 大
+            sorted_valid = sorted([t for t in valid_tickers if size_map.get(t, 0) > 0], key=lambda x: size_map[x], reverse=True)[:top_n]
             
-            for item in tw_price:
-                code = item.get('Code', '')
-                try:
-                    t_val = float(item.get('TradeValue', 0))
-                except:
-                    t_val = 0
-                    
-                # 過濾掉交易額過低(防雷) 或沒有產業代碼的
-                if code in tw_ind_map and t_val > 1000000:
-                    valid_tickers.append(f"{code}.TW")
-                    size_map[f"{code}.TW"] = t_val
-                    name_map[f"{code}.TW"] = f"{code} {item.get('Name', '')}"
-
-            # 為了效能與畫面簡潔，只取成交金額前 N 大的股票
-            sorted_valid = sorted(valid_tickers, key=lambda x: size_map[x], reverse=True)[:top_n]
-
-            st.info(f"成功抓取全市場最活躍之 {len(sorted_valid)} 檔股票。正在下載 {selected_tf} 的歷史數據進行運算，這可能稍微需要幾段時間...")
-
-            df_hist = fetch_historical_prices(sorted_valid, yq_period)
             change_map = calculate_period_change(df_hist, selected_tf)
             
             plot_data = []
             for tkr in sorted_valid:
                 if tkr in change_map and tkr in size_map:
-                    raw_code = tkr.replace('.TW', '')
-                    ind_code = tw_ind_map.get(raw_code, '')
-                    ind_name = TWSE_INDUSTRY_MAP.get(ind_code, '其他')
+                    raw_code = tkr.replace('.TW', '').replace('.TWO', '')
+                    ind_name = tw_ind_map.get(raw_code, '其他')
                     
                     plot_data.append({
                         "Market": "台灣股市",
                         "Industry": ind_name,
-                        "Stock": name_map.get(tkr, tkr),
+                        "Stock": tw_name_map.get(tkr, tkr),
                         "Size": size_map[tkr],
                         "Change": change_map[tkr],
-                        "Label": f"{name_map.get(tkr, tkr)}<br>{change_map[tkr]:+.2f}%"
+                        "Label": f"{tw_name_map.get(tkr, tkr)}<br>{change_map[tkr]:+.2f}%"
                     })
                     
             if plot_data:
