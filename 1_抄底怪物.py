@@ -109,17 +109,23 @@ def get_all_us_tickers():
 
 @st.cache_data(ttl=3600*24)
 def get_twse_tickers():
+    # BWIBBU_d = 上市本益比/殖利率日報，包含所有上市普通股（Code 為純 4 位數字）
+    # 注意：舊 STOCK_DAY_ALL 端點已改為只回傳 ETF，不再包含一般股
+    import re
     try:
-        data = fetch_url("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL", as_json=True)
-        return [item['Code'] + '.TW' for item in data if len(item['Code']) == 4]
+        data = fetch_url("https://openapi.twse.com.tw/v1/exchangeReport/BWIBBU_d", as_json=True)
+        return [item['Code'] + '.TW' for item in data
+                if re.fullmatch(r'\d{4}', item.get('Code', ''))]
     except Exception as e:
         st.error(f"台灣上市名單失敗: {e}"); return []
 
 @st.cache_data(ttl=3600*24)
 def get_tpex_tickers():
+    import re
     try:
         data = fetch_url("https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes", as_json=True)
-        return [item['SecuritiesCompanyCode'] + '.TWO' for item in data if len(item['SecuritiesCompanyCode']) == 4]
+        return [item['SecuritiesCompanyCode'] + '.TWO' for item in data
+                if re.fullmatch(r'\d{4}', item.get('SecuritiesCompanyCode', ''))]
     except Exception as e:
         st.error(f"台灣上櫃名單失敗: {e}"); return []
 
@@ -127,8 +133,11 @@ def get_tpex_tickers():
 def get_tw_emerging_tickers():
     import re
     try:
-        html = fetch_url("https://isin.twse.com.tw/isin/C_public.jsp?strMode=5")
-        df = pd.read_html(io.StringIO(html))[0]
+        hdrs = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        r = requests.get("https://isin.twse.com.tw/isin/C_public.jsp?strMode=5",
+                         headers=hdrs, verify=False, timeout=20)
+        r.encoding = 'big5'          # 指定 Big5，否則 pandas 會讀到亂碼
+        df = pd.read_html(io.StringIO(r.text))[0]
         tickers = []
         for val in df.iloc[:, 0].astype(str):
             m = re.match(r'^(\d{4})[^\d]', val)
@@ -142,14 +151,17 @@ def get_tw_name_mapping():
     import re
     mapping = {}
     try:
-        for item in fetch_url("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL", as_json=True):
-            if len(item['Code']) == 4:
-                mapping[item['Code'] + '.TW'] = item['Name']
+        # BWIBBU_d 同時有 Code 和 Name，一次搞定上市名稱
+        for item in fetch_url("https://openapi.twse.com.tw/v1/exchangeReport/BWIBBU_d", as_json=True):
+            code = item.get('Code', '')
+            if re.fullmatch(r'\d{4}', code):
+                mapping[code + '.TW'] = item.get('Name', '')
     except: pass
     try:
         for item in fetch_url("https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes", as_json=True):
-            if len(item['SecuritiesCompanyCode']) == 4:
-                mapping[item['SecuritiesCompanyCode'] + '.TWO'] = item['CompanyName']
+            code = item.get('SecuritiesCompanyCode', '')
+            if re.fullmatch(r'\d{4}', code):
+                mapping[code + '.TWO'] = item.get('CompanyName', '')
     except: pass
     return mapping
 
