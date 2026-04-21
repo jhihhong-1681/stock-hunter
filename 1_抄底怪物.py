@@ -167,6 +167,7 @@ def get_tw_name_mapping():
 
 @st.cache_data(ttl=3600)
 def fetch_stock_prices(tickers, days_needed):
+    """給美股用（S&P 500 / Nasdaq 等），透過 yfinance 抓取。"""
     end_date = datetime.date.today()
     start_date = end_date - datetime.timedelta(days=max(60, days_needed * 2 + 30))
     all_data = {}
@@ -185,6 +186,123 @@ def fetch_stock_prices(tickers, days_needed):
                 all_data[ticker] = series
 
     return pd.DataFrame(all_data) if all_data else None
+
+
+# ─── 台股：直接從證交所 / 櫃買中心抓收盤價 ────────────────────────────────────
+
+@st.cache_data(ttl=3600*20, show_spinner=False)
+def _fetch_twse_day(date_str: str) -> dict:
+    """
+    抓單日 TWSE 全市場收盤價（直接從證交所）。
+    date_str = 'YYYYMMDD'；非交易日回傳 {}。
+    回傳 { '4碼代號': float }
+    """
+    import re
+    try:
+        hdrs = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        r = requests.get(
+            f"https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY_ALL"
+            f"?response=json&date={date_str}",
+            headers=hdrs, verify=False, timeout=15
+        )
+        d = r.json()
+        # 若請求非交易日，TWSE 會回傳最近的交易日；比對日期確認是否符合
+        if d.get('stat') != 'OK' or not d.get('data'):
+            return {}
+        if d.get('date', '') != date_str:
+            return {}  # 非交易日
+        result = {}
+        for row in d['data']:
+            code = str(row[0]).strip()
+            if not re.fullmatch(r'\d{4}', code):
+                continue
+            try:
+                p = str(row[7]).replace(',', '').strip()
+                if p and p != '--':
+                    result[code] = float(p)
+            except:
+                pass
+        return result
+    except:
+        return {}
+
+
+@st.cache_data(ttl=3600*20, show_spinner=False)
+def _fetch_tpex_day(date_roc: str) -> dict:
+    """
+    抓單日 TPEx 全市場收盤價（直接從櫃買中心）。
+    date_roc = 'YYY/MM/DD'（民國年）；非交易日回傳 {}。
+    回傳 { '4碼代號': float }
+    """
+    import re
+    try:
+        hdrs = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        r = requests.get(
+            f"https://www.tpex.org.tw/www/zh-tw/afterTrading/dailyQuotes"
+            f"?response=json&date={date_roc}",
+            headers=hdrs, verify=False, timeout=15
+        )
+        d = r.json()
+        tables = d.get('tables', [])
+        if not tables or not tables[0].get('data'):
+            return {}
+        result = {}
+        for row in tables[0]['data']:
+            code = str(row[0]).strip()
+            if not re.fullmatch(r'\d{4}', code):
+                continue
+            try:
+                p = str(row[2]).replace(',', '').strip()
+                if p and p != '--':
+                    result[code] = float(p)
+            except:
+                pass
+        return result
+    except:
+        return {}
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def fetch_tw_prices_from_exchange(days_needed: int,
+                                   include_twse: bool,
+                                   include_tpex: bool):
+    """
+    直接從證交所 / 櫃買中心抓歷史收盤價，不走 Yahoo Finance。
+    回傳 DataFrame：index=date，columns=ticker（2330.TW / 3008.TWO）。
+    """
+    # 多準備 1.8 倍天數以因應假日
+    candidate_count = int(days_needed * 1.8) + 20
+    candidates: list[datetime.date] = []
+    d = datetime.date.today()
+    while len(candidates) < candidate_count:
+        if d.weekday() < 5:          # 週一～五
+            candidates.append(d)
+        d -= datetime.timedelta(days=1)
+
+    def fetch_day(date: datetime.date):
+        day: dict = {}
+        if include_twse:
+            for code, price in _fetch_twse_day(date.strftime('%Y%m%d')).items():
+                day[code + '.TW'] = price
+        if include_tpex:
+            roc_str = f"{date.year - 1911}/{date.strftime('%m/%d')}"
+            for code, price in _fetch_tpex_day(roc_str).items():
+                day[code + '.TWO'] = price
+        return date, day
+
+    price_by_date: dict = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
+        for date, day in ex.map(fetch_day, candidates):
+            if day:                  # 有資料 → 是交易日
+                price_by_date[date] = day
+
+    if not price_by_date:
+        return None
+
+    df = pd.DataFrame(price_by_date).T
+    df.index = pd.to_datetime(df.index)
+    df.sort_index(inplace=True)
+    return df
 
 @st.cache_data(ttl=3600*6, show_spinner=False)
 def fetch_fundamentals_yf(tickers_tuple):
@@ -248,8 +366,18 @@ if run_button:
     st.info(f"✅ 成功獲取 {len(tickers)} 檔 {market_choice} 股票名單。")
 
     # 2. 下載收盤價
-    with st.spinner(f"正在下載 {len(tickers)} 檔股票價格資料..."):
-        close_data = fetch_stock_prices(tickers, drop_days)
+    is_taiwan = "台灣" in market_choice
+    if is_taiwan:
+        include_twse = "上市" in market_choice or "全部" in market_choice
+        include_tpex = ("上櫃" in market_choice or "興櫃" in market_choice
+                        or "全部" in market_choice)
+        with st.spinner("正在從證交所／櫃買中心下載台股收盤價（直接抓交易所，首次較慢）..."):
+            close_data = fetch_tw_prices_from_exchange(
+                drop_days + 10, include_twse, include_tpex
+            )
+    else:
+        with st.spinner(f"正在下載 {len(tickers)} 檔股票價格資料..."):
+            close_data = fetch_stock_prices(tickers, drop_days)
     if close_data is None or close_data.empty:
         st.error("無法取得收盤價資料。"); st.stop()
 
