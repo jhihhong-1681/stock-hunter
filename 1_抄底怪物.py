@@ -15,6 +15,7 @@ except AttributeError:
     pass
 else:
     ssl._create_default_https_context = _create_unverified_https_context
+
 # --- 頁面設定 ---
 st.set_page_config(
     page_title="阿紘的股票儀表板",
@@ -34,14 +35,14 @@ st.sidebar.header("⚙️ 篩選條件設定")
 # 0. 選擇市場
 market_choice = st.sidebar.selectbox(
     "0. 選擇掃描的市場",
-    ("S&P 500 (大型股)", "Nasdaq 100 (大型科技股)", "納斯達克全部 (Nasdaq)", "全美市場 (包含羅素2000中小型股)", 
+    ("S&P 500 (大型股)", "Nasdaq 100 (大型科技股)", "納斯達克全部 (Nasdaq)", "全美市場 (包含羅素2000中小型股)",
      "台灣上市 (TWSE)", "台灣上櫃 (TPEx)", "台灣興櫃 (Emerging)", "台灣全部市場")
 )
 st.sidebar.markdown("---")
 
 # 1. 下跌天數
 drop_days = st.sidebar.selectbox(
-    "1. 計算跌幅的天數 (Days)", 
+    "1. 計算跌幅的天數 (Days)",
     options=[5, 15, 30, 60, 90, 180],
     index=0,
     help="計算過去幾天的累積跌幅。例如：5 代表比較今天與 5 天前的收盤價。"
@@ -63,7 +64,15 @@ rebound_pct_threshold = st.sidebar.slider(
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("基本面條件")
-st.sidebar.info("採用 Rule of 30：\n(營收 YoY 成長率 + 淨利率) > 30%")
+use_fundamental = st.sidebar.checkbox(
+    "啟用基本面篩選 (Rule of 30)",
+    value=True,
+    help="啟用：只顯示「營收YoY成長率 + 淨利率 > 30%」的股票。\n關閉：直接顯示所有技術面通過的股票，速度更快。"
+)
+if use_fundamental:
+    st.sidebar.info("採用 Rule of 30：\n(營收 YoY 成長率 + 淨利率) > 30%")
+else:
+    st.sidebar.warning("⚡ 快速模式：僅技術面篩選，不做基本面過濾")
 
 run_button = st.sidebar.button("🚀 開始篩選", type="primary", use_container_width=True)
 
@@ -83,10 +92,8 @@ def fetch_url(url, as_json=False):
         return response.json()
     return response.text
 
-# 使用 st.cache_data 避免每次調整參數都重新下載資料
-@st.cache_data(ttl=3600*24) # 快取 24 小時
+@st.cache_data(ttl=3600*24)
 def get_sp500_tickers():
-    """從維基百科獲取 S&P 500 股票代號"""
     url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
     try:
         html = fetch_url(url)
@@ -100,12 +107,11 @@ def get_sp500_tickers():
 
 @st.cache_data(ttl=3600*24)
 def get_nasdaq100_tickers():
-    """從維基百科獲取 Nasdaq 100 代號"""
     url = 'https://en.wikipedia.org/wiki/Nasdaq-100'
     try:
         html = fetch_url(url)
         table = pd.read_html(io.StringIO(html))
-        df = table[4] # 通常 Nasdaq-100 表格在第5個位置
+        df = table[4]
         if 'Ticker' in df.columns:
             return df['Ticker'].str.replace('.', '-', regex=False).tolist()
         return df.iloc[:, 0].str.replace('.', '-', regex=False).tolist()
@@ -115,7 +121,6 @@ def get_nasdaq100_tickers():
 
 @st.cache_data(ttl=3600*24)
 def get_all_nasdaq_tickers():
-    """使用 yahoo_fin 獲取所有 Nasdaq 股票"""
     try:
         tickers = si.tickers_nasdaq()
         return [t.replace('.', '-') for t in tickers]
@@ -125,11 +130,9 @@ def get_all_nasdaq_tickers():
 
 @st.cache_data(ttl=3600*24)
 def get_all_us_tickers():
-    """使用 yahoo_fin 獲取全美市場 (Nasdaq + NYSE + AMEX)，包含羅素2000中小型股"""
     try:
         nasdaq = si.tickers_nasdaq()
-        other = si.tickers_other() # 包含 NYSE 與 AMEX
-        # 移除含有 '$' 的非普通股代號
+        other = si.tickers_other()
         all_tickers = list(set(nasdaq + other))
         clean_tickers = [t.replace('.', '-') for t in all_tickers if '$' not in t]
         return clean_tickers
@@ -139,7 +142,6 @@ def get_all_us_tickers():
 
 @st.cache_data(ttl=3600*24)
 def get_twse_tickers():
-    """獲取台灣上市股票"""
     try:
         url = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
         data = fetch_url(url, as_json=True)
@@ -150,7 +152,6 @@ def get_twse_tickers():
 
 @st.cache_data(ttl=3600*24)
 def get_tpex_tickers():
-    """獲取台灣上櫃股票"""
     try:
         url = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
         data = fetch_url(url, as_json=True)
@@ -161,7 +162,6 @@ def get_tpex_tickers():
 
 @st.cache_data(ttl=3600*24)
 def get_tw_emerging_tickers():
-    """獲取台灣興櫃股票"""
     try:
         url = "https://isin.twse.com.tw/isin/C_public.jsp?strMode=5"
         html = fetch_url(url)
@@ -181,10 +181,8 @@ def get_tw_emerging_tickers():
 
 @st.cache_data(ttl=3600*24)
 def get_tw_name_mapping():
-    """獲取台灣股票代號到中文名稱的映射"""
     mapping = {}
     import re
-    # TWSE
     try:
         url = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
         data = fetch_url(url, as_json=True)
@@ -193,7 +191,6 @@ def get_tw_name_mapping():
                 mapping[item['Code'] + '.TW'] = item['Name']
     except Exception:
         pass
-    # TPEx
     try:
         url = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
         data = fetch_url(url, as_json=True)
@@ -202,7 +199,6 @@ def get_tw_name_mapping():
                  mapping[item['SecuritiesCompanyCode'] + '.TWO'] = item['CompanyName']
     except Exception:
         pass
-    # Emerging
     try:
         url = "https://isin.twse.com.tw/isin/C_public.jsp?strMode=5"
         html = fetch_url(url)
@@ -217,20 +213,17 @@ def get_tw_name_mapping():
         pass
     return mapping
 
-@st.cache_data(ttl=3600) # 快取 1 小時 (股價資料)
+@st.cache_data(ttl=3600)
 def fetch_stock_prices_new(tickers, days_needed):
-    """批次下載股票歷史價格 (Thread-safe for Streamlit)"""
     end_date = datetime.date.today()
     start_date = end_date - datetime.timedelta(days=max(60, days_needed * 2 + 30))
-    
+
     import concurrent.futures
-    import time
-    
+
     all_close_data = {}
-    
+
     def fetch_single(ticker):
         try:
-            # 解決 Streamlit Cloud 上 yf.download 全域變數被多線程同時存取的 RuntimeError
             tkr = yf.Ticker(ticker)
             hist = tkr.history(start=start_date, end=end_date, auto_adjust=False)
             if not hist.empty and 'Close' in hist.columns:
@@ -239,7 +232,6 @@ def fetch_stock_prices_new(tickers, days_needed):
             pass
         return ticker, None
 
-    # 用 max_workers=20 來並發抓取，避免速率過高被 Ban
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
         futures = {executor.submit(fetch_single, t): t for t in tickers}
         for future in concurrent.futures.as_completed(futures):
@@ -249,15 +241,13 @@ def fetch_stock_prices_new(tickers, days_needed):
 
     if not all_close_data:
         return None
-        
-    # 合併所有的收盤價資料表
+
     merged_close = pd.DataFrame(all_close_data)
-    
     return merged_close
 
 @st.cache_data(ttl=3600*12, show_spinner=False)
 def fetch_fundamentals_cached(tickers_tuple):
-    """將基本面(營收與淨利)查詢快取，重複掃描相同股票時達到零秒載入"""
+    """批次抓取基本面資料（已修正：移除已棄用的 asynchronous=True）"""
     import time
     fin_data = {}
     yq_batch_size = 25
@@ -265,7 +255,7 @@ def fetch_fundamentals_cached(tickers_tuple):
         batch = list(tickers_tuple[j:j+yq_batch_size])
         for attempt in range(3):
             try:
-                yq = Ticker(batch, asynchronous=True)
+                yq = Ticker(batch)  # ✅ 修正：移除 asynchronous=True（新版 yahooquery 已棄用）
                 res = yq.financial_data
                 if isinstance(res, dict):
                     failed = sum(1 for v in res.values() if isinstance(v, str))
@@ -275,13 +265,14 @@ def fetch_fundamentals_cached(tickers_tuple):
                     fin_data.update(res)
                     break
             except Exception:
-                if attempt < 2: time.sleep(3 + attempt * 2)
+                if attempt < 2:
+                    time.sleep(3 + attempt * 2)
         time.sleep(1.5)
     return fin_data
 
 @st.cache_data(ttl=3600*12, show_spinner=False)
 def fetch_heavy_data_cached(tickers_tuple):
-    """將公司簡介與現金流量快取，重複掃描達到零秒載入"""
+    """批次抓取公司簡介與現金流量（已修正：移除已棄用的 asynchronous=True）"""
     import time
     profiles = {}
     cf = {}
@@ -289,7 +280,7 @@ def fetch_heavy_data_cached(tickers_tuple):
     for k in range(0, len(tickers_tuple), 25):
         chunk = list(tickers_tuple[k:k+25])
         try:
-            yq = Ticker(chunk, asynchronous=True)
+            yq = Ticker(chunk)  # ✅ 修正：移除 asynchronous=True
             p = yq.asset_profile
             c = yq.cash_flow(frequency='q')
             pr = yq.price
@@ -302,7 +293,8 @@ def fetch_heavy_data_cached(tickers_tuple):
         except Exception:
             pass
         time.sleep(1.5)
-    return profiles, cf, price# --- 輔助函數：取得本地歷史資料供台股繪圖 ---
+    return profiles, cf, price
+
 @st.cache_data(ttl=3600)
 def get_historical_data(ticker):
     try:
@@ -324,7 +316,7 @@ if run_button:
             tickers = get_all_nasdaq_tickers()
         elif "全美市場" in market_choice:
             tickers = get_all_us_tickers()
-            if len(tickers) > 3000: # 避免一次抓太多導致 yfinance 卡死或是 API Rate Limit
+            if len(tickers) > 3000:
                 st.warning("全美市場股票數量眾多 (>4000檔)，下載時間會比較久，請耐心等候。")
         elif "台灣上市" in market_choice:
             tickers = get_twse_tickers()
@@ -336,63 +328,55 @@ if run_button:
             tickers = get_twse_tickers() + get_tpex_tickers() + get_tw_emerging_tickers()
             if len(tickers) > 1000:
                 st.warning("台灣全部市場股票數量較多，下載時間會比較久，請耐心等候。")
-        
+
     if not tickers:
         st.stop()
-        
+
     st.info(f"✅ 成功獲取 {len(tickers)} 檔 {market_choice} 股票名單。")
-    
+
     with st.spinner(f"正在下載 {len(tickers)} 檔股票近期的價格資料，這可能需要一點時間..."):
         close_data = fetch_stock_prices_new(tickers, drop_days)
-        
+
     if close_data is None or close_data.empty:
         st.error("無法取得收盤價資料。")
         st.stop()
-        
-    # 第一階段：價格與技術面篩選
+
+    # 第一階段：技術面篩選
     status_text = st.empty()
     progress_bar = st.progress(0)
-    
+
     price_survivors = []
     total_tickers = len(tickers)
-    
+
     status_text.text("正在進行第一階段：技術面篩選 (跌幅)...")
-    
+
     for i, ticker in enumerate(tickers):
-        # 更新進度條
         if i % 10 == 0:
             progress_bar.progress(i / total_tickers)
-            
+
         try:
             if ticker not in close_data.columns:
                 continue
-            
+
             series = close_data[ticker].dropna()
-            
-            # 取得近 X 天的資料 (包含今天，往前推 drop_days + 1)
             recent_window = series.iloc[-(drop_days + 1):]
             if len(recent_window) < (drop_days + 1):
                 continue
-                
-            # 計算區間內的最高價、最低價與最新收盤價
+
             period_high = recent_window.max()
             period_low = recent_window.min()
             last_close = recent_window.iloc[-1]
-            
-            # 計算從最高點跌下來的幅度 (負數表示跌)
+
             drop_pct = (last_close - period_high) / period_high
-            
-            # 判斷跌幅條件 (注意 drop_pct 是負數)
             target_drop = -(drop_pct_threshold / 100.0)
-            if drop_pct > target_drop: 
-                continue # 跌幅不夠大
-                
-            # 計算谷底反彈幅度 (正數表示漲)
+            if drop_pct > target_drop:
+                continue
+
             rebound_pct = (last_close - period_low) / period_low
             target_rebound = rebound_pct_threshold / 100.0
             if rebound_pct < target_rebound:
-                continue # 反彈不夠大
-                
+                continue
+
             price_survivors.append({
                 'Ticker': ticker,
                 'Drop_Pct': drop_pct,
@@ -401,203 +385,224 @@ if run_button:
             })
         except Exception:
             continue
-            
+
     progress_bar.progress(1.0)
-    
-    # 顯示第一階段結果
     st.write(f"📊 **第一階段篩選通過：** 共 {len(price_survivors)} 檔股票符合技術面條件。")
-    
+
     if not price_survivors:
         st.warning("沒有股票符合目前的價格條件，請嘗試放寬側邊欄的篩選標準。")
         st.stop()
-        
-    # 第二階段：基本面篩選
-    status_text.text("正在進行第二階段：基本面篩選 (yahooquery 批次獲取財報)...")
-    progress_bar.progress(0)
-    
-    final_results = []
-    
+
     # 提前獲取台股中文名稱對應表
     if "台灣" in market_choice:
         tw_mapping = get_tw_name_mapping()
     else:
         tw_mapping = {}
-    
-    if not price_survivors:
-        st.warning("沒有股票符合技術面條件")
-        st.stop()
-        
-    # 抽取出所有倖存者的代號進行批次查詢
+
+    final_results = []
     surviving_tickers = [item['Ticker'] for item in price_survivors]
-    total_survivors = len(surviving_tickers)
-    
-    # 建立一個快速查詢 Ticker -> (Drop_Pct, Last_Price) 的字典
     price_info_map = {item['Ticker']: item for item in price_survivors}
-    
-    # 階段 2-1: 透過深層快取模組安全並快速地抓取營收與淨利率
-    status_text.text("正在進行第二階段：基本面初篩 (讀取快取或下載營收與淨利率)...")
-    
-    try:
-        # 將名單轉為 Tuple 讓 Streamlit 可以進行 Hash 記憶體快取
-        fin_modules_data = fetch_fundamentals_cached(tuple(surviving_tickers))
-        progress_bar.progress(0.7)
-    except Exception as e:
-        st.error(f"取得基本面初篩資料時發生錯誤: {e}")
-        st.stop()
-        
-    if not isinstance(fin_modules_data, dict):
-        fin_modules_data = {}
-        
-    rule30_passed = []
-    for ticker in surviving_tickers:
-        f_data = fin_modules_data.get(ticker, {})
-        if not isinstance(f_data, dict): continue
-        
-        rev_growth = f_data.get('revenueGrowth')
-        prof_margin = f_data.get('profitMargins')
-        
-        if rev_growth is None or prof_margin is None: continue
-        rule_of_30_val = rev_growth + prof_margin
-        
-        if rule_of_30_val > 0.3:
-            rule30_passed.append({
-                'ticker': ticker,
-                'rev_growth': rev_growth,
-                'prof_margin': prof_margin,
-                'rule_of_30_val': rule_of_30_val
+
+    # ── 快速模式：跳過基本面篩選 ──────────────────────────────────────
+    if not use_fundamental:
+        status_text.text("⚡ 快速模式：直接整理技術面結果...")
+        progress_bar.progress(0)
+
+        # 批次取得公司名稱（用 yahooquery price 模組）
+        name_map = {}
+        try:
+            for k in range(0, len(surviving_tickers), 50):
+                chunk = surviving_tickers[k:k+50]
+                yq = Ticker(chunk)
+                pr = yq.price
+                if isinstance(pr, dict):
+                    for t, v in pr.items():
+                        if isinstance(v, dict):
+                            name_map[t] = v.get('shortName', t)
+                progress_bar.progress(min((k+50)/len(surviving_tickers), 1.0))
+        except Exception:
+            pass
+
+        for item in price_survivors:
+            ticker = item['Ticker']
+            short_name = tw_mapping.get(ticker, name_map.get(ticker, ticker))
+            sc_label = f"{item['Drop_Pct']*100:.2f}%"
+            final_results.append({
+                '公司名稱': short_name,
+                '股票代號': ticker,
+                '最新收盤價': f"${item['Last_Price']:.2f}",
+                f'過去 {drop_days} 天最大跌幅': f"{item['Drop_Pct']*100:.2f}%",
+                '谷底反彈幅度': f"{item['Rebound_Pct']*100:.2f}%",
+                'Rule of 30 (%)': '（未篩選）',
+                '營收成長 YoY': '（未篩選）',
+                '淨利率': '（未篩選）',
+                '近三季資本支出': '（未篩選）',
+                '公司簡介': '（未篩選）',
             })
-            
-    # 階段 2-2: 只針對「通過」 Rule of 30 的少數菁英股票，去抓取極度耗時的「公司簡介」與「現金流量表」
-    status_text.text(f"正在進行第二階段：基本面深層資料獲取 (讀取快取或下載 {len(rule30_passed)} 檔合格股票的財報與簡介)...")
-    
-    heavy_profiles = {}
-    heavy_cf = {}
-    heavy_price = {}
-    
-    if rule30_passed:
-        passed_tickers = [item['ticker'] for item in rule30_passed]
-        heavy_profiles, heavy_cf, heavy_price = fetch_heavy_data_cached(tuple(passed_tickers))
-            
-    progress_bar.progress(0.9)
-            
-    # 整合最終資料
-    for idx, passed_item in enumerate(rule30_passed):
-        ticker = passed_item['ticker']
-        tech_item = price_info_map[ticker]
-        
-        p_data = heavy_profiles.get(ticker, {})
-        if not isinstance(p_data, dict): p_data = {}
-        
-        # 3. 取得近三季資本支出 (不作為篩選條件，僅顯示)
-        capex_str = "無資料"
-        if not isinstance(heavy_cf, str) and ticker in heavy_cf.index:
-            try:
-                ticker_cf = heavy_cf.loc[ticker]
-                if isinstance(ticker_cf, pd.DataFrame) and 'CapitalExpenditure' in ticker_cf.columns and 'periodType' in ticker_cf.columns:
-                    capex_3m = ticker_cf[ticker_cf['periodType'] == '3M']['CapitalExpenditure'].dropna()
-                    last_3_capex = capex_3m.tail(3)
-                    capex_vals = []
-                    for val in last_3_capex:
-                        abs_val = abs(val) # 資本支出通常是現金流出(負數)
-                        if abs_val >= 1e9: capex_vals.append(f"{abs_val/1e9:.1f}B")
-                        else: capex_vals.append(f"{abs_val/1e6:.1f}M")
-                    if capex_vals:
-                        capex_str = " -> ".join(capex_vals)
-            except Exception:
-                pass
-            
-        # 取得公司簡介並翻譯
-        biz_summary = "無簡介"
-        eng_summary = p_data.get('longBusinessSummary', "")
-        if eng_summary:
-            try:
-                # 翻譯成繁體中文 (為了避免過長，最多取前1500字元翻譯)
-                translator = GoogleTranslator(source='auto', target='zh-TW')
-                biz_summary = translator.translate(eng_summary[:1500])
-                biz_summary = f"【業務與優勢】\n{biz_summary}"
-            except Exception as e:
-                biz_summary = f"翻譯失敗: {eng_summary[:100]}..."
-            
-        short_name = ticker
-        price_data = heavy_price.get(ticker, {})
-        if isinstance(price_data, dict):
-            short_name = price_data.get('shortName', ticker)
-            
-        if ticker in tw_mapping:
-            short_name = tw_mapping[ticker]
-            
-        final_results.append({
-            '公司名稱': short_name,
-            '股票代號': ticker,
-            '最新收盤價': f"${tech_item['Last_Price']:.2f}",
-            f'過去 {drop_days} 天最大跌幅': f"{tech_item['Drop_Pct']*100:.2f}%",
-            '谷底反彈幅度': f"{tech_item['Rebound_Pct']*100:.2f}%",
-            'Rule of 30 (%)': f"{passed_item['rule_of_30_val']*100:.1f}%",
-            '營收成長 YoY': f"{passed_item['rev_growth']*100:.1f}%",
-            '淨利率': f"{passed_item['prof_margin']*100:.1f}%",
-            '近三季資本支出': capex_str,
-            '公司簡介': biz_summary
-        })
-                
-    progress_bar.progress(1.0)
-    status_text.empty()
-    
-    # 將結果儲存到 session state，即使重整也不會遺失
+
+        progress_bar.progress(1.0)
+        status_text.empty()
+
+    # ── 基本面模式：套用 Rule of 30 ───────────────────────────────────
+    else:
+        status_text.text("正在進行第二階段：基本面篩選 (yahooquery 批次獲取財報)...")
+        progress_bar.progress(0)
+
+        try:
+            fin_modules_data = fetch_fundamentals_cached(tuple(surviving_tickers))
+            progress_bar.progress(0.7)
+        except Exception as e:
+            st.error(f"取得基本面初篩資料時發生錯誤: {e}")
+            st.stop()
+
+        if not isinstance(fin_modules_data, dict):
+            fin_modules_data = {}
+
+        rule30_passed = []
+        missing_data_count = 0
+        for ticker in surviving_tickers:
+            f_data = fin_modules_data.get(ticker, {})
+            if not isinstance(f_data, dict):
+                missing_data_count += 1
+                continue
+
+            rev_growth = f_data.get('revenueGrowth')
+            prof_margin = f_data.get('profitMargins')
+
+            if rev_growth is None or prof_margin is None:
+                missing_data_count += 1
+                continue
+            rule_of_30_val = rev_growth + prof_margin
+
+            if rule_of_30_val > 0.3:
+                rule30_passed.append({
+                    'ticker': ticker,
+                    'rev_growth': rev_growth,
+                    'prof_margin': prof_margin,
+                    'rule_of_30_val': rule_of_30_val
+                })
+
+        if missing_data_count > 0:
+            st.info(f"ℹ️ 有 {missing_data_count} 檔股票的基本面資料無法取得（API 限制），已略過。"
+                    f"若結果為 0 檔，可嘗試關閉左側「啟用基本面篩選」改用快速模式。")
+
+        status_text.text(f"正在進行第二階段：深層資料獲取 ({len(rule30_passed)} 檔合格股票)...")
+
+        heavy_profiles = {}
+        heavy_cf = {}
+        heavy_price = {}
+
+        if rule30_passed:
+            passed_tickers = [item['ticker'] for item in rule30_passed]
+            heavy_profiles, heavy_cf, heavy_price = fetch_heavy_data_cached(tuple(passed_tickers))
+
+        progress_bar.progress(0.9)
+
+        for idx, passed_item in enumerate(rule30_passed):
+            ticker = passed_item['ticker']
+            tech_item = price_info_map[ticker]
+
+            p_data = heavy_profiles.get(ticker, {})
+            if not isinstance(p_data, dict): p_data = {}
+
+            capex_str = "無資料"
+            if not isinstance(heavy_cf, str) and ticker in heavy_cf.index:
+                try:
+                    ticker_cf = heavy_cf.loc[ticker]
+                    if isinstance(ticker_cf, pd.DataFrame) and 'CapitalExpenditure' in ticker_cf.columns and 'periodType' in ticker_cf.columns:
+                        capex_3m = ticker_cf[ticker_cf['periodType'] == '3M']['CapitalExpenditure'].dropna()
+                        last_3_capex = capex_3m.tail(3)
+                        capex_vals = []
+                        for val in last_3_capex:
+                            abs_val = abs(val)
+                            if abs_val >= 1e9: capex_vals.append(f"{abs_val/1e9:.1f}B")
+                            else: capex_vals.append(f"{abs_val/1e6:.1f}M")
+                        if capex_vals:
+                            capex_str = " -> ".join(capex_vals)
+                except Exception:
+                    pass
+
+            biz_summary = "無簡介"
+            eng_summary = p_data.get('longBusinessSummary', "")
+            if eng_summary:
+                try:
+                    translator = GoogleTranslator(source='auto', target='zh-TW')
+                    biz_summary = translator.translate(eng_summary[:1500])
+                    biz_summary = f"【業務與優勢】\n{biz_summary}"
+                except Exception as e:
+                    biz_summary = f"翻譯失敗: {eng_summary[:100]}..."
+
+            short_name = ticker
+            price_data = heavy_price.get(ticker, {})
+            if isinstance(price_data, dict):
+                short_name = price_data.get('shortName', ticker)
+
+            if ticker in tw_mapping:
+                short_name = tw_mapping[ticker]
+
+            final_results.append({
+                '公司名稱': short_name,
+                '股票代號': ticker,
+                '最新收盤價': f"${tech_item['Last_Price']:.2f}",
+                f'過去 {drop_days} 天最大跌幅': f"{tech_item['Drop_Pct']*100:.2f}%",
+                '谷底反彈幅度': f"{tech_item['Rebound_Pct']*100:.2f}%",
+                'Rule of 30 (%)': f"{passed_item['rule_of_30_val']*100:.1f}%",
+                '營收成長 YoY': f"{passed_item['rev_growth']*100:.1f}%",
+                '淨利率': f"{passed_item['prof_margin']*100:.1f}%",
+                '近三季資本支出': capex_str,
+                '公司簡介': biz_summary
+            })
+
+        progress_bar.progress(1.0)
+        status_text.empty()
+
     st.session_state['scanned'] = True
     st.session_state['final_results'] = final_results
     st.session_state['scanned_market'] = market_choice
 
-# --- 顯示篩選結果與圖表 (獨立於 run_button) ---
+# --- 顯示篩選結果與圖表 ---
 if st.session_state.get('scanned', False):
     final_results = st.session_state.get('final_results', [])
-    
-    # 顯示最終結果
+
     st.subheader(f"🎉 最終篩選結果 ({len(final_results)} 檔)")
-    
+
     if final_results:
         res_df = pd.DataFrame(final_results)
-        # 設定 DataFrame 顯示索引為 1 開始
         res_df.index = res_df.index + 1
         st.dataframe(res_df, use_container_width=True)
-        
-        if run_button: # 只在按鈕剛按下的那次放氣球
+
+        if run_button:
             st.balloons()
-            
-        # 新增 TradingView 圖表或本地圖表區塊
+
         st.markdown("---")
         st.subheader("📈 個股近期走勢")
-        
-        # 建立選項清單 (例如: "2330.TW - 台積電")
+
         chart_options = [f"{item['股票代號']} - {item['公司名稱']}" for item in final_results]
-        
+
         if chart_options:
             selected_option = st.selectbox("請選擇要查看的近期股票線圖：", chart_options)
             selected_ticker = selected_option.split(" - ")[0]
-            
+
             is_tw = selected_ticker.endswith('.TW') or selected_ticker.endswith('.TWO')
-            
+
             if is_tw:
-                st.info("ℹ️ 由於【台灣證交所】的嚴格版權限制，TradingView 官方禁止任何包含此工具在內的第三方網站『直接嵌入』台股的線圖，這就是為什麼強制顯示出來會被 TradingView 封鎖的緣故！因此，以下為您拉取本地端資料繪製近期走勢：")
-                
-                # 本地繪圖
+                st.info("ℹ️ 台股因版權限制，以下為本地端資料繪製近期走勢：")
                 local_data = get_historical_data(selected_ticker)
                 if local_data is not None:
                     st.line_chart(local_data)
                 else:
                     st.warning("暫時無法取得本地走勢圖資料。")
-                
-                # 將 YF Ticker 轉換為 TradingView 格式以產生連結
+
                 tv_symbol = selected_ticker
                 if selected_ticker.endswith(".TW"):
                     tv_symbol = f"TWSE:{selected_ticker.replace('.TW', '')}"
                 elif selected_ticker.endswith(".TWO"):
                     tv_symbol = f"TPEX:{selected_ticker.replace('.TWO', '')}"
-                    
+
                 tv_url = f"https://www.tradingview.com/chart/?symbol={tv_symbol}"
                 st.markdown(f"👉 **[請點擊這裡，直接在 TradingView 官網開啟 {selected_option} 完整線圖]({tv_url})**")
             else:
                 tv_symbol = selected_ticker
-                
                 html_code = f"""
                 <!DOCTYPE html>
                 <html>
@@ -607,7 +612,6 @@ if st.session_state.get('scanned', False):
                 </style>
                 </head>
                 <body>
-                <!-- TradingView Widget BEGIN -->
                 <div class="tradingview-widget-container">
                   <div id="tradingview_12345" style="height: 600px; width: 100%;"></div>
                   <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
@@ -630,17 +634,18 @@ if st.session_state.get('scanned', False):
                   );
                   </script>
                 </div>
-                <!-- TradingView Widget END -->
                 </body>
                 </html>
                 """
                 import streamlit.components.v1 as components
                 components.html(html_code, height=600)
     else:
-        st.warning("沒有股票同時符合您的「技術面」與「基本面」條件，請嘗試放寬標準。")
-    
+        if use_fundamental:
+            st.warning("沒有股票同時符合您的「技術面」與「基本面」條件。\n\n💡 建議：試試關閉左側「啟用基本面篩選」改用快速模式，先確認技術面結果。")
+        else:
+            st.warning("沒有股票符合您的技術面條件，請嘗試放寬標準。")
+
 else:
-    # 預設首頁內容
     st.info("👈 請在左邊設定好條件後，點擊「🚀 開始篩選」按鈕。")
 
     st.markdown("### 💡 篩選策略說明")
@@ -648,4 +653,5 @@ else:
     這個工具結合了**左側交易（抄底）**與**基本面過濾**的策略：
     1. **跌深反彈**：找出短期內被大量拋售（累積跌幅大）的股票。
     2. **基本面保護 (Rule of 30)**：結合營收成長(YoY)與淨利率，要求相加 > 30%，確保找到具備高成長或高獲利能力的好公司，避免買到真正出問題的股票（接刀子）。
+    3. **⚡ 快速模式**：關閉基本面篩選，直接顯示所有技術面通過的股票，適合快速瀏覽或 API 資料不穩定時使用。
     """)
