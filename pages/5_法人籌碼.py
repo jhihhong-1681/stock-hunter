@@ -28,14 +28,13 @@ INVESTOR_MAP = {
 
 def _make_session():
     s = requests.Session()
+    # 不加 Accept-Encoding，讓 requests 自己處理，避免 gzip 壓縮導致解碼失敗
     s.headers.update({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "zh-TW,zh;q=0.9,en-US;q=0.8",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "keep-alive",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36",
+        "Accept": "application/json, */*",
+        "Referer": "https://www.twse.com.tw/zh/trading/fund/T86.html",
+        "X-Requested-With": "XMLHttpRequest",
     })
-    # 先訪問頁面取得 session cookies
     try:
         s.get("https://www.twse.com.tw/zh/trading/fund/T86.html", verify=False, timeout=8)
     except Exception:
@@ -58,11 +57,12 @@ def fetch_twse_json(query_date: date):
     for url in urls:
         try:
             r = s.get(url, verify=False, timeout=15)
-            if r.status_code == 200 and r.text.strip():
-                data = r.json()
-                if data.get("stat") == "OK" and data.get("data"):
-                    df = pd.DataFrame(data["data"], columns=data["fields"])
-                    return df, None
+            if r.status_code != 200 or not r.content:
+                continue
+            data = r.json()  # r.json() 自動處理編碼，不受 gzip 壓縮影響
+            if data.get("stat") == "OK" and data.get("data"):
+                df = pd.DataFrame(data["data"], columns=data["fields"])
+                return df, None
         except Exception:
             continue
     return None, "json_failed"
