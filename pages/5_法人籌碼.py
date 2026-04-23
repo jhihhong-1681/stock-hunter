@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import json
 import urllib3
 from datetime import date, timedelta, datetime
@@ -13,6 +14,7 @@ st.set_page_config(page_title="法人籌碼 - 阿紘的股票儀表板", page_ic
 st.title("🏦 三大法人買賣超（台股）")
 
 DATA_FILE = Path(__file__).parent.parent / "data" / "institutional_latest.json"
+FUTURES_DATA_FILE = Path(__file__).parent.parent / "data" / "futures_institutional_latest.json"
 
 INVESTOR_MAP = {
     "外陸資買賣超股數(不含外資自營商)": "外資",
@@ -161,3 +163,221 @@ st.dataframe(
     df[display_cols].sort_values(sort_col, ascending=False).reset_index(drop=True),
     use_container_width=True
 )
+
+# ============================================================
+# 台指期三大法人未平倉
+# ============================================================
+
+st.markdown("---")
+st.subheader("📈 台指期三大法人未平倉（口數）")
+
+
+def fetch_taifex_futures_live(query_date):
+    """直接向 TAIFEX 抓台指期法人（備援）"""
+    import io as _io
+
+    INST_KW = {
+        "自營商": "自營商",
+        "投信": "投信",
+        "外資及陸資": "外資",
+        "外資": "外資",
+    }
+
+    date_str = query_date.strftime("%Y/%m/%d")
+    date_enc = date_str.replace("/", "%2F")
+    contracts_result = {}
+
+    for code, cname in [("TXF", "臺股期貨(台指期)"), ("MXF", "小型臺指期貨(小台)")]:
+        url = (
+            f"https://www.taifex.com.tw/cht/3/futContractsDate"
+            f"?queryStartDate={date_enc}&queryEndDate={date_enc}&commodityId={code}"
+        )
+        hdrs = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            "Accept": "text/html,application/xhtml+xml,*/*",
+            "Referer": "https://www.taifex.com.tw/cht/3/futContractsDate",
+        }
+        try:
+            r = requests.get(url, headers=hdrs, verify=False, timeout=15)
+            tables = pd.read_html(_io.StringIO(r.text), thousands=",")
+            institutions = {}
+            for tbl in tables:
+                flat = tbl.to_string()
+                if "外資" not in flat or "自營商" not in flat:
+                    continue
+                if isinstance(tbl.columns, pd.MultiIndex):
+                    tbl.columns = [" ".join(str(c) for c in col).strip() for col in tbl.columns]
+                for _, row in tbl.iterrows():
+                    row_vals = [str(v) for v in row.values]
+                    row_str = " ".join(row_vals)
+                    matched = None
+                    for kw, name in INST_KW.items():
+                        if kw in row_str:
+                            matched = name
+                            break
+                    if matched is None:
+                        continue
+                    int_nums = []
+                    for v in row_vals:
+                        cleaned = str(v).replace(",", "").replace("+", "").strip()
+                        try:
+                            int_nums.append(int(cleaned))
+                        except ValueError:
+                            pass
+                    if len(int_nums) >= 12:
+                        institutions[matched] = {
+                            "trade_long": int_nums[0],
+                            "trade_short": int_nums[2],
+                            "trade_net": int_nums[4],
+                            "oi_long": int_nums[6],
+                            "oi_short": int_nums[8],
+                            "oi_net": int_nums[10],
+                        }
+                    elif len(int_nums) >= 6:
+                        institutions[matched] = {
+                            "trade_long": None,
+                            "trade_short": None,
+                            "trade_net": None,
+                            "oi_long": int_nums[0],
+                            "oi_short": int_nums[2],
+                            "oi_net": int_nums[4],
+                        }
+                if institutions:
+                    break
+            if institutions:
+                contracts_result[code] = {"name": cname, "institutions": institutions}
+        except Exception:
+            pass
+
+    return contracts_result if contracts_result else None
+
+
+def _fmt_net(val):
+    """Format net OI value with sign and comma."""
+    if val is None:
+        return "N/A"
+    sign = "+" if val > 0 else ""
+    return f"{sign}{val:,}"
+
+
+def show_futures_contract(code, contract_data):
+    """Render one futures contract section."""
+    cname = contract_data.get("name", code)
+    institutions = contract_data.get("institutions", {})
+
+    st.markdown(f"#### {code} {cname}")
+
+    inst_order = ["外資", "投信", "自營商"]
+    cols = st.columns(3)
+    for i, inst in enumerate(inst_order):
+        info = institutions.get(inst, {})
+        oi_net = info.get("oi_net")
+        trade_net = info.get("trade_net")
+        label = f"{inst} 淨未平倉"
+        value = f"{_fmt_net(oi_net)} 口" if oi_net is not None else "N/A"
+        delta_str = f"今日成交淨 {_fmt_net(trade_net)}" if trade_net is not None else None
+        with cols[i]:
+            st.metric(label=label, value=value, delta=delta_str)
+
+    # Build bar chart: long vs short OI per institution
+    chart_data = []
+    for inst in inst_order:
+        info = institutions.get(inst, {})
+        oi_long = info.get("oi_long")
+        oi_short = info.get("oi_short")
+        oi_net = info.get("oi_net")
+        if oi_long is not None and oi_short is not None:
+            chart_data.append({
+                "機構": inst,
+                "多方口數": oi_long,
+                "空方口數": -oi_short,  # negative for visual direction
+                "淨未平倉": oi_net,
+                "多方原始": oi_long,
+                "空方原始": oi_short,
+            })
+
+    if chart_data:
+        chart_df = pd.DataFrame(chart_data)
+
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            name="多方口數",
+            x=chart_df["機構"],
+            y=chart_df["多方原始"],
+            marker_color="crimson",
+            text=chart_df["多方原始"].apply(lambda v: f"{v:,}"),
+            textposition="outside",
+        ))
+        fig.add_trace(go.Bar(
+            name="空方口數",
+            x=chart_df["機構"],
+            y=chart_df["空方原始"],
+            marker_color="green",
+            text=chart_df["空方原始"].apply(lambda v: f"{v:,}"),
+            textposition="outside",
+        ))
+        # Overlay net as scatter text
+        fig.add_trace(go.Scatter(
+            name="淨未平倉",
+            x=chart_df["機構"],
+            y=chart_df["多方原始"],
+            mode="text",
+            text=chart_df["淨未平倉"].apply(lambda v: f"淨:{_fmt_net(v)}"),
+            textposition="top center",
+            textfont=dict(size=12, color="white"),
+            showlegend=True,
+        ))
+        fig.update_layout(
+            barmode="group",
+            height=380,
+            margin=dict(l=0, r=0, t=30, b=0),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            yaxis_title="口數",
+            plot_bgcolor="rgba(0,0,0,0)",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("此合約無 OI 資料可繪圖。")
+
+
+# --- 載入期貨資料 ---
+futures_payload = None
+futures_date = None
+futures_source = None
+
+if FUTURES_DATA_FILE.exists():
+    try:
+        futures_payload = json.loads(FUTURES_DATA_FILE.read_text(encoding="utf-8"))
+        futures_date = futures_payload.get("date", "未知")
+        futures_source = "快取"
+    except Exception as e:
+        st.warning(f"讀取期貨快取失敗：{e}")
+
+if futures_payload is None:
+    # Fallback: live fetch
+    with st.spinner("台指期資料尚未快取，嘗試即時抓取..."):
+        fallback_date = date.today()
+        for _ in range(7):
+            if fallback_date.weekday() < 5:
+                break
+            fallback_date -= timedelta(days=1)
+        live_contracts = fetch_taifex_futures_live(fallback_date)
+        if live_contracts:
+            futures_payload = {
+                "date": fallback_date.strftime("%Y/%m/%d"),
+                "contracts": live_contracts,
+            }
+            futures_date = futures_payload["date"]
+            futures_source = "即時抓取（備援）"
+        else:
+            st.warning("台指期資料尚未更新（等待 GitHub Actions 執行）")
+
+if futures_payload:
+    st.caption(
+        f"資料日期：{futures_date}　｜　來源：{futures_source}　｜　每日 17:30 自動更新"
+    )
+    contracts = futures_payload.get("contracts", {})
+    for code in ["TXF", "MXF"]:
+        if code in contracts:
+            show_futures_contract(code, contracts[code])
+            st.markdown("")
