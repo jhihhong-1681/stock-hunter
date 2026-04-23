@@ -89,9 +89,10 @@ def color_pct(val):
         return ''
     return 'color: #d90000' if val > 0 else ('color: #007a00' if val < 0 else '')
 
-styled = (
-    df.style
-    .applymap(color_pct, subset=["日漲跌(%)", "週漲跌(%)"])
-    .format({"現價": "{:.2f}", "日漲跌(%)": "{:+.2f}%", "週漲跌(%)": "{:+.2f}%"}, na_rep="N/A")
-)
+try:
+    styled = df.style.map(color_pct, subset=["日漲跌(%)", "週漲跌(%)"]) \
+                     .format({"現價": "{:.2f}", "日漲跌(%)": "{:+.2f}%", "週漲跌(%)": "{:+.2f}%"}, na_rep="N/A")
+except AttributeError:
+    styled = df.style.applymap(color_pct, subset=["日漲跌(%)", "週漲跌(%)"]) \
+                     .format({"現價": "{:.2f}", "日漲跌(%)": "{:+.2f}%", "週漲跌(%)": "{:+.2f}%"}, na_rep="N/A")
 st.dataframe(styled, use_container_width=True, hide_index=True)

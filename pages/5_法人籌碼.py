@@ -6,38 +6,8 @@ from datetime import date, timedelta
 
 st.set_page_config(page_title="法人籌碼 - 阿紘的股票儀表板", page_icon="🏦", layout="wide")
 st.title("🏦 三大法人買賣超（台股）")
-st.markdown("資料來源：台灣證券交易所，每日收盤後更新。")
+st.markdown("資料來源：台灣證券交易所 OpenAPI，每日收盤後更新。")
 
-# 預設往前一個工作日
-default_date = date.today() - timedelta(days=1)
-if default_date.weekday() >= 5:
-    default_date -= timedelta(days=default_date.weekday() - 4)
-
-selected_date = st.date_input("選擇查詢日期（限交易日）", value=default_date)
-
-@st.cache_data(ttl=3600)
-def fetch_institutional(query_date: date):
-    date_str = query_date.strftime("%Y%m%d")
-    url = f"https://www.twse.com.tw/fund/T86?response=json&date={date_str}&selectType=ALLBUT0999"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    try:
-        r = requests.get(url, headers=headers, timeout=15, verify=False)
-        data = r.json()
-        if data.get("stat") != "OK":
-            return None, data.get("stat", "查無資料，請確認是否為交易日")
-        df = pd.DataFrame(data["data"], columns=data["fields"])
-        return df, None
-    except Exception as e:
-        return None, str(e)
-
-with st.spinner("下載法人資料中..."):
-    df, err = fetch_institutional(selected_date)
-
-if err:
-    st.error(f"無法取得資料：{err}")
-    st.stop()
-
-# --- 數值欄位整理 ---
 NUM_COLS = {
     "外陸資買賣超股數(不含外資自營商)": "外資",
     "投信買賣超股數": "投信",
@@ -47,11 +17,86 @@ NUM_COLS = {
 }
 RENAME = {"證券代號": "代號", "證券名稱": "名稱"}
 RENAME.update(NUM_COLS)
-df = df.rename(columns={k: v for k, v in RENAME.items() if k in df.columns})
 
-for col in NUM_COLS.values():
-    if col in df.columns:
-        df[col] = df[col].astype(str).str.replace(",", "").apply(pd.to_numeric, errors="coerce")
+@st.cache_data(ttl=3600)
+def fetch_openapi() -> tuple[pd.DataFrame | None, str | None]:
+    """使用 openapi.twse.com.tw（公開 API，不限 IP），僅回傳最新交易日資料。"""
+    url = "https://openapi.twse.com.tw/v1/fund/T86"
+    headers = {"User-Agent": "Mozilla/5.0", "accept": "application/json"}
+    try:
+        r = requests.get(url, headers=headers, timeout=15, verify=False)
+        r.raise_for_status()
+        data = r.json()
+        if not data:
+            return None, "API 回傳空資料，可能今日尚未更新。"
+        df = pd.DataFrame(data)
+        return df, None
+    except Exception as e:
+        return None, str(e)
+
+@st.cache_data(ttl=3600)
+def fetch_by_date(query_date: date) -> tuple[pd.DataFrame | None, str | None]:
+    """指定日期查詢（www.twse.com.tw，海外 IP 可能被擋）。"""
+    date_str = query_date.strftime("%Y%m%d")
+    urls = [
+        f"https://www.twse.com.tw/rwd/zh/fund/T86?date={date_str}&selectType=ALLBUT0999&response=json",
+        f"https://www.twse.com.tw/fund/T86?response=json&date={date_str}&selectType=ALLBUT0999",
+    ]
+    headers = {"User-Agent": "Mozilla/5.0", "Referer": "https://www.twse.com.tw/"}
+    for url in urls:
+        try:
+            r = requests.get(url, headers=headers, timeout=15, verify=False)
+            if not r.text.strip():
+                continue
+            data = r.json()
+            if data.get("stat") == "OK":
+                return pd.DataFrame(data["data"], columns=data["fields"]), None
+        except Exception:
+            continue
+    return None, "指定日期查詢失敗（海外伺服器被 TWSE 封鎖），已自動切換為最新交易日資料。"
+
+def clean_df(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.rename(columns={k: v for k, v in RENAME.items() if k in df.columns})
+    for col in NUM_COLS.values():
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.replace(",", "").apply(pd.to_numeric, errors="coerce")
+    return df
+
+# --- 日期選擇 ---
+default_date = date.today() - timedelta(days=1)
+if default_date.weekday() >= 5:
+    default_date -= timedelta(days=default_date.weekday() - 4)
+
+col_date, col_mode = st.columns([2, 1])
+with col_date:
+    selected_date = st.date_input("選擇查詢日期（限交易日）", value=default_date)
+with col_mode:
+    use_latest = st.checkbox("直接抓最新交易日（穩定，不限IP）", value=True)
+
+# --- 抓取資料 ---
+with st.spinner("下載法人資料中..."):
+    if use_latest:
+        df_raw, err = fetch_openapi()
+        if err:
+            st.warning(f"OpenAPI 失敗：{err}，嘗試指定日期...")
+            df_raw, err = fetch_by_date(selected_date)
+    else:
+        df_raw, err2 = fetch_by_date(selected_date)
+        if err2:
+            st.warning(f"{err2}，改用 OpenAPI 最新資料...")
+            df_raw, err = fetch_openapi()
+        else:
+            err = None
+
+if df_raw is None:
+    st.error(f"無法取得資料：{err}")
+    st.stop()
+
+df = clean_df(df_raw)
+
+# --- 顯示資料日期 ---
+if "日期" in df.columns:
+    st.caption(f"資料日期：{df['日期'].iloc[0]}")
 
 # --- 前 N 大篩選 ---
 top_n = st.slider("顯示前 N 大", min_value=10, max_value=50, value=20, step=5)

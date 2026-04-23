@@ -27,6 +27,7 @@ PERIODS = {
     "1 個月": 21,
     "3 個月": 63,
     "6 個月": 126,
+    "1 年": 252,
 }
 
 COLORS = ["#e05c00", "#4a90e2", "#2ecc71", "#e74c3c"]
@@ -34,7 +35,7 @@ COLORS = ["#e05c00", "#4a90e2", "#2ecc71", "#e74c3c"]
 @st.cache_data(ttl=3600)
 def fetch_sector_data():
     tickers = list(SECTOR_ETFS.values())
-    data = yf.download(tickers, period="6mo", progress=False, auto_adjust=True)
+    data = yf.download(tickers, period="1y", progress=False, auto_adjust=True)
     return data["Close"] if "Close" in data else pd.DataFrame()
 
 with st.spinner("載入產業 ETF 資料..."):
@@ -126,11 +127,28 @@ fig2.update_layout(
 )
 st.plotly_chart(fig2, use_container_width=True)
 
-# --- 明細表 ---
+# --- 明細表（數值，帶紅綠色） ---
 st.markdown("---")
 st.subheader("📋 完整報酬率明細")
-table = pd.DataFrame(
-    {period: {s: f"{results[period].get(s, 0):+.2f}%" for s in sectors}
+table_num = pd.DataFrame(
+    {period: {s: results[period].get(s, 0) for s in sectors}
      for period in PERIODS.keys()}
 )
-st.dataframe(table, use_container_width=True)
+
+def color_cell(val):
+    if val > 0:
+        return "color: #ff4d4d; font-weight: bold"
+    if val < 0:
+        return "color: #00cc66; font-weight: bold"
+    return ""
+
+try:
+    styled_table = table_num.style \
+        .map(color_cell) \
+        .format("{:+.2f}%")
+except AttributeError:
+    styled_table = table_num.style \
+        .applymap(color_cell) \
+        .format("{:+.2f}%")
+
+st.dataframe(styled_table, use_container_width=True)
