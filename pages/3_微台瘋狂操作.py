@@ -8,10 +8,8 @@ st.set_page_config(
     layout="wide"
 )
 
-def calculate_logic_a_scaling(initial_price, initial_qty, addon_price, addon_qty, stop_loss_risk=100, point_value=10):
-    # 初始設定與目標
-    initial_target_pts = 3000
-    target_price = initial_price - initial_target_pts # 做空的目標價 (例如: 31000)
+def calculate_logic_a_scaling(initial_price, initial_qty, addon_price, addon_qty, stop_loss_risk=100, target_pts=3000, point_value=10):
+    target_price = initial_price - target_pts
 
     # 1. 計算總部位與新均價 (平均成本)
     total_qty = initial_qty + addon_qty
@@ -31,7 +29,7 @@ def calculate_logic_a_scaling(initial_price, initial_qty, addon_price, addon_qty
     return {
         "total_qty": total_qty,
         "avg_price": avg_price,
-        "stop_loss": break_even_price,
+        "break_even": break_even_price,
         "real_stop_loss": real_stop_loss,
         "take_profit": take_profit_price,
         "expected_profit": expected_profit
@@ -49,14 +47,24 @@ addon_price = st.sidebar.number_input("加碼進場價 (做空)", value=33500, s
 addon_qty = st.sidebar.number_input("加碼口數", value=1, step=1)
 
 st.sidebar.markdown("---")
+st.sidebar.subheader("🎯 目標設定")
+target_pts = st.sidebar.number_input("目標獲利點數 (做空方向)", value=3000, step=100, min_value=100, help="從初始進場價往下計算的停利目標")
+
+st.sidebar.markdown("---")
 st.sidebar.subheader("🛡️ 風控設定")
 stop_loss_risk = st.sidebar.number_input("能承受的加碼後風險(點)", value=100, step=10, help="以新均價往上計算的最後防線(停損點)")
 
 st.sidebar.markdown("---")
 # 執行運算
 if st.sidebar.button("🚀 計算動態停損利", type="primary", use_container_width=True):
+    if initial_qty <= 0 or addon_qty <= 0:
+        st.error("口數必須大於 0。")
+        st.stop()
+    if addon_price >= initial_price:
+        st.warning("⚠️ 做空加碼價應低於初始進場價，請確認輸入是否正確。")
     result = calculate_logic_a_scaling(
-        initial_price, initial_qty, addon_price, addon_qty, stop_loss_risk=stop_loss_risk
+        initial_price, initial_qty, addon_price, addon_qty,
+        stop_loss_risk=stop_loss_risk, target_pts=target_pts
     )
     
     st.subheader("📊 加碼後部位狀態")
@@ -65,16 +73,16 @@ if st.sidebar.button("🚀 計算動態停損利", type="primary", use_container
     col2.metric("新平均成本 (均價)", f"{result['avg_price']:,.0f} 點")
     
     col3, col4 = st.columns(2)
-    col3.metric("保本停損點", f"{result['stop_loss']:,.0f} 點", "獲利歸0即出場", delta_color="off")
+    col3.metric("保本停損點", f"{result['break_even']:,.0f} 點", "獲利歸0即出場", delta_color="off")
     col4.metric("🚨 強制停損價位", f"{result['real_stop_loss']:,.0f} 點", f"虧損 {int(stop_loss_risk)} 點出場", delta_color="inverse")
-    
+
     st.divider()
-    
+
     st.subheader("🎯 微台瘋狂操作 停利目標")
-    col4, col5 = st.columns(2)
-    col4.metric("最終停利價位 (進攻)", f"{result['take_profit']:,.0f} 點")
-    col5.metric("達標預期總獲利", f"NT$ {result['expected_profit']:,.0f}")
+    col5, col6 = st.columns(2)
+    col5.metric("最終停利價位 (進攻)", f"{result['take_profit']:,.0f} 點")
+    col6.metric("達標預期總獲利", f"NT$ {result['expected_profit']:,.0f}")
     
-    st.info(f"💡 **模組指示**：請將你的停損單（Stop Loss）移動至 **{result['stop_loss']:,.0f}**；停利單（Take Profit）掛在 **{result['take_profit']:,.0f}**。")
+    st.info(f"💡 **模組指示**：請將你的停損單（Stop Loss）移動至保本點 **{result['break_even']:,.0f}**；停利單（Take Profit）掛在 **{result['take_profit']:,.0f}**。")
 else:
     st.info("👈 請在左邊設定好條件後，點擊「🚀 計算動態停損利」按鈕。")

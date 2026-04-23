@@ -93,7 +93,7 @@ TWSE_INDUSTRY_MAP = {
     "06": "電器電纜", "07": "化學工業", "08": "生技醫療業", "09": "玻璃陶瓷", "10": "造紙工業",
     "11": "鋼鐵工業", "12": "橡膠工業", "13": "汽車工業", "14": "建材營造", "15": "航運業",
     "16": "觀光餐旅", "17": "金融保險", "18": "貿易百貨", "19": "綜合", "20": "其他",
-    "21": "化學工業", "22": "生技醫療業", "23": "油電燃氣業", "24": "半導體業", "25": "電腦及週邊設備業",
+    "21": "化學生技醫療業", "22": "生技醫療業", "23": "油電燃氣業", "24": "半導體業", "25": "電腦及週邊設備業",
     "26": "光電業", "27": "通信網路業", "28": "電子零組件業", "29": "電子通路業", "30": "資訊服務業",
     "31": "其他電子業", "32": "文化創意業", "33": "農業科技業", "34": "電子商務業"
 }
@@ -133,32 +133,37 @@ def fetch_historical_prices(tickers, period):
     return df
 
 def calculate_period_change(df, tf_label):
-    if df.empty or 'Close' not in df:
+    if df is None or df.empty or 'Close' not in df:
         return {}
-    
+
     close_df = df['Close']
+    # yfinance 單一 ticker 時回傳 Series，轉成 DataFrame 統一處理
+    if isinstance(close_df, pd.Series):
+        close_df = close_df.to_frame()
+
     changes = {}
-    
-    # 計算時間跨度的 index offset
-    offset = 1 # 預設一日
+
+    offset = 1
     if "一週" in tf_label: offset = 5
     elif "一個月" in tf_label: offset = 21
     elif "三個月" in tf_label: offset = 63
-        
+
     for ticker in close_df.columns:
         series = close_df[ticker].dropna()
-        if len(series) > offset:
-            last_price = float(series.iloc[-1])
-            past_price = float(series.iloc[-(offset+1)])
-            if past_price > 0:
-                pct = ((last_price - past_price) / past_price) * 100
-                changes[ticker] = pct
-        elif len(series) >= 2: # 最少退回到只有2天
-            last_price = float(series.iloc[-1])
-            past_price = float(series.iloc[0])
+        try:
+            if len(series) > offset:
+                last_price = float(series.iloc[-1])
+                past_price = float(series.iloc[-(offset+1)])
+            elif len(series) >= 2:
+                last_price = float(series.iloc[-1])
+                past_price = float(series.iloc[0])
+            else:
+                continue
             if past_price > 0:
                 changes[ticker] = ((last_price - past_price) / past_price) * 100
-                
+        except (ValueError, TypeError):
+            continue
+
     return changes
 
 if st.button(f"🚀 產生 {selected_market} 熱力圖", type="primary"):
@@ -205,7 +210,8 @@ if st.button(f"🚀 產生 {selected_market} 熱力圖", type="primary"):
                 if tkr in change_map and tkr in size_map:
                     raw_code = tkr.replace('.TW', '')
                     ind_code = tw_ind_map.get(raw_code, '')
-                    ind_name = TWSE_INDUSTRY_MAP.get(ind_code, '其他')
+                    # API 可能回傳數字代碼或直接是文字名稱，兩種都處理
+                    ind_name = TWSE_INDUSTRY_MAP.get(ind_code, ind_code if ind_code else '其他')
                     
                     plot_data.append({
                         "Market": "台灣股市",
