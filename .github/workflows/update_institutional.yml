@@ -1,0 +1,36 @@
+name: Update Institutional Data
+
+on:
+  schedule:
+    # 台灣時間下午 5:30（UTC 09:30），週一到週五
+    - cron: '30 9 * * 1-5'
+  workflow_dispatch:  # 允許手動觸發
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests urllib3
+
+      - name: Fetch TWSE institutional data
+        run: python scripts/fetch_institutional.py
+
+      - name: Commit and push if data changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/institutional_latest.json
+          git diff --staged --quiet || git commit -m "chore: auto-update institutional data $(date -u +%Y-%m-%d)"
+          git push
