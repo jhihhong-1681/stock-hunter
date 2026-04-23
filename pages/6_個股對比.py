@@ -6,14 +6,14 @@ import numpy as np
 from datetime import date, timedelta
 
 st.set_page_config(page_title="個股對比 - 阿紘的股票儀表板", page_icon="📊", layout="wide")
-st.title("📊 個股 vs S&P 500 績效對比")
-st.markdown("輸入多檔股票（逗號分隔），台股加 `.TW`（例：`2330.TW`），美股直接輸入（例：`NVDA`）。")
+st.title("📊 個股 vs 大盤績效對比")
+st.markdown("輸入多檔股票（逗號分隔，最多 6 檔），台股加 `.TW`。圖例點一下可以**隱藏/顯示**該條線。")
 
-COLORS = ["#e05c00", "#9b59b6", "#2ecc71", "#e74c3c", "#f39c12", "#1abc9c"]
+STOCK_COLORS = ["#e05c00", "#9b59b6", "#2ecc71", "#e74c3c", "#f39c12", "#1abc9c"]
 
 col1, col2, col3 = st.columns([3, 1, 1])
 with col1:
-    tickers_input = st.text_input("股票代號（逗號分隔，最多 6 檔）",
+    tickers_input = st.text_input("股票代號（逗號分隔）",
                                    value="NVDA, AAPL",
                                    placeholder="2330.TW, NVDA, AAPL")
 with col2:
@@ -26,9 +26,11 @@ if not tickers:
     st.info("請輸入至少一個股票代號")
     st.stop()
 
+INDICES = {"^GSPC": "S&P 500", "^IXIC": "NASDAQ"}
+
 @st.cache_data(ttl=1800)
 def fetch_data(tickers: tuple, start: date, end: date):
-    all_tickers = list(tickers) + ["^GSPC"]
+    all_tickers = list(tickers) + list(INDICES.keys())
     return yf.download(all_tickers, start=start, end=end, progress=False, auto_adjust=True)
 
 with st.spinner("下載資料中..."):
@@ -42,7 +44,6 @@ close = data["Close"]
 if isinstance(close, pd.Series):
     close = close.to_frame()
 
-# 只保留有資料的 ticker
 valid_tickers = [t for t in tickers if t in close.columns and not close[t].dropna().empty]
 missing = [t for t in tickers if t not in valid_tickers]
 if missing:
@@ -51,7 +52,8 @@ if not valid_tickers:
     st.error("所有代號都無法取得資料。")
     st.stop()
 
-all_cols = valid_tickers + (["^GSPC"] if "^GSPC" in close.columns else [])
+valid_indices = [k for k in INDICES if k in close.columns and not close[k].dropna().empty]
+all_cols = valid_tickers + valid_indices
 close = close[all_cols].dropna()
 
 if len(close) < 2:
@@ -59,16 +61,25 @@ if len(close) < 2:
     st.stop()
 
 # --- 指標計算 ---
-def total_ret(series): return (series.iloc[-1] / series.iloc[0] - 1) * 100
-def max_drawdown(series):
-    peak = series.cummax()
-    return float(((series - peak) / peak).min() * 100)
+def total_ret(s): return (s.iloc[-1] / s.iloc[0] - 1) * 100
+def max_drawdown(s):
+    return float(((s - s.cummax()) / s.cummax()).min() * 100)
 
 norm = (close / close.iloc[0]) * 100
-sp500 = close["^GSPC"] if "^GSPC" in close.columns else None
+sp500 = close.get("^GSPC")
 
-metrics = []
-for t in valid_tickers:
+# 大盤基準列
+idx_cols = st.columns(len(valid_indices) + 1)
+idx_cols[0].markdown("**大盤基準**")
+for i, k in enumerate(valid_indices):
+    ret = total_ret(close[k])
+    mdd = max_drawdown(close[k])
+    idx_cols[i + 1].metric(INDICES[k], f"{ret:+.2f}%", f"最大回撤 {mdd:.2f}%", delta_color="inverse")
+
+st.markdown("---")
+
+# 個股指標卡
+for i, t in enumerate(valid_tickers):
     ret = total_ret(close[t])
     sp_ret = total_ret(sp500) if sp500 is not None else 0
     alpha = ret - sp_ret
@@ -82,48 +93,46 @@ for t in valid_tickers:
             cov = np.cov(daily[idx], sp_daily[idx])
             beta = cov[0, 1] / cov[1, 1] if cov[1, 1] != 0 else 0
             corr = float(np.corrcoef(daily[idx], sp_daily[idx])[0, 1])
-    metrics.append({"代號": t, "總報酬(%)": ret, "Alpha(%)": alpha,
-                    "Beta": beta, "相關係數": corr, "最大回撤(%)": mdd})
 
-# --- 指標卡 ---
-if sp500 is not None:
-    sp_ret = total_ret(sp500)
-    sp_mdd = max_drawdown(sp500)
-    st.markdown(f"**S&P 500 同期基準：總報酬 {sp_ret:+.2f}%｜最大回撤 {sp_mdd:.2f}%**")
-    st.markdown("---")
-
-for i, m in enumerate(metrics):
     c1, c2, c3, c4, c5 = st.columns(5)
-    label = m["代號"]
-    c1.metric(f"{label} 總報酬", f"{m['總報酬(%)']:+.2f}%")
-    c2.metric("Alpha", f"{m['Alpha(%)']:+.2f}%")
-    c3.metric("Beta", f"{m['Beta']:.2f}")
-    c4.metric("相關係數", f"{m['相關係數']:.2f}")
-    c5.metric("最大回撤", f"{m['最大回撤(%)']:.2f}%", delta_color="inverse")
+    c1.metric(f"{t} 總報酬", f"{ret:+.2f}%")
+    c2.metric("vs S&P500 Alpha", f"{alpha:+.2f}%")
+    c3.metric("Beta", f"{beta:.2f}")
+    c4.metric("相關係數", f"{corr:.2f}")
+    c5.metric("最大回撤", f"{mdd:.2f}%", delta_color="inverse")
 
 st.markdown("---")
 
-# --- 績效走勢圖 ---
+# --- 績效走勢圖（點圖例可隱藏/顯示） ---
 fig = go.Figure()
+
 for i, t in enumerate(valid_tickers):
     fig.add_trace(go.Scatter(
         x=norm.index, y=norm[t],
-        name=t, line=dict(color=COLORS[i % len(COLORS)], width=2.5)
+        name=t,
+        line=dict(color=STOCK_COLORS[i % len(STOCK_COLORS)], width=2.5)
     ))
-if sp500 is not None:
+
+index_styles = [
+    dict(color="#4a90e2", width=2, dash="dash"),
+    dict(color="#aaaaaa", width=2, dash="dot"),
+]
+for i, k in enumerate(valid_indices):
     fig.add_trace(go.Scatter(
-        x=norm.index, y=norm["^GSPC"],
-        name="S&P 500", line=dict(color="#4a90e2", width=2, dash="dash")
+        x=norm.index, y=norm[k],
+        name=INDICES[k],
+        line=index_styles[i % len(index_styles)]
     ))
 
 fig.update_layout(
     title=f"績效走勢（基準 = 100，{start_date} ~ {end_date}）",
     yaxis_title="相對績效",
-    height=520,
+    height=540,
     hovermode="x unified",
-    legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
+    legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
 )
 st.plotly_chart(fig, use_container_width=True)
+st.caption("💡 點擊圖例中的名稱可隱藏/顯示該線條；雙擊可單獨顯示。")
 
 with st.expander("📖 指標說明"):
     st.markdown("""
