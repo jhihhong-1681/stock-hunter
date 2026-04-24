@@ -429,14 +429,11 @@ if run_button:
         for item in price_survivors:
             t = item['Ticker']
             final_results.append({
-                '公司名稱':            tw_mapping.get(t, name_map.get(t, t)),
-                '股票代號':            t,
-                '最新收盤價':          f"${item['Last_Price']:.2f}",
-                f'過去{drop_days}天最大跌幅': f"{item['Drop_Pct']*100:.2f}%",
-                '谷底反彈幅度':        f"{item['Rebound_Pct']*100:.2f}%",
-                'Rule of 30':         '（未篩選）',
-                '營收成長 YoY':       '（未篩選）',
-                '淨利率':             '（未篩選）',
+                '公司名稱':              tw_mapping.get(t, name_map.get(t, t)),
+                '股票代號':              t,
+                '最新收盤價':            item['Last_Price'],
+                f'過去{drop_days}天跌幅(%)': abs(item['Drop_Pct']) * 100,
+                '谷底反彈(%)':           item['Rebound_Pct'] * 100,
             })
         progress_bar.progress(1.0)
         status_text.empty()
@@ -492,15 +489,15 @@ if run_button:
                     biz = summary[:200] + '...'
 
             final_results.append({
-                '公司名稱':            name,
-                '股票代號':            t,
-                '最新收盤價':          f"${tech['Last_Price']:.2f}",
-                f'過去{drop_days}天最大跌幅': f"{tech['Drop_Pct']*100:.2f}%",
-                '谷底反彈幅度':        f"{tech['Rebound_Pct']*100:.2f}%",
-                'Rule of 30 (%)':     f"{item['rule30']*100:.1f}%",
-                '營收成長 YoY':       f"{item['rev']*100:.1f}%",
-                '淨利率':             f"{item['margin']*100:.1f}%",
-                '公司簡介':           biz,
+                '公司名稱':              name,
+                '股票代號':              t,
+                '最新收盤價':            tech['Last_Price'],
+                f'過去{drop_days}天跌幅(%)': abs(tech['Drop_Pct']) * 100,
+                '谷底反彈(%)':           tech['Rebound_Pct'] * 100,
+                'Rule of 30 (%)':        item['rule30'] * 100,
+                '營收成長 YoY (%)':      item['rev'] * 100,
+                '淨利率 (%)':            item['margin'] * 100,
+                '公司簡介':              biz,
             })
 
         progress_bar.progress(1.0)
@@ -519,7 +516,20 @@ if st.session_state.get('scanned', False):
     if final_results:
         df = pd.DataFrame(final_results)
         df.index = df.index + 1
-        st.dataframe(df, use_container_width=True)
+        drop_col = next((c for c in df.columns if '天跌幅' in c), None)
+        fmt = {'最新收盤價': '${:.2f}', '谷底反彈(%)': '{:.1f}%'}
+        if drop_col:
+            fmt[drop_col] = '{:.1f}%'
+        if 'Rule of 30 (%)' in df.columns:
+            fmt.update({'Rule of 30 (%)': '{:.1f}%', '營收成長 YoY (%)': '{:.1f}%', '淨利率 (%)': '{:.1f}%'})
+        styled = df.style.format(fmt)
+        if drop_col:
+            styled = styled.bar(subset=[drop_col], color='#ff4b4b', vmin=0, vmax=50)
+        if '谷底反彈(%)' in df.columns:
+            styled = styled.bar(subset=['谷底反彈(%)'], color='#21c354', vmin=0, vmax=30)
+        if 'Rule of 30 (%)' in df.columns:
+            styled = styled.bar(subset=['Rule of 30 (%)'], color='#1f77b4', vmin=0, vmax=100)
+        st.dataframe(styled, use_container_width=True)
         if run_button: st.balloons()
 
         st.markdown("---")
