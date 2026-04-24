@@ -22,18 +22,15 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests urllib3 pandas lxml html5lib
+        run: pip install requests urllib3 pandas
 
       - name: Fetch TWSE institutional data
         run: python scripts/fetch_institutional.py
-
-      - name: 抓取期貨法人籌碼
-        run: python scripts/fetch_futures_institutional.py
 
       - name: Commit and push if data changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/institutional_latest.json data/futures_institutional_latest.json
+          git add data/institutional_latest.json data/futures_latest.json
           git diff --staged --quiet || git commit -m "chore: auto-update institutional data $(date -u +%Y-%m-%d)"
           git push
