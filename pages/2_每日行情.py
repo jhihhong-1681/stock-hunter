@@ -13,7 +13,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("📈 市場產業熱力圖 (Treemap)")
+st.title("📈 每日行情 - 市場產業熱力圖")
 st.markdown("以方塊圖一目了然觀察台股與美股的產業資金流向。板塊大小代表成交金額或市值，**顏色為紅漲綠跌。**")
 
 # --- 1. 大盤指數概況 ---
