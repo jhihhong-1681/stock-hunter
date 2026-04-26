@@ -22,6 +22,8 @@ except AttributeError:
 # ─── 頁面設定 ─────────────────────────────────────────────────────────────────
 st.set_page_config(page_title="抄底怪物 - 阿紘的股票儀表板", page_icon="🎯", layout="wide")
 
+from utils.styles import load_css
+load_css()
 st.title("🎯 抄底怪物 - 股市超跌篩選器")
 st.markdown("這個工具可以幫助你從 **S&P 500、Nasdaq、全美市場** 中，找出近期超跌但基本面良好的股票。\n請在左側側邊欄設定條件後點擊「開始篩選」。")
 
