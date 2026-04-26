@@ -5,6 +5,8 @@ import plotly.graph_objects as go
 import plotly.express as px
 
 st.set_page_config(page_title="產業輪動 - 阿紘的股票儀表板", page_icon="🔄", layout="wide")
+from utils.styles import load_css
+load_css()
 st.title("🔄 產業輪動雷達圖（美股）")
 st.markdown("透過各產業 ETF 的相對強弱，判斷目前資金流向哪個板塊。")
 
