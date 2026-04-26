@@ -4,6 +4,8 @@ import pandas as pd
 import plotly.graph_objects as go
 
 st.set_page_config(page_title="自選股清單 - 阿紘的股票儀表板", page_icon="⭐", layout="wide")
+from utils.styles import load_css
+load_css()
 st.title("⭐ 自選股清單")
 st.markdown("追蹤你關注的股票，台股加 `.TW`（例：`2330.TW`），美股直接輸入（例：`NVDA`）。")
 
