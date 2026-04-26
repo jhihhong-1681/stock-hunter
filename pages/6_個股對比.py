@@ -6,6 +6,8 @@ import numpy as np
 from datetime import date, timedelta
 
 st.set_page_config(page_title="個股對比 - 阿紘的股票儀表板", page_icon="📊", layout="wide")
+from utils.styles import load_css
+load_css()
 st.title("📊 個股 vs 大盤績效對比")
 st.markdown("輸入多檔股票（逗號分隔，最多 6 檔），台股加 `.TW`。圖例點一下可以**隱藏/顯示**該條線。")
 
