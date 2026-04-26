@@ -11,6 +11,8 @@ from pathlib import Path
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 st.set_page_config(page_title="法人籌碼 - 阿紘的股票儀表板", page_icon="🏦", layout="wide")
+from utils.styles import load_css
+load_css()
 st.title("🏦 三大法人買賣超（台股）")
 
 DATA_FILE = Path(__file__).parent.parent / "data" / "institutional_latest.json"
