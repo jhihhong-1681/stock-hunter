@@ -36,6 +36,8 @@ def calculate_logic_a_scaling(initial_price, initial_qty, addon_price, addon_qty
     }
 
 # --- Streamlit 介面呈現 ---
+from utils.styles import load_css
+load_css()
 st.title("⚡ 微台瘋狂操作 - 動態加碼與風控運算模組")
 st.markdown("遵守「有賺不能賠」原則，用帳面獲利加碼，並維持原始目標價讓獲利奔跑。")
 
