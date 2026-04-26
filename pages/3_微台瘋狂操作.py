@@ -3,8 +3,8 @@ import streamlit as st
 
 # --- 頁面設定 ---
 st.set_page_config(
-    page_title="微台瘋狂操作",
-    page_icon="📈",
+    page_title="微台操作 - 阿紘的股票儀表板",
+    page_icon="⚡",
     layout="wide"
 )
 
@@ -36,7 +36,7 @@ def calculate_logic_a_scaling(initial_price, initial_qty, addon_price, addon_qty
     }
 
 # --- Streamlit 介面呈現 ---
-st.title("📈 微台瘋狂操作 - 動態加碼與風控運算模組")
+st.title("⚡ 微台瘋狂操作 - 動態加碼與風控運算模組")
 st.markdown("遵守「有賺不能賠」原則，用帳面獲利加碼，並維持原始目標價讓獲利奔跑。")
 
 # 側邊欄輸入參數
