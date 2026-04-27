@@ -78,7 +78,7 @@ def fetch_twse_live(query_date: date):
                 if len(row) != n_fields:
                     continue
                 code = row[idx.get("證券代號", 0)]
-                if not str(code).strip().isdigit():
+                if not str(code).strip() or not str(code).strip()[0].isdigit():
                     continue
                 rec = {}
                 for orig, new in rename.items():
