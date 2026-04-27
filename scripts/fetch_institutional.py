@@ -72,7 +72,7 @@ def main():
                     continue
                 # 跳過代號不是數字的行（例如「合計」等）
                 code = row[idx.get("證券代號", 0)] if "證券代號" in idx else ""
-                if not str(code).strip().replace(" ", "").isdigit():
+                if not str(code).strip() or not str(code).strip()[0].isdigit():
                     continue
                 rec = {}
                 for orig, new in rename.items():
