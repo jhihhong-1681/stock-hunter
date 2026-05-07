@@ -1,0 +1,24 @@
+# 本機憑證（絕對不能上傳）
+credentials.json
+*.json
+!discord_config.json.example
+
+# 本機資料檔
+*.csv
+cash_balance.txt
+alert_history.txt
+
+# Streamlit 本機 secrets
+.streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+.venv/
+
+# 系統
+.DS_Store
+Thumbs.db
