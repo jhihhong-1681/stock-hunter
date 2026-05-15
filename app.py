@@ -5,8 +5,10 @@ import plotly.graph_objects as go
 import requests
 import json
 import os
+from datetime import datetime
 
 import gspread
+import gspread.utils
 from google.oauth2.service_account import Credentials
 
 # ══════════════════════════════════════════════
@@ -184,6 +186,151 @@ def delete_portfolio_row(ticker: str):
     _load_portfolio_raw.clear()
     return True, f"{ticker} 已刪除"
 
+# ══════════════════════════════════════════════
+#  交易引擎
+# ══════════════════════════════════════════════
+USD_RATE = 31  # 固定匯率，與原試算表公式一致
+
+def get_position_info(ticker: str):
+    """讀取目前持股數與均價（取公式計算結果，非公式本身）"""
+    ws = _get_portfolio_ws()
+    row = _find_ticker_row(ws, ticker)
+    if not row:
+        return None
+    data = ws.get(f'A{row}:N{row}', value_render_option='UNFORMATTED_VALUE')
+    if not data or not data[0]:
+        return None
+    r = data[0]
+    def _f(idx):
+        try: return float(r[idx]) if r[idx] != '' else 0.0
+        except: return 0.0
+    return {
+        'row': row,
+        'market':   r[0] if len(r) > 0 else '美股',
+        'name':     r[2] if len(r) > 2 else '',
+        'shares':   _f(3),
+        'avg_cost': _f(5),
+        'currency': r[6] if len(r) > 6 else 'USD',
+        'realized': _f(13),
+    }
+
+def _ensure_log_sheet():
+    """建立交易紀錄分頁（若不存在）"""
+    sh = get_spreadsheet()
+    try:
+        return sh.worksheet('交易紀錄')
+    except Exception:
+        ws = sh.add_worksheet(title='交易紀錄', rows=1000, cols=9)
+        ws.update([['日期','操作','股票代號','股票名稱',
+                    '股數','成交價($)','均價後($)','現金變動(TWD)','備註']])
+        return ws
+
+def _append_log(action, ticker, name, shares, price, avg_after, cash_chg, note=''):
+    ws = _ensure_log_sheet()
+    ws.append_row([
+        datetime.now().strftime('%Y-%m-%d %H:%M'),
+        action, ticker, name,
+        round(float(shares), 4), round(float(price), 4),
+        round(float(avg_after), 4), round(float(cash_chg), 0), note
+    ], value_input_option='USER_ENTERED')
+
+def execute_buy(ticker: str, shares: float, price: float,
+                name: str = '', market: str = '美股', currency: str = 'USD'):
+    """
+    買入：
+    · 已有持股 → 加權平均更新 D(股數)、F(均價純數字)
+    · 新持股   → 新增一列（含 GOOGLEFINANCE 公式）
+    · 不碰其他任何欄位或列
+    """
+    ws   = _get_portfolio_ws()
+    pos  = get_position_info(ticker)
+    rate = USD_RATE if currency == 'USD' else 1
+    cost_ntd = round(shares * price * rate, 0)
+
+    if pos:
+        old_s, old_avg = pos['shares'], pos['avg_cost']
+        new_s   = old_s + shares
+        new_avg = round((old_avg * old_s + price * shares) / new_s, 4)
+        row = pos['row']
+        ws.batch_update([
+            {'range': gspread.utils.rowcol_to_a1(row, 4), 'values': [[new_s]]},
+            {'range': gspread.utils.rowcol_to_a1(row, 6), 'values': [[new_avg]]},
+        ], value_input_option='USER_ENTERED')
+        used_name = pos['name'] or name
+    else:
+        add_portfolio_row({
+            '市場': market, '股票代號': ticker, '股票名稱': name,
+            '股數': shares, '成本均價': price, '第一筆建倉': price,
+            '幣別': currency,
+        })
+        new_avg, new_s, used_name = price, shares, name
+
+    # 現金扣除
+    s = dict(st.session_state.settings)
+    s['cash_balance'] = str(round(float(s.get('cash_balance', 0)) - cost_ntd, 0))
+    save_settings(s); st.session_state.settings = s
+
+    _append_log('買', ticker, used_name, shares, price, new_avg, -cost_ntd)
+    _load_portfolio_raw.clear()
+    return True, f"買入 {shares} 股 {ticker} @ ${price}，新均價 ${new_avg:.4f}"
+
+def execute_sell(ticker: str, shares_sold: float, sell_price: float):
+    """
+    賣出：
+    · 更新 D(剩餘股數)、M(平倉備註)、N(累計已實現損益)
+    · 不動 F(均價) 及任何公式欄
+    """
+    pos = get_position_info(ticker)
+    if not pos:
+        return False, f"找不到 {ticker} 的持股"
+    if shares_sold > pos['shares'] + 0.0001:
+        return False, f"賣出股數({shares_sold}) 超過持有({pos['shares']:.4f})"
+
+    ws   = _get_portfolio_ws()
+    row  = pos['row']
+    rate = USD_RATE if pos['currency'] == 'USD' else 1
+
+    remaining = round(pos['shares'] - shares_sold, 4)
+    realized  = round((sell_price - pos['avg_cost']) * shares_sold * rate, 2)
+    new_total = round(pos['realized'] + realized, 2)
+    proceeds  = round(shares_sold * sell_price * rate, 0)
+
+    # 平倉備註：附加到現有文字
+    try:
+        cur = ws.get(f'M{row}', value_render_option='FORMATTED_VALUE')
+        cur_note = cur[0][0] if cur and cur[0] else ''
+    except Exception:
+        cur_note = ''
+    new_note = (cur_note + f' / {sell_price}賣出{shares_sold}股').strip(' /')
+
+    ws.batch_update([
+        {'range': gspread.utils.rowcol_to_a1(row,  4), 'values': [[remaining]]},
+        {'range': gspread.utils.rowcol_to_a1(row, 13), 'values': [[new_note]]},
+        {'range': gspread.utils.rowcol_to_a1(row, 14), 'values': [[new_total]]},
+    ], value_input_option='USER_ENTERED')
+
+    # 現金加回
+    s = dict(st.session_state.settings)
+    s['cash_balance'] = str(round(float(s.get('cash_balance', 0)) + proceeds, 0))
+    save_settings(s); st.session_state.settings = s
+
+    _append_log('賣', ticker, pos['name'], shares_sold, sell_price,
+                pos['avg_cost'], proceeds, f"已實現損益 NT${realized:+,.0f}")
+    _load_portfolio_raw.clear()
+    return True, f"賣出 {shares_sold} 股 {ticker} @ ${sell_price}，已實現 NT${realized:+,.0f}"
+
+@st.cache_data(ttl=30)
+def load_transaction_log():
+    try:
+        ws = _ensure_log_sheet()
+        data = ws.get_all_values()
+        if len(data) <= 1:
+            return pd.DataFrame(columns=['日期','操作','股票代號','股票名稱',
+                                         '股數','成交價($)','均價後($)','現金變動(TWD)','備註'])
+        return pd.DataFrame(data[1:], columns=data[0])
+    except Exception:
+        return pd.DataFrame()
+
 def save_watchlist(df):
     sh = get_spreadsheet()
     try:
@@ -284,7 +431,7 @@ def calc_tranches(p0: float, budget_usd: float, filled: list):
 # ══════════════════════════════════════════════
 st.title("📈 我的專屬股票儀表板")
 
-tab1, tab2 = st.tabs(["📊 投資組合", "🎯 分批買入模板"])
+tab1, tab2, tab3 = st.tabs(["📊 投資組合", "🎯 分批買入模板", "💼 交易"])
 
 # ══════════════════════════════════════════════
 #  TAB 1: 投資組合
@@ -767,3 +914,174 @@ with tab2:
 
         > 股價資料來源：Yahoo Finance，每 2 分鐘自動更新。
         """)
+
+
+# ══════════════════════════════════════════════
+#  TAB 3: 交易
+# ══════════════════════════════════════════════
+with tab3:
+    st.markdown("## 💼 交易操作")
+
+    buy_tab, sell_tab, log_tab = st.tabs(["📈 買入", "📉 賣出", "📋 交易紀錄"])
+
+    # ── 買入 ──────────────────────────────────
+    with buy_tab:
+        st.markdown("### 📈 買入股票")
+        st.caption("執行後會更新 Google Sheets 的股數與均價，並扣除現金餘額")
+
+        existing_tickers = st.session_state.portfolio_df['股票代號'].tolist() if not st.session_state.portfolio_df.empty else []
+
+        buy_mode = st.radio("股票", ["現有持股", "新股票"], horizontal=True, key="buy_mode")
+
+        if buy_mode == "現有持股":
+            if not existing_tickers:
+                st.info("目前無持股資料")
+            else:
+                b_ticker = st.selectbox("選擇股票", existing_tickers, key="b_ticker_exist")
+                pos_info = get_position_info(b_ticker) if b_ticker else None
+                if pos_info:
+                    st.info(f"目前持有：**{pos_info['shares']:.2f} 股**，均價 **${pos_info['avg_cost']:.4f}**")
+        else:
+            bc1, bc2, bc3 = st.columns(3)
+            with bc1: b_ticker = st.text_input("股票代號", key="b_ticker_new").upper().strip()
+            with bc2: b_name   = st.text_input("股票名稱", key="b_name_new")
+            with bc3: b_market = st.selectbox("市場", ["美股","台股"], key="b_market_new")
+            b_currency = st.selectbox("幣別", ["USD","TWD"], key="b_curr_new")
+            pos_info = None
+
+        st.markdown("---")
+        input_by = st.radio("輸入方式", ["依股數", "依金額"], horizontal=True, key="buy_input_by")
+        rate = USD_RATE if (pos_info and pos_info.get('currency','USD')=='USD') or buy_mode=="新股票" else 1
+
+        bi1, bi2 = st.columns(2)
+        with bi1:
+            b_price = st.number_input("成交價 ($)", min_value=0.01, value=10.0, step=0.01, key="b_price")
+        with bi2:
+            if input_by == "依股數":
+                b_shares = st.number_input("買入股數", min_value=0.01, value=10.0, step=1.0, key="b_shares")
+                b_amount = b_shares * b_price
+            else:
+                b_amount_input = st.number_input("投入金額 (USD)", min_value=1.0, value=1000.0, step=100.0, key="b_amount")
+                b_shares = round(b_amount_input / b_price, 4) if b_price > 0 else 0
+                b_amount = b_amount_input
+
+        # 預覽
+        st.markdown("---")
+        prev1, prev2, prev3, prev4 = st.columns(4)
+        prev1.metric("買入股數", f"{b_shares:.4f} 股")
+        prev2.metric("成交金額 (USD)", f"${b_amount:,.2f}")
+        prev3.metric("成交金額 (TWD)", f"NT${b_amount * USD_RATE:,.0f}")
+        if pos_info and pos_info['shares'] > 0:
+            new_s = pos_info['shares'] + b_shares
+            new_avg = round((pos_info['avg_cost'] * pos_info['shares'] + b_price * b_shares) / new_s, 4)
+            prev4.metric("買後均價", f"${new_avg:.4f}",
+                         delta=f"{new_avg - pos_info['avg_cost']:+.4f}")
+        else:
+            prev4.metric("買後均價", f"${b_price:.4f}")
+
+        if st.button("✅ 確認買入", type="primary", key="confirm_buy"):
+            if not b_ticker:
+                st.error("請填入股票代號")
+            elif b_shares <= 0 or b_price <= 0:
+                st.error("股數與成交價不能為 0")
+            else:
+                curr = 'USD'
+                if buy_mode == "現有持股" and pos_info:
+                    curr = pos_info.get('currency', 'USD')
+                    n_name, n_market = pos_info.get('name',''), pos_info.get('market','美股')
+                else:
+                    n_name, n_market = b_name, b_market
+                with st.spinner("更新中…"):
+                    ok, msg = execute_buy(b_ticker, b_shares, b_price, n_name, n_market, curr)
+                    st.session_state.portfolio_df = _load_portfolio_raw()
+                if ok:
+                    st.success(f"✅ {msg}")
+                    load_transaction_log.clear()
+                else:
+                    st.error(msg)
+
+    # ── 賣出 ──────────────────────────────────
+    with sell_tab:
+        st.markdown("### 📉 賣出股票")
+        st.caption("執行後會更新股數、記錄平倉備註、累加已實現損益，並加回現金餘額")
+
+        active_tickers = st.session_state.portfolio_df[
+            st.session_state.portfolio_df['股數'].apply(lambda x: clean_val(x) > 0)
+        ]['股票代號'].tolist()
+
+        if not active_tickers:
+            st.info("目前無持股")
+        else:
+            s_ticker = st.selectbox("選擇要賣出的股票", active_tickers, key="s_ticker")
+            s_pos = get_position_info(s_ticker) if s_ticker else None
+
+            if s_pos:
+                si1, si2, si3 = st.columns(3)
+                si1.metric("目前持股", f"{s_pos['shares']:.4f} 股")
+                si2.metric("均價", f"${s_pos['avg_cost']:.4f}")
+                si3.metric("已實現損益", f"NT${s_pos['realized']:+,.0f}")
+
+                st.markdown("---")
+                sc1, sc2 = st.columns(2)
+                with sc1:
+                    s_price = st.number_input("賣出價格 ($)", min_value=0.01,
+                                              value=round(s_pos['avg_cost'], 2),
+                                              step=0.01, key="s_price")
+                with sc2:
+                    s_shares = st.number_input("賣出股數", min_value=0.01,
+                                               max_value=float(s_pos['shares']),
+                                               value=float(s_pos['shares']),
+                                               step=1.0, key="s_shares")
+
+                # 預覽損益
+                rate = USD_RATE if s_pos.get('currency','USD') == 'USD' else 1
+                realized_preview = round((s_price - s_pos['avg_cost']) * s_shares * rate, 0)
+                remaining_preview = s_pos['shares'] - s_shares
+
+                st.markdown("---")
+                sp1, sp2, sp3, sp4 = st.columns(4)
+                sp1.metric("賣出金額 (USD)", f"${s_shares * s_price:,.2f}")
+                sp2.metric("賣出金額 (TWD)", f"NT${s_shares * s_price * rate:,.0f}")
+                color = "normal" if realized_preview >= 0 else "inverse"
+                sp3.metric("本次已實現損益", f"NT${realized_preview:+,.0f}",
+                           delta=f"NT${realized_preview:+,.0f}", delta_color=color)
+                sp4.metric("賣後剩餘股數", f"{remaining_preview:.4f} 股")
+
+                if st.button("✅ 確認賣出", type="primary", key="confirm_sell"):
+                    with st.spinner("更新中…"):
+                        ok, msg = execute_sell(s_ticker, s_shares, s_price)
+                        st.session_state.portfolio_df = _load_portfolio_raw()
+                    if ok:
+                        st.success(f"✅ {msg}")
+                        load_transaction_log.clear()
+                    else:
+                        st.error(msg)
+
+    # ── 交易紀錄 ──────────────────────────────
+    with log_tab:
+        st.markdown("### 📋 交易紀錄")
+        if st.button("🔄 重新整理", key="refresh_log"):
+            load_transaction_log.clear()
+
+        log_df = load_transaction_log()
+        if log_df.empty:
+            st.info("尚無交易紀錄。執行買入或賣出後，紀錄會自動出現在這裡。")
+        else:
+            # 最新的在上面
+            log_df = log_df.iloc[::-1].reset_index(drop=True)
+            def color_action(val):
+                if val == '買': return 'color: #4CAF50; font-weight: bold'
+                if val == '賣': return 'color: #FF5252; font-weight: bold'
+                return ''
+            def color_cash(val):
+                try:
+                    v = float(str(val).replace(',',''))
+                    return 'color: #4CAF50' if v > 0 else 'color: #FF5252'
+                except: return ''
+            st.dataframe(
+                log_df.style
+                    .applymap(color_action, subset=['操作'])
+                    .applymap(color_cash, subset=['現金變動(TWD)']),
+                use_container_width=True, height=500
+            )
+            st.caption(f"共 {len(log_df)} 筆紀錄")
