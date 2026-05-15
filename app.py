@@ -98,11 +98,91 @@ def _load_settings_raw():
 #  資料寫入函式
 # ══════════════════════════════════════════════
 def save_portfolio(df):
-    sh = get_spreadsheet()
-    ws = sh.worksheet('美股持有庫存(每日更新)')
-    ws.clear()
-    ws.update([df.columns.tolist()] + df.fillna('').values.tolist())
+    # ⚠️ 保留此函式但不呼叫 — 不允許整表覆寫
+    raise RuntimeError("禁止整表覆寫投資組合，請使用 update/add/delete_portfolio_row")
+
+def _get_portfolio_ws():
+    return get_spreadsheet().worksheet('美股持有庫存(每日更新)')
+
+# 欄位對應 (1-based)
+_COL = {'市場':1,'股票代號':2,'股票名稱':3,'股數':4,'第一筆建倉':5,
+        '成本均價':6,'幣別':7,'現價':8,'總投入':9,'現值':10,
+        '損益':11,'報酬率':12,'平倉':13,'已實現損益':14}
+# 只允許從 App 更新這些欄位 (不包含公式欄)
+SAFE_EDIT_COLS = ['股票名稱','股數','第一筆建倉','幣別','平倉']
+
+def _find_ticker_row(ws, ticker: str):
+    """找股票代號在工作表的列號 (1-based)，找不到回傳 None"""
+    try:
+        cell = ws.find(ticker, in_column=_COL['股票代號'])
+        return cell.row
+    except Exception:
+        return None
+
+def update_portfolio_row(ticker: str, updates: dict):
+    """安全更新：只更新 SAFE_EDIT_COLS 欄位，公式欄完全不碰"""
+    ws = _get_portfolio_ws()
+    row = _find_ticker_row(ws, ticker)
+    if not row:
+        return False, f"找不到 {ticker}"
+    batch = []
+    for col, val in updates.items():
+        if col not in SAFE_EDIT_COLS:
+            continue
+        col_idx = _COL[col]
+        a1 = gspread.utils.rowcol_to_a1(row, col_idx)
+        batch.append({'range': a1, 'values': [[val]]})
+    if batch:
+        ws.batch_update(batch)
     _load_portfolio_raw.clear()
+    return True, "已更新"
+
+def add_portfolio_row(data: dict):
+    """新增一列到最後一筆股票行的下一行，公式欄自動帶入"""
+    ws = _get_portfolio_ws()
+    all_vals = ws.get_all_values()
+    # 找最後一列有 市場 資料的行
+    last_row = 1
+    for i, row in enumerate(all_vals):
+        if row and row[0].strip() in ['美股','台股']:
+            last_row = i + 1
+    insert_at = last_row + 1
+    ticker  = str(data.get('股票代號','')).strip().upper()
+    shares  = data.get('股數', 0)
+    avg     = data.get('成本均價', 0)
+    market  = data.get('市場', '美股')
+    currency = data.get('幣別', 'USD')
+    rate    = 31 if currency == 'USD' else 1
+    r = insert_at
+    new_row = [
+        market,                                         # A 市場
+        ticker,                                         # B 股票代號
+        data.get('股票名稱', ''),                        # C 股票名稱
+        shares,                                         # D 股數
+        data.get('第一筆建倉', ''),                      # E 第一筆建倉
+        avg,                                            # F 成本均價 (純數字)
+        currency,                                       # G 幣別
+        f'=GOOGLEFINANCE(B{r},"price")',                # H 現價
+        f'=D{r}*F{r}*{rate}',                          # I 總投入
+        f'=D{r}*H{r}*{rate}',                          # J 現值
+        f'=J{r}-I{r}',                                 # K 損益
+        f'=K{r}/I{r}',                                 # L 報酬率
+        data.get('平倉', ''),                            # M 平倉
+        '',                                             # N 已實現損益
+    ]
+    ws.insert_row(new_row, insert_at, value_input_option='USER_ENTERED')
+    _load_portfolio_raw.clear()
+    return True, f"{ticker} 已新增至第 {insert_at} 行"
+
+def delete_portfolio_row(ticker: str):
+    """刪除整列 (只刪股票代號匹配的那列)"""
+    ws = _get_portfolio_ws()
+    row = _find_ticker_row(ws, ticker)
+    if not row:
+        return False, f"找不到 {ticker}"
+    ws.delete_rows(row)
+    _load_portfolio_raw.clear()
+    return True, f"{ticker} 已刪除"
 
 def save_watchlist(df):
     sh = get_spreadsheet()
@@ -279,6 +359,87 @@ with tab1:
         display_cols = [c for c in COLS if c in active.columns]
         st.dataframe(active[display_cols].style.map(style_profit,
             subset=['損益','報酬率','已實現損益']), use_container_width=True)
+
+    # ── 持倉管理 ──────────────────────────────────────────
+    st.divider()
+    with st.expander("✏️ 持倉管理（新增 / 編輯 / 刪除）", expanded=False):
+        action = st.radio("選擇操作", ["➕ 新增持股", "✏️ 編輯持股", "🗑️ 刪除持股"],
+                          horizontal=True, key="mgmt_action")
+
+        if action == "➕ 新增持股":
+            st.caption("📌 成本均價請填入你的實際均價，現價與計算欄會自動帶入 Google Finance 公式")
+            c1,c2,c3,c4 = st.columns(4)
+            with c1: add_market   = st.selectbox("市場", ["美股","台股"], key="add_mkt")
+            with c2: add_ticker   = st.text_input("股票代號", key="add_ticker").upper().strip()
+            with c3: add_name     = st.text_input("股票名稱", key="add_name")
+            with c4: add_currency = st.selectbox("幣別", ["USD","TWD"], key="add_currency")
+            c5,c6,c7 = st.columns(3)
+            with c5: add_shares   = st.number_input("股數", min_value=0.0, value=0.0, key="add_shares")
+            with c6: add_cost     = st.number_input("成本均價 ($)", min_value=0.0, value=0.0, key="add_cost")
+            with c7: add_first    = st.number_input("第一筆建倉 ($)", min_value=0.0, value=0.0, key="add_first")
+            if st.button("✅ 新增到 Google Sheets", key="btn_add"):
+                if not add_ticker:
+                    st.warning("請填入股票代號")
+                elif add_shares <= 0 or add_cost <= 0:
+                    st.warning("股數與成本均價不能為 0")
+                else:
+                    with st.spinner("新增中…"):
+                        ok, msg = add_portfolio_row({
+                            '市場': add_market, '股票代號': add_ticker,
+                            '股票名稱': add_name, '股數': add_shares,
+                            '成本均價': add_cost, '第一筆建倉': add_first,
+                            '幣別': add_currency,
+                        })
+                        st.session_state.portfolio_df = _load_portfolio_raw()
+                    if ok: st.success(f"✅ {msg}")
+                    else:  st.error(msg)
+
+        elif action == "✏️ 編輯持股":
+            tickers_list = df['股票代號'].tolist()
+            if not tickers_list:
+                st.info("目前無持股資料")
+            else:
+                sel = st.selectbox("選擇要編輯的股票", tickers_list, key="edit_sel")
+                row_data = df[df['股票代號'] == sel].iloc[0] if sel else None
+                if row_data is not None:
+                    st.caption(f"⚠️ 成本均價、現價、總投入等公式欄不可在此修改，請直接在 Google Sheets 編輯")
+                    e1,e2,e3 = st.columns(3)
+                    with e1:
+                        e_name   = st.text_input("股票名稱", value=str(row_data.get('股票名稱','')), key="e_name")
+                    with e2:
+                        e_shares = st.number_input("股數", value=float(clean_val(row_data.get('股數',0))), key="e_shares")
+                    with e3:
+                        e_first  = st.number_input("第一筆建倉 ($)", value=float(clean_val(row_data.get('第一筆建倉',0))), key="e_first")
+                    e4,e5 = st.columns([1,2])
+                    with e4:
+                        e_curr   = st.selectbox("幣別", ["USD","TWD"],
+                                                index=0 if row_data.get('幣別','USD')=='USD' else 1, key="e_curr")
+                    with e5:
+                        e_closedpos = st.text_input("平倉備註", value=str(row_data.get('平倉','')), key="e_closed")
+                    if st.button("💾 儲存變更", key="btn_edit"):
+                        with st.spinner("更新中…"):
+                            ok, msg = update_portfolio_row(sel, {
+                                '股票名稱': e_name, '股數': e_shares,
+                                '第一筆建倉': e_first, '幣別': e_curr,
+                                '平倉': e_closedpos,
+                            })
+                            st.session_state.portfolio_df = _load_portfolio_raw()
+                        if ok: st.success(f"✅ {sel} 已更新")
+                        else:  st.error(msg)
+
+        elif action == "🗑️ 刪除持股":
+            tickers_list = df['股票代號'].tolist()
+            if not tickers_list:
+                st.info("目前無持股資料")
+            else:
+                del_sel = st.selectbox("選擇要刪除的股票", tickers_list, key="del_sel")
+                st.warning(f"⚠️ 確定要從 Google Sheets 刪除 **{del_sel}** 整列嗎？此操作無法復原。")
+                if st.button(f"🗑️ 確認刪除 {del_sel}", key="btn_del", type="primary"):
+                    with st.spinner("刪除中…"):
+                        ok, msg = delete_portfolio_row(del_sel)
+                        st.session_state.portfolio_df = _load_portfolio_raw()
+                    if ok: st.success(f"✅ {msg}")
+                    else:  st.error(msg)
 
     st.divider()
 
