@@ -3,6 +3,8 @@ import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
 import json
+import base64
+import requests
 from pathlib import Path
 
 st.set_page_config(page_title="自選股清單 - 阿紘的股票儀表板", page_icon="⭐", layout="wide")
@@ -11,18 +13,54 @@ load_css()
 st.title("⭐ 自選股清單")
 st.markdown("追蹤你關注的股票，台股加 `.TW`（例：`2330.TW`），美股直接輸入（例：`NVDA`）。")
 
-# --- 讀寫 watchlist.json ---
-WATCHLIST_FILE = Path(__file__).parent.parent / "data" / "watchlist.json"
+# --- GitHub 讀寫設定 ---
+REPO      = "jhihhong-1681/stock-hunter"
+GH_PATH   = "data/watchlist.json"
+GH_TOKEN  = st.secrets.get("GH_PAT", "")
+GH_HEADERS = {
+    "Authorization": f"token {GH_TOKEN}",
+    "Accept": "application/vnd.github.v3+json"
+}
+GH_URL = f"https://api.github.com/repos/{REPO}/contents/{GH_PATH}"
+
+# 備用：本地檔案路徑
+LOCAL_FILE = Path(__file__).parent.parent / "data" / "watchlist.json"
 
 def load_watchlist() -> list:
+    if GH_TOKEN:
+        try:
+            r = requests.get(GH_URL, headers=GH_HEADERS, timeout=10)
+            if r.status_code == 200:
+                content = base64.b64decode(r.json()["content"]).decode("utf-8")
+                return json.loads(content)
+        except Exception:
+            pass
+    # fallback：讀本地檔
     try:
-        return json.loads(WATCHLIST_FILE.read_text(encoding="utf-8"))
+        return json.loads(LOCAL_FILE.read_text(encoding="utf-8"))
     except Exception:
         return []
 
 def save_watchlist(tickers: list):
-    WATCHLIST_FILE.parent.mkdir(parents=True, exist_ok=True)
-    WATCHLIST_FILE.write_text(json.dumps(tickers, ensure_ascii=False), encoding="utf-8")
+    content_b64 = base64.b64encode(
+        json.dumps(tickers, ensure_ascii=False).encode("utf-8")
+    ).decode("utf-8")
+    if GH_TOKEN:
+        try:
+            # 取得目前檔案的 SHA（更新時必填）
+            r = requests.get(GH_URL, headers=GH_HEADERS, timeout=10)
+            sha = r.json().get("sha", "") if r.status_code == 200 else ""
+            payload = {
+                "message": f"chore: update watchlist ({len(tickers)} stocks)",
+                "content": content_b64,
+                "sha": sha
+            }
+            requests.put(GH_URL, headers=GH_HEADERS, json=payload, timeout=10)
+        except Exception:
+            pass
+    # 同步寫本地，讓 git pull 可以取得最新
+    LOCAL_FILE.parent.mkdir(parents=True, exist_ok=True)
+    LOCAL_FILE.write_text(json.dumps(tickers, ensure_ascii=False), encoding="utf-8")
 
 if 'watchlist' not in st.session_state:
     st.session_state.watchlist = load_watchlist()
@@ -49,7 +87,7 @@ with st.expander("📋 批次匯入 / 匯出"):
                 st.session_state.watchlist.append(t)
                 added += 1
         save_watchlist(st.session_state.watchlist)
-        st.success(f"已加入 {added} 檔，清單已自動儲存 ✅")
+        st.success(f"已加入 {added} 檔，清單已同步到 GitHub ✅")
         st.rerun()
     if st.session_state.watchlist:
         st.text_input("匯出（複製下方文字，下次可貼回批次匯入）",
