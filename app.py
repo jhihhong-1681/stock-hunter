@@ -55,7 +55,7 @@ def get_spreadsheet():
 def get_spreadsheet_safe():
     """取得連線；若連線已過期自動重建"""
     try:
-        sh = get_spreadsheet_safe()
+        sh = get_spreadsheet()
         sh.fetch_sheet_metadata()   # 測試連線是否有效
         return sh
     except Exception:
@@ -1108,8 +1108,8 @@ with tab3:
                 except: return ''
             st.dataframe(
                 log_df.style
-                    .applymap(color_action, subset=['操作'])
-                    .applymap(color_cash, subset=['現金變動(TWD)']),
+                    .map(color_action, subset=['操作'])
+                    .map(color_cash, subset=['現金變動(TWD)']),
                 use_container_width=True, height=500
             )
             st.caption(f"共 {len(log_df)} 筆紀錄")
