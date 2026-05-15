@@ -63,23 +63,29 @@ def fetch_quote(tickers: tuple):
     rows = []
     for ticker in tickers:
         try:
-            hist = yf.download(ticker, period="5d", progress=False, auto_adjust=True)
+            hist = yf.download(ticker, period="6mo", progress=False, auto_adjust=True)
             if hist.empty:
                 raise ValueError("empty")
             close = hist['Close'].dropna()
             if isinstance(close, pd.DataFrame):
                 close = close.iloc[:, 0]
-            price = float(close.iloc[-1])
-            prev = float(close.iloc[-2]) if len(close) >= 2 else price
-            w_prev = float(close.iloc[0])
+            price  = float(close.iloc[-1])
+            prev   = float(close.iloc[-2])  if len(close) >= 2  else price
+            w_prev = float(close.iloc[-6])  if len(close) >= 6  else float(close.iloc[0])
+            m_prev = float(close.iloc[-22]) if len(close) >= 22 else float(close.iloc[0])
+            h_prev = float(close.iloc[0])
             rows.append({
-                "代號": ticker,
-                "現價": price,
-                "日漲跌(%)": ((price - prev) / prev) * 100 if prev else 0,
-                "週漲跌(%)": ((price - w_prev) / w_prev) * 100 if w_prev else 0,
+                "代號":       ticker,
+                "現價":       price,
+                "日漲跌(%)":   ((price - prev)   / prev)   * 100 if prev   else 0,
+                "週漲跌(%)":   ((price - w_prev)  / w_prev) * 100 if w_prev else 0,
+                "月漲跌(%)":   ((price - m_prev)  / m_prev) * 100 if m_prev else 0,
+                "半年漲跌(%)": ((price - h_prev)  / h_prev) * 100 if h_prev else 0,
             })
         except Exception:
-            rows.append({"代號": ticker, "現價": None, "日漲跌(%)": None, "週漲跌(%)": None})
+            rows.append({"代號": ticker, "現價": None,
+                         "日漲跌(%)": None, "週漲跌(%)": None,
+                         "月漲跌(%)": None, "半年漲跌(%)": None})
     return pd.DataFrame(rows)
 
 @st.cache_data(ttl=1800)
@@ -105,12 +111,12 @@ def color_pct(val):
         return ''
     return 'color: #ff4d4d; font-weight:bold' if val > 0 else ('color: #00cc66; font-weight:bold' if val < 0 else '')
 
+pct_cols = ["日漲跌(%)", "週漲跌(%)", "月漲跌(%)", "半年漲跌(%)"]
+fmt_dict = {"現價": "{:.2f}", **{c: "{:+.2f}%" for c in pct_cols}}
 try:
-    styled = df.style.map(color_pct, subset=["日漲跌(%)", "週漲跌(%)"]) \
-                     .format({"現價": "{:.2f}", "日漲跌(%)": "{:+.2f}%", "週漲跌(%)": "{:+.2f}%"}, na_rep="N/A")
+    styled = df.style.map(color_pct, subset=pct_cols).format(fmt_dict, na_rep="N/A")
 except AttributeError:
-    styled = df.style.applymap(color_pct, subset=["日漲跌(%)", "週漲跌(%)"]) \
-                     .format({"現價": "{:.2f}", "日漲跌(%)": "{:+.2f}%", "週漲跌(%)": "{:+.2f}%"}, na_rep="N/A")
+    styled = df.style.applymap(color_pct, subset=pct_cols).format(fmt_dict, na_rep="N/A")
 st.dataframe(styled, use_container_width=True, hide_index=True)
 
 # --- 走勢圖 ---
