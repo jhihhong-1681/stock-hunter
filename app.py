@@ -38,24 +38,36 @@ TARGET_RATIO = 2.00
 # ══════════════════════════════════════════════
 #  Google Sheets 連線
 # ══════════════════════════════════════════════
-@st.cache_resource
-def get_spreadsheet():
+def _build_spreadsheet():
+    """建立新的 Google Sheets 連線"""
     try:
-        # Streamlit Cloud: 從 secrets 讀取
         creds_dict = dict(st.secrets["gcp_service_account"])
         creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
     except Exception:
-        # 本機開發: 從 credentials.json 讀取
         creds = Credentials.from_service_account_file('credentials.json', scopes=SCOPES)
     gc = gspread.authorize(creds)
     return gc.open_by_key(SHEET_ID)
+
+@st.cache_resource
+def get_spreadsheet():
+    return _build_spreadsheet()
+
+def get_spreadsheet_safe():
+    """取得連線；若連線已過期自動重建"""
+    try:
+        sh = get_spreadsheet_safe()
+        sh.fetch_sheet_metadata()   # 測試連線是否有效
+        return sh
+    except Exception:
+        get_spreadsheet.clear()     # 清除快取，強制重建
+        return _build_spreadsheet()
 
 # ══════════════════════════════════════════════
 #  資料讀取函式（帶快取）
 # ══════════════════════════════════════════════
 @st.cache_data(ttl=120)
 def _load_portfolio_raw():
-    sh = get_spreadsheet()
+    sh = get_spreadsheet_safe()
     ws = sh.worksheet('美股持有庫存(每日更新)')
     data = ws.get_all_values()
     if len(data) <= 1:
@@ -68,7 +80,7 @@ def _load_portfolio_raw():
 
 @st.cache_data(ttl=120)
 def _load_watchlist_raw():
-    sh = get_spreadsheet()
+    sh = get_spreadsheet_safe()
     try:
         ws = sh.worksheet('自選股監控')
         data = ws.get_all_values()
@@ -84,7 +96,7 @@ def _load_watchlist_raw():
 
 @st.cache_data(ttl=120)
 def _load_settings_raw():
-    sh = get_spreadsheet()
+    sh = get_spreadsheet_safe()
     try:
         ws = sh.worksheet('設定')
         data = ws.get_all_values()
@@ -216,7 +228,7 @@ def get_position_info(ticker: str):
 
 def _ensure_log_sheet():
     """建立交易紀錄分頁（若不存在）"""
-    sh = get_spreadsheet()
+    sh = get_spreadsheet_safe()
     try:
         return sh.worksheet('交易紀錄')
     except Exception:
@@ -332,7 +344,7 @@ def load_transaction_log():
         return pd.DataFrame()
 
 def save_watchlist(df):
-    sh = get_spreadsheet()
+    sh = get_spreadsheet_safe()
     try:
         ws = sh.worksheet('自選股監控')
     except Exception:
@@ -342,7 +354,7 @@ def save_watchlist(df):
     _load_watchlist_raw.clear()
 
 def save_settings(settings_dict):
-    sh = get_spreadsheet()
+    sh = get_spreadsheet_safe()
     try:
         ws = sh.worksheet('設定')
     except Exception:
@@ -384,16 +396,32 @@ def clean_val(v):
 
 @st.cache_data(ttl=120)
 def fetch_price(ticker: str):
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=5d"
-    headers = {"User-Agent": "Mozilla/5.0"}
+    """抓即時股價：先試 Yahoo Finance v8，失敗改用 yfinance，再失敗回傳 None"""
+    # 方法 1：Yahoo Finance 非官方 API
     try:
-        r = requests.get(url, headers=headers, timeout=5)
-        data = r.json()
-        closes = data["chart"]["result"][0]["indicators"]["quote"][0]["close"]
-        closes = [c for c in closes if c is not None]
-        return round(closes[-1], 2) if closes else None
+        for base in ["https://query1.finance.yahoo.com", "https://query2.finance.yahoo.com"]:
+            url = f"{base}/v8/finance/chart/{ticker}?interval=1d&range=5d"
+            r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=5)
+            if r.status_code == 200:
+                data = r.json()
+                closes = data["chart"]["result"][0]["indicators"]["quote"][0]["close"]
+                closes = [c for c in closes if c is not None]
+                if closes:
+                    return round(closes[-1], 2)
     except Exception:
-        return None
+        pass
+
+    # 方法 2：yfinance 官方套件（備援）
+    try:
+        import yfinance as yf
+        t = yf.Ticker(ticker)
+        hist = t.history(period="5d")
+        if not hist.empty:
+            return round(float(hist["Close"].dropna().iloc[-1]), 2)
+    except Exception:
+        pass
+
+    return None
 
 def calc_tranches(p0: float, budget_usd: float, filled: list):
     rows = []

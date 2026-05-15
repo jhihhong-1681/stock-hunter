@@ -1,6 +1,7 @@
-streamlit>=1.32.0
-gspread>=6.0.0
-google-auth>=2.28.0
-pandas>=2.0.0
-plotly>=5.18.0
-requests>=2.31.0
+streamlit==1.55.0
+gspread==6.2.1
+google-auth==2.49.0
+pandas==2.3.0
+plotly==6.6.0
+requests==2.32.0
+yfinance==1.2.0
