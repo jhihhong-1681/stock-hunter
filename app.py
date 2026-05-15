@@ -281,28 +281,54 @@ with tab1:
             subset=['損益','報酬率','已實現損益']), use_container_width=True)
 
     st.divider()
+
+    # 兩張圖共用同一批有效持股：有投入成本 且 有損益資料
+    chart_data = active[active['n_總投入'] > 0].copy()
+    chart_data['n_rate'] = chart_data['n_損益'] / chart_data['n_總投入'] * 100
+
     l_col, r_col = st.columns([1, 1.2])
     with l_col:
         st.subheader("🥧 資產配置 (成本)")
-        pie_data = active[['股票代號','n_總投入']].copy()
+        pie_data = chart_data[['股票代號','n_總投入']].copy()
         if cash_in > 0:
             pie_data = pd.concat([pie_data,
                 pd.DataFrame([{'股票代號':'現金','n_總投入':cash_in}])])
         if not pie_data.empty:
+            # 計算百分比，決定是否在切片內顯示標籤
+            total_val = pie_data['n_總投入'].sum()
+            pie_data['pct'] = pie_data['n_總投入'] / total_val * 100
+
             fig_pie = px.pie(pie_data, values='n_總投入', names='股票代號', hole=0.4,
                              color_discrete_sequence=px.colors.qualitative.Alphabet)
+            # 小切片（<3%）不顯示文字，靠圖例辨識
+            text_labels = [
+                f"<b>{row['股票代號']}</b><br>{row['pct']:.1f}%"
+                if row['pct'] >= 3 else ""
+                for _, row in pie_data.iterrows()
+            ]
             fig_pie.update_traces(
-                textinfo='percent+label',
-                texttemplate='<b>%{label}</b><br>%{percent:.1%}',
-                insidetextfont=dict(size=18), outsidetextfont=dict(size=18))
-            fig_pie.update_layout(showlegend=False, height=550)
+                text=text_labels,
+                textinfo='text',
+                textposition='inside',
+                insidetextorientation='auto',
+                insidetextfont=dict(size=13),
+            )
+            fig_pie.update_layout(
+                showlegend=True,
+                legend=dict(
+                    orientation='v',
+                    x=1.02, y=0.5,
+                    font=dict(size=12),
+                ),
+                height=560,
+                margin=dict(l=0, r=150, t=20, b=20),
+            )
             st.plotly_chart(fig_pie, use_container_width=True)
 
     with r_col:
         st.subheader("📊 個股報酬率排行 (%)")
-        if not active.empty:
-            active['n_rate'] = active['n_損益'] / active['n_總投入'] * 100
-            bar_p = active.sort_values(by='n_rate', ascending=True)
+        if not chart_data.empty:
+            bar_p = chart_data.sort_values(by='n_rate', ascending=True)
             fig_bar = px.bar(bar_p, x="n_rate", y="股票代號", orientation='h',
                              text_auto='.2f', color="股票代號",
                              color_discrete_sequence=px.colors.qualitative.Alphabet)
