@@ -210,48 +210,42 @@ tab1, tab2 = st.tabs(["📊 投資組合", "🎯 分批買入模板"])
 #  TAB 1: 投資組合
 # ══════════════════════════════════════════════
 with tab1:
-    df = st.session_state.portfolio_df.copy()
+    df_raw = st.session_state.portfolio_df.copy()
+    # 過濾掉 Google Sheet 底部的彙總列（CASH、Total 等非股票列）
+    VALID_MARKETS = ['美股', '台股', 'US', 'TW']
+    df = df_raw[
+        df_raw['市場'].str.strip().isin(VALID_MARKETS) &
+        df_raw['股票代號'].str.strip().ne('') &
+        ~df_raw['股票代號'].str.upper().str.strip().isin(['CASH', 'TOTAL'])
+    ].copy()
+
     saved_cash = get_setting('cash_balance', 0.0)
 
-    col_edit, col_cash_input = st.columns([3, 1])
-    with col_cash_input:
+    # 現金餘額輸入（只存到「設定」分頁，不動投資組合）
+    cash_col, refresh_col, _ = st.columns([2, 1, 3])
+    with cash_col:
         cash_in = st.number_input("💵 目前現金餘額 (台幣)：", min_value=0.0, value=saved_cash)
-
-    st.subheader("✍️ 數據編輯區")
-    edit_df = st.data_editor(df[COLS], num_rows="dynamic", use_container_width=True)
-
-    if st.button("💾 儲存並更新數據"):
-        tmp = edit_df.copy()
-        for i in range(len(tmp)):
-            rate = 31.0 if "USD" in str(tmp.at[i,'幣別']).upper() else 1.0
-            s   = clean_val(tmp.at[i,'股數'])
-            cp  = clean_val(tmp.at[i,'成本均價'])
-            np_ = clean_val(tmp.at[i,'現價'])
-            if s > 0:
-                inv = s * cp * rate
-                val = s * np_ * rate
-                tmp.at[i,'總投入'] = f"{inv:.0f}"
-                tmp.at[i,'現值']   = f"{val:.0f}"
-                diff = val - inv
-                tmp.at[i,'損益']   = f"{diff:.2f}"
-                tmp.at[i,'報酬率'] = f"{(diff/inv*100):.2f}%" if inv != 0 else "0.00%"
-            else:
-                for c in ['總投入','現值','損益','報酬率']:
-                    tmp.at[i, c] = ""
-
-        with st.spinner("💾 同步到 Google Sheets…"):
-            save_portfolio(tmp)
+    with refresh_col:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("💾 儲存現金餘額"):
             new_settings = dict(st.session_state.settings)
             new_settings['cash_balance'] = str(cash_in)
-            save_settings(new_settings)
-            st.session_state.portfolio_df = tmp
-            st.session_state.settings = new_settings
+            with st.spinner("儲存中…"):
+                save_settings(new_settings)
+                st.session_state.settings = new_settings
+            st.success("✅ 已儲存！")
 
-        st.success("✅ 數據已成功同步到 Google Sheets！")
-        st.rerun()
+    st.info("📋 投資組合資料從 Google Sheets 讀取，請直接在試算表中編輯。點「🔄 重新載入」可抓取最新資料。")
+
+    reload_col, _ = st.columns([1, 5])
+    with reload_col:
+        if st.button("🔄 重新載入投資組合"):
+            _load_portfolio_raw.clear()
+            st.session_state.portfolio_df = _load_portfolio_raw()
+            st.rerun()
 
     # KPI 計算
-    calc = edit_df.copy()
+    calc = df.copy()
     calc['n_總投入'] = calc['總投入'].apply(clean_val)
     calc['n_現值']   = calc['現值'].apply(clean_val)
     calc['n_已實現'] = calc['已實現損益'].apply(clean_val)
@@ -282,7 +276,8 @@ with tab1:
         color = '#FF3131' if v > 0 else ('#00FF42' if v < 0 else 'white')
         return f'color:{color};font-weight:bold'
     if not active.empty:
-        st.dataframe(active[COLS].style.applymap(style_profit,
+        display_cols = [c for c in COLS if c in active.columns]
+        st.dataframe(active[display_cols].style.map(style_profit,
             subset=['損益','報酬率','已實現損益']), use_container_width=True)
 
     st.divider()
