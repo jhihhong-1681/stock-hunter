@@ -3,6 +3,8 @@ import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
+import json
+from pathlib import Path
 from datetime import date, timedelta
 
 st.set_page_config(page_title="個股對比 - 阿紘的股票儀表板", page_icon="📊", layout="wide")
@@ -13,10 +15,30 @@ st.markdown("輸入多檔股票（逗號分隔，最多 6 檔），台股加 `.T
 
 STOCK_COLORS = ["#e05c00", "#9b59b6", "#2ecc71", "#e74c3c", "#f39c12", "#1abc9c"]
 
+# --- 從自選股選取 ---
+WATCHLIST_FILE = Path(__file__).parent.parent / "data" / "watchlist.json"
+try:
+    watchlist = json.loads(WATCHLIST_FILE.read_text(encoding="utf-8"))
+except Exception:
+    watchlist = []
+
+if watchlist:
+    with st.expander("⭐ 從自選股清單選取（最多 6 檔）"):
+        picked = st.multiselect(
+            "選擇股票加入比較",
+            options=watchlist,
+            max_selections=6,
+            key="compare_from_watchlist"
+        )
+        if picked:
+            st.session_state["compare_prefill"] = ", ".join(picked)
+
+prefill = st.session_state.pop("compare_prefill", "NVDA, AAPL")
+
 col1, col2, col3 = st.columns([3, 1, 1])
 with col1:
     tickers_input = st.text_input("股票代號（逗號分隔）",
-                                   value="NVDA, AAPL",
+                                   value=prefill,
                                    placeholder="2330.TW, NVDA, AAPL")
 with col2:
     start_date = st.date_input("開始日期", value=date.today() - timedelta(days=365))

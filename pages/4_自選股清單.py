@@ -190,14 +190,29 @@ st.dataframe(styled, use_container_width=True, hide_index=True)
 st.markdown("---")
 st.subheader("📈 股價走勢")
 
-period_label = st.radio("區間", list(PERIOD_MAP.keys()), horizontal=True, index=1)
+chart_col1, chart_col2 = st.columns([3, 1])
+with chart_col1:
+    selected_chart = st.multiselect(
+        "選擇要顯示的股票（最多 20 檔）",
+        options=st.session_state.watchlist,
+        default=st.session_state.watchlist[:10],
+        max_selections=20,
+    )
+with chart_col2:
+    period_label = st.radio("區間", list(PERIOD_MAP.keys()), horizontal=False, index=1)
 yf_period = PERIOD_MAP[period_label]
 
+if not selected_chart:
+    st.info("請從上方選擇要比較的股票。")
+    st.stop()
+
 COLORS = ["#e05c00", "#4a90e2", "#2ecc71", "#9b59b6", "#e74c3c", "#f39c12",
-          "#1abc9c", "#e67e22", "#aaaaaa", "#c0392b"]
+          "#1abc9c", "#e67e22", "#aaaaaa", "#c0392b", "#ff6b9d", "#00d2ff",
+          "#f8c537", "#a8ff78", "#ff9a3c", "#c471ed", "#12c2e9", "#f64f59",
+          "#43e97b", "#fa709a"]
 
 with st.spinner("載入歷史資料..."):
-    hist_close = fetch_history(tuple(st.session_state.watchlist), yf_period)
+    hist_close = fetch_history(tuple(selected_chart), yf_period)
 
 if hist_close.empty:
     st.warning("無法取得歷史資料。")
@@ -205,7 +220,7 @@ if hist_close.empty:
 
 tab_norm, tab_price = st.tabs(["📊 相對績效（基準=100）", "💰 原始股價"])
 
-valid = [t for t in st.session_state.watchlist if t in hist_close.columns and not hist_close[t].dropna().empty]
+valid = [t for t in selected_chart if t in hist_close.columns and not hist_close[t].dropna().empty]
 
 with tab_norm:
     if not valid:
@@ -220,8 +235,8 @@ with tab_norm:
                 line=dict(color=COLORS[i % len(COLORS)], width=2)
             ))
         fig.update_layout(
-            height=420, hovermode="x unified", yaxis_title="相對績效",
-            legend=dict(orientation="h", yanchor="bottom", y=-0.25, xanchor="center", x=0.5)
+            height=480, hovermode="x unified", yaxis_title="相對績效",
+            legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.01)
         )
         st.plotly_chart(fig, use_container_width=True)
         st.caption("💡 點擊圖例可隱藏/顯示個別股票。")
@@ -238,8 +253,8 @@ with tab_price:
                 line=dict(color=COLORS[i % len(COLORS)], width=2)
             ))
         fig2.update_layout(
-            height=420, hovermode="x unified", yaxis_title="股價",
-            legend=dict(orientation="h", yanchor="bottom", y=-0.25, xanchor="center", x=0.5)
+            height=480, hovermode="x unified", yaxis_title="股價",
+            legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.01)
         )
         st.plotly_chart(fig2, use_container_width=True)
         st.caption("💡 點擊圖例可隱藏/顯示個別股票。")
