@@ -41,26 +41,30 @@ def load_watchlist() -> list:
     except Exception:
         return []
 
-def save_watchlist(tickers: list):
+def save_watchlist(tickers: list) -> str:
+    """回傳錯誤訊息字串，成功回傳空字串"""
     content_b64 = base64.b64encode(
         json.dumps(tickers, ensure_ascii=False).encode("utf-8")
     ).decode("utf-8")
     if GH_TOKEN:
         try:
-            # 取得目前檔案的 SHA（更新時必填）
-            r = requests.get(GH_URL, headers=GH_HEADERS, timeout=10)
-            sha = r.json().get("sha", "") if r.status_code == 200 else ""
+            r_get = requests.get(GH_URL, headers=GH_HEADERS, timeout=10)
+            sha = r_get.json().get("sha", "") if r_get.status_code == 200 else ""
             payload = {
                 "message": f"chore: update watchlist ({len(tickers)} stocks)",
                 "content": content_b64,
                 "sha": sha
             }
-            requests.put(GH_URL, headers=GH_HEADERS, json=payload, timeout=10)
-        except Exception:
-            pass
-    # 同步寫本地，讓 git pull 可以取得最新
+            r_put = requests.put(GH_URL, headers=GH_HEADERS, json=payload, timeout=10)
+            if r_put.status_code not in (200, 201):
+                return f"GitHub 寫入失敗 ({r_put.status_code})：{r_put.json().get('message','')}"
+        except Exception as e:
+            return f"GitHub 連線錯誤：{e}"
+    else:
+        return "⚠️ 未偵測到 GH_PAT，清單只存在本機"
     LOCAL_FILE.parent.mkdir(parents=True, exist_ok=True)
     LOCAL_FILE.write_text(json.dumps(tickers, ensure_ascii=False), encoding="utf-8")
+    return ""
 
 if 'watchlist' not in st.session_state:
     st.session_state.watchlist = load_watchlist()
@@ -74,7 +78,9 @@ with col2:
         t = new_ticker.strip().upper()
         if t and t not in st.session_state.watchlist:
             st.session_state.watchlist.append(t)
-            save_watchlist(st.session_state.watchlist)
+            err = save_watchlist(st.session_state.watchlist)
+            if err:
+                st.error(err)
             st.rerun()
 
 # --- 批次匯入 ---
@@ -86,8 +92,11 @@ with st.expander("📋 批次匯入 / 匯出"):
             if t not in st.session_state.watchlist:
                 st.session_state.watchlist.append(t)
                 added += 1
-        save_watchlist(st.session_state.watchlist)
-        st.success(f"已加入 {added} 檔，清單已同步到 GitHub ✅")
+        err = save_watchlist(st.session_state.watchlist)
+        if err:
+            st.error(err)
+        else:
+            st.success(f"已加入 {added} 檔，清單已同步到 GitHub ✅")
         st.rerun()
     if st.session_state.watchlist:
         st.text_input("匯出（複製下方文字，下次可貼回批次匯入）",
@@ -106,7 +115,9 @@ for i, ticker in enumerate(list(st.session_state.watchlist)):
     with remove_cols[i % 8]:
         if st.button(f"✕ {ticker}", key=f"rm_{ticker}"):
             st.session_state.watchlist.remove(ticker)
-            save_watchlist(st.session_state.watchlist)
+            err = save_watchlist(st.session_state.watchlist)
+            if err:
+                st.error(err)
             st.rerun()
 
 st.markdown("---")
