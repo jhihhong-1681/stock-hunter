@@ -68,6 +68,12 @@ def save_watchlist(tickers: list) -> str:
 
 if 'watchlist' not in st.session_state:
     st.session_state.watchlist = load_watchlist()
+if 'sync_error' not in st.session_state:
+    st.session_state.sync_error = ""
+
+# 顯示上次同步錯誤（持久顯示直到下次成功）
+if st.session_state.sync_error:
+    st.error(f"🔴 GitHub 同步失敗：{st.session_state.sync_error}")
 
 # --- 加入單檔 ---
 col1, col2 = st.columns([4, 1])
@@ -78,9 +84,7 @@ with col2:
         t = new_ticker.strip().upper()
         if t and t not in st.session_state.watchlist:
             st.session_state.watchlist.append(t)
-            err = save_watchlist(st.session_state.watchlist)
-            if err:
-                st.error(err)
+            st.session_state.sync_error = save_watchlist(st.session_state.watchlist)
             st.rerun()
 
 # --- 批次匯入 ---
@@ -92,10 +96,8 @@ with st.expander("📋 批次匯入 / 匯出"):
             if t not in st.session_state.watchlist:
                 st.session_state.watchlist.append(t)
                 added += 1
-        err = save_watchlist(st.session_state.watchlist)
-        if err:
-            st.error(err)
-        else:
+        st.session_state.sync_error = save_watchlist(st.session_state.watchlist)
+        if not st.session_state.sync_error:
             st.success(f"已加入 {added} 檔，清單已同步到 GitHub ✅")
         st.rerun()
     if st.session_state.watchlist:
@@ -115,9 +117,7 @@ for i, ticker in enumerate(list(st.session_state.watchlist)):
     with remove_cols[i % 8]:
         if st.button(f"✕ {ticker}", key=f"rm_{ticker}"):
             st.session_state.watchlist.remove(ticker)
-            err = save_watchlist(st.session_state.watchlist)
-            if err:
-                st.error(err)
+            st.session_state.sync_error = save_watchlist(st.session_state.watchlist)
             st.rerun()
 
 st.markdown("---")
