@@ -542,26 +542,23 @@ if st.session_state.get('scanned', False):
         is_tw = sel_ticker.endswith('.TW') or sel_ticker.endswith('.TWO')
 
         if is_tw:
-            st.info("ℹ️ 台股因版權限制以本地折線圖顯示：")
-            data = get_historical_data(sel_ticker)
-            if data is not None: st.line_chart(data)
-            else: st.warning("暫時無法取得走勢圖。")
             sym = f"TWSE:{sel_ticker.replace('.TW','')}" if sel_ticker.endswith('.TW') \
                   else f"TPEX:{sel_ticker.replace('.TWO','')}"
-            st.markdown(f"👉 **[在 TradingView 開啟完整線圖](https://www.tradingview.com/chart/?symbol={sym})**")
         else:
-            html_code = f"""<html><head><style>body{{margin:0;padding:0;overflow:hidden}}</style></head><body>
+            sym = sel_ticker
+
+        import streamlit.components.v1 as components
+        html_code = f"""<html><head><style>body{{margin:0;padding:0;overflow:hidden}}</style></head><body>
             <div class="tradingview-widget-container">
               <div id="tv_chart" style="height:600px;width:100%"></div>
               <script src="https://s3.tradingview.com/tv.js"></script>
               <script>new TradingView.widget({{
-                "autosize":true,"symbol":"{sel_ticker}","interval":"D",
-                "timezone":"Asia/Taipei","theme":"light","style":"1","locale":"zh_TW",
+                "autosize":true,"symbol":"{sym}","interval":"D",
+                "timezone":"Asia/Taipei","theme":"dark","style":"1","locale":"zh_TW",
                 "enable_publishing":false,"container_id":"tv_chart"
               }});</script>
             </div></body></html>"""
-            import streamlit.components.v1 as components
-            components.html(html_code, height=600)
+        components.html(html_code, height=600)
     else:
         if use_fundamental:
             st.warning("沒有股票同時符合「技術面」與「基本面 Rule of 30」條件。\n\n"
