@@ -336,7 +336,7 @@ def fetch_fundamentals_yf(tickers_tuple):
 @st.cache_data(ttl=3600)
 def get_historical_data(ticker):
     try:
-        hist = yf.download(ticker, period="6mo", progress=False, auto_adjust=True)
+        hist = yf.download(ticker, period="max", progress=False, auto_adjust=True)
         if hist.empty:
             return None
         if isinstance(hist.columns, pd.MultiIndex):
@@ -564,7 +564,7 @@ if st.session_state.get('scanned', False):
             )])
             fig_tv.update_layout(
                 height=500, template="plotly_dark",
-                title=f"{sel_ticker}　近6個月 K 線圖",
+                title=f"{sel_ticker}　完整歷史 K 線圖",
                 xaxis_title="日期", yaxis_title="股價",
                 xaxis_rangeslider_visible=False,
                 hovermode="x unified",
