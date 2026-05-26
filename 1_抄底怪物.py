@@ -555,7 +555,8 @@ if st.session_state.get('scanned', False):
               <script>new TradingView.widget({{
                 "autosize":true,"symbol":"{sym}","interval":"D",
                 "timezone":"Asia/Taipei","theme":"dark","style":"1","locale":"zh_TW",
-                "enable_publishing":false,"container_id":"tv_chart"
+                "enable_publishing":false,"allow_symbol_change":true,
+                "save_image":false,"container_id":"tv_chart"
               }});</script>
             </div></body></html>"""
         components.html(html_code, height=600)
