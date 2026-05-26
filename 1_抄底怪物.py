@@ -552,8 +552,38 @@ if st.session_state.get('scanned', False):
             sym = sel_ticker
 
         import plotly.graph_objects as go
+        import datetime
         ohlcv = get_historical_data(sel_ticker)
         if ohlcv is not None and not ohlcv.empty:
+            # ── 區間漲跌幅計算器 ──
+            st.markdown("**📐 區間漲跌幅**")
+            rc1, rc2 = st.columns(2)
+            default_start = (ohlcv.index[-1] - pd.DateOffset(years=1)).date()
+            default_start = max(default_start, ohlcv.index[0].date())
+            with rc1:
+                range_start = st.date_input("起始日", value=default_start,
+                                            min_value=ohlcv.index[0].date(),
+                                            max_value=ohlcv.index[-1].date(),
+                                            key="rs")
+            with rc2:
+                range_end = st.date_input("結束日", value=ohlcv.index[-1].date(),
+                                          min_value=ohlcv.index[0].date(),
+                                          max_value=ohlcv.index[-1].date(),
+                                          key="re")
+
+            mask = (ohlcv.index.date >= range_start) & (ohlcv.index.date <= range_end)
+            rng = ohlcv[mask]
+            if len(rng) >= 2:
+                p0, p1 = float(rng['Close'].iloc[0]), float(rng['Close'].iloc[-1])
+                pct = (p1 - p0) / p0 * 100
+                days = len(rng)
+                st.metric(
+                    label=f"{range_start} → {range_end}　（{days} 個交易日）",
+                    value=f"{pct:+.2f}%",
+                    delta=f"{p0:.2f} → {p1:.2f}"
+                )
+
+            # ── K 線圖（標示選取區間） ──
             fig_tv = go.Figure(data=[go.Candlestick(
                 x=ohlcv.index,
                 open=ohlcv['Open'], high=ohlcv['High'],
@@ -562,19 +592,24 @@ if st.session_state.get('scanned', False):
                 decreasing_line_color='#21c354',
                 name=sel_ticker
             )])
+            # 標示區間
+            fig_tv.add_vrect(
+                x0=str(range_start), x1=str(range_end),
+                fillcolor="rgba(255,200,0,0.08)",
+                line=dict(color="rgba(255,200,0,0.5)", width=1),
+                layer="below"
+            )
             fig_tv.update_layout(
-                height=500, template="plotly_dark",
+                height=520, template="plotly_dark",
                 title=f"{sel_ticker}　完整歷史 K 線圖",
                 xaxis_title="日期", yaxis_title="股價",
                 xaxis_rangeslider_visible=False,
-                hovermode="x unified",
-                dragmode="pan",
+                hovermode="x unified", dragmode="pan",
                 margin=dict(l=10, r=10, t=40, b=10)
             )
             st.plotly_chart(fig_tv, use_container_width=True,
                             config={"scrollZoom": True, "displayModeBar": True})
-            st.markdown(f"👉 [在 TradingView 開啟完整線圖](https://www.tradingview.com/chart/?symbol={sym})",
-                        unsafe_allow_html=False)
+            st.markdown(f"👉 [在 TradingView 開啟完整線圖](https://www.tradingview.com/chart/?symbol={sym})")
         else:
             st.warning(f"無法取得 {sel_ticker} 的歷史資料。")
     else:
