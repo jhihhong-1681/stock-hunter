@@ -568,9 +568,11 @@ if st.session_state.get('scanned', False):
                 xaxis_title="日期", yaxis_title="股價",
                 xaxis_rangeslider_visible=False,
                 hovermode="x unified",
+                dragmode="pan",
                 margin=dict(l=10, r=10, t=40, b=10)
             )
-            st.plotly_chart(fig_tv, use_container_width=True)
+            st.plotly_chart(fig_tv, use_container_width=True,
+                            config={"scrollZoom": True, "displayModeBar": True})
             st.markdown(f"👉 [在 TradingView 開啟完整線圖](https://www.tradingview.com/chart/?symbol={sym})",
                         unsafe_allow_html=False)
         else:
