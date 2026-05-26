@@ -548,18 +548,29 @@ if st.session_state.get('scanned', False):
             sym = sel_ticker
 
         import streamlit.components.v1 as components
-        html_code = f"""<html><head><style>body{{margin:0;padding:0;overflow:hidden}}</style></head><body>
-            <div class="tradingview-widget-container">
-              <div id="tv_chart" style="height:600px;width:100%"></div>
-              <script src="https://s3.tradingview.com/tv.js"></script>
-              <script>new TradingView.widget({{
-                "autosize":true,"symbol":"{sym}","interval":"D",
-                "timezone":"Asia/Taipei","theme":"dark","style":"1","locale":"zh_TW",
-                "enable_publishing":false,"allow_symbol_change":true,
-                "save_image":false,"container_id":"tv_chart"
-              }});</script>
-            </div></body></html>"""
-        components.html(html_code, height=600)
+        html_code = f"""<!DOCTYPE html><html><head>
+          <style>body{{margin:0;padding:0;}}
+          .tradingview-widget-container{{height:600px;width:100%;}}</style>
+        </head><body>
+          <div class="tradingview-widget-container">
+            <div class="tradingview-widget-container__widget" style="height:600px;width:100%"></div>
+            <script type="text/javascript"
+              src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+            {{
+              "autosize": true,
+              "symbol": "{sym}",
+              "interval": "D",
+              "timezone": "Asia/Taipei",
+              "theme": "dark",
+              "style": "1",
+              "locale": "zh_TW",
+              "allow_symbol_change": true,
+              "support_host": "https://www.tradingview.com"
+            }}
+            </script>
+          </div>
+        </body></html>"""
+        components.html(html_code, height=620)
     else:
         if use_fundamental:
             st.warning("沒有股票同時符合「技術面」與「基本面 Rule of 30」條件。\n\n"
