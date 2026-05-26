@@ -336,11 +336,15 @@ def fetch_fundamentals_yf(tickers_tuple):
 @st.cache_data(ttl=3600)
 def get_historical_data(ticker):
     try:
-        hist = yf.download(ticker, period="6mo", progress=False)
-        if not hist.empty and 'Close' in hist:
-            return hist['Close']
-    except: pass
-    return None
+        hist = yf.download(ticker, period="6mo", progress=False, auto_adjust=True)
+        if hist.empty:
+            return None
+        if isinstance(hist.columns, pd.MultiIndex):
+            hist.columns = hist.columns.get_level_values(0)
+        cols = [c for c in ['Open','High','Low','Close','Volume'] if c in hist.columns]
+        return hist[cols].dropna() if len(cols) >= 4 else None
+    except:
+        return None
 
 
 # ─── 主邏輯：執行篩選 ────────────────────────────────────────────────────────
@@ -547,30 +551,30 @@ if st.session_state.get('scanned', False):
         else:
             sym = sel_ticker
 
-        import streamlit.components.v1 as components
-        html_code = f"""<!DOCTYPE html><html><head>
-          <style>body{{margin:0;padding:0;}}
-          .tradingview-widget-container{{height:600px;width:100%;}}</style>
-        </head><body>
-          <div class="tradingview-widget-container">
-            <div class="tradingview-widget-container__widget" style="height:600px;width:100%"></div>
-            <script type="text/javascript"
-              src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
-            {{
-              "autosize": true,
-              "symbol": "{sym}",
-              "interval": "D",
-              "timezone": "Asia/Taipei",
-              "theme": "dark",
-              "style": "1",
-              "locale": "zh_TW",
-              "allow_symbol_change": true,
-              "support_host": "https://www.tradingview.com"
-            }}
-            </script>
-          </div>
-        </body></html>"""
-        components.html(html_code, height=620)
+        import plotly.graph_objects as go
+        ohlcv = get_historical_data(sel_ticker)
+        if ohlcv is not None and not ohlcv.empty:
+            fig_tv = go.Figure(data=[go.Candlestick(
+                x=ohlcv.index,
+                open=ohlcv['Open'], high=ohlcv['High'],
+                low=ohlcv['Low'],   close=ohlcv['Close'],
+                increasing_line_color='#ff4b4b',
+                decreasing_line_color='#21c354',
+                name=sel_ticker
+            )])
+            fig_tv.update_layout(
+                height=500, template="plotly_dark",
+                title=f"{sel_ticker}　近6個月 K 線圖",
+                xaxis_title="日期", yaxis_title="股價",
+                xaxis_rangeslider_visible=False,
+                hovermode="x unified",
+                margin=dict(l=10, r=10, t=40, b=10)
+            )
+            st.plotly_chart(fig_tv, use_container_width=True)
+            st.markdown(f"👉 [在 TradingView 開啟完整線圖](https://www.tradingview.com/chart/?symbol={sym})",
+                        unsafe_allow_html=False)
+        else:
+            st.warning(f"無法取得 {sel_ticker} 的歷史資料。")
     else:
         if use_fundamental:
             st.warning("沒有股票同時符合「技術面」與「基本面 Rule of 30」條件。\n\n"
