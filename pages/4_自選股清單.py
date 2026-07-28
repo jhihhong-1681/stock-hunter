@@ -130,18 +130,17 @@ with col2:
 
 # --- 從投資組合同步 ---
 with st.expander("🔗 從輸輸贏贏投資組合同步目前持股", expanded=False):
-    st.caption("直接抓試算表裡目前還有持股的代號加進清單，只取代號，不會顯示或儲存金額。")
-    if st.button("📥 同步目前持股"):
+    st.caption("完全同步：清單會被取代成試算表裡「目前還有持股」的代號，之前手動加的、或已出清的都會被移除。只取代號，不會顯示或儲存金額。")
+    if st.button("📥 同步目前持股（取代清單）"):
         with st.spinner("讀取投資組合中..."):
             portfolio_tickers = fetch_portfolio_tickers()
         if not portfolio_tickers:
             st.error("讀取不到投資組合資料，請確認試算表分享權限是否為「知道連結的使用者可檢視」。")
         else:
-            added = [t for t in portfolio_tickers if t not in st.session_state.watchlist]
-            st.session_state.watchlist.extend(added)
+            st.session_state.watchlist = portfolio_tickers
             st.session_state.sync_error = save_watchlist(st.session_state.watchlist)
             if not st.session_state.sync_error:
-                st.success(f"已從投資組合同步 {len(added)} 檔新代號（共偵測到 {len(portfolio_tickers)} 檔持股）✅")
+                st.success(f"清單已取代成投資組合目前持股，共 {len(portfolio_tickers)} 檔 ✅")
             st.rerun()
 
 # --- 批次匯入 ---
