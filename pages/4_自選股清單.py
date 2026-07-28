@@ -2,7 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
+import colorsys
 import json
 import base64
 import requests
@@ -207,9 +207,18 @@ if not selected_chart:
     st.info("請從上方選擇要比較的股票。")
     st.stop()
 
-# Alphabet 是為高數量分類資料設計的調色盤，鄰近顏色的色相/明度差異較大，
-# 20 檔股票同時比較時仍能清楚分辨（舊調色盤同色系太多，色差不足）。
-COLORS = px.colors.qualitative.Alphabet
+def _distinct_colors(n: int, saturation: float = 0.75, lightness: float = 0.58) -> list:
+    """用黃金角 137.508° 依序旋轉色相取色，確保無論選前幾檔，
+    紅橘黃綠藍紫都會平均出現，不會像固定調色盤前段集中在同一色系。"""
+    colors = []
+    hue = 0.0
+    for _ in range(n):
+        r, g, b = colorsys.hls_to_rgb(hue / 360, lightness, saturation)
+        colors.append(f"#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}")
+        hue = (hue + 137.508) % 360
+    return colors
+
+COLORS = _distinct_colors(20)
 
 with st.spinner("載入歷史資料..."):
     hist_close = fetch_history(tuple(selected_chart), yf_period)

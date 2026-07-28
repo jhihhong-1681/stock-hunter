@@ -53,7 +53,22 @@ COLORS = ["#e05c00", "#4a90e2", "#2ecc71", "#e74c3c"]
 def fetch_sector_data():
     tickers = list(SECTOR_ETFS.values())
     data = yf.download(tickers, period="1y", progress=False, auto_adjust=True)
-    return data["Close"] if "Close" in data else pd.DataFrame()
+    close = data["Close"] if "Close" in data else pd.DataFrame()
+    if isinstance(close, pd.Series):
+        close = close.to_frame()
+
+    # 一次抓 26 檔時，Yahoo 偶爾會讓少數幾檔（尤其冷門主題型 ETF）在批次下載中
+    # 回傳空值，導致該產業全部區間都顯示 0%。對缺資料的逐一單獨補抓一次。
+    missing = [t for t in tickers if t not in close.columns or close[t].dropna().shape[0] < 2]
+    for t in missing:
+        try:
+            single = yf.download(t, period="1y", progress=False, auto_adjust=True, threads=False)
+            if not single.empty and "Close" in single:
+                close[t] = single["Close"]
+        except Exception:
+            continue
+
+    return close
 
 with st.spinner("載入產業 ETF 資料..."):
     close = fetch_sector_data()
