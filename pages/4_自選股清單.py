@@ -2,6 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
 import json
 import base64
 import requests
@@ -206,10 +207,9 @@ if not selected_chart:
     st.info("請從上方選擇要比較的股票。")
     st.stop()
 
-COLORS = ["#e05c00", "#4a90e2", "#2ecc71", "#9b59b6", "#e74c3c", "#f39c12",
-          "#1abc9c", "#e67e22", "#aaaaaa", "#c0392b", "#ff6b9d", "#00d2ff",
-          "#f8c537", "#a8ff78", "#ff9a3c", "#c471ed", "#12c2e9", "#f64f59",
-          "#43e97b", "#fa709a"]
+# Alphabet 是為高數量分類資料設計的調色盤，鄰近顏色的色相/明度差異較大，
+# 20 檔股票同時比較時仍能清楚分辨（舊調色盤同色系太多，色差不足）。
+COLORS = px.colors.qualitative.Alphabet
 
 with st.spinner("載入歷史資料..."):
     hist_close = fetch_history(tuple(selected_chart), yf_period)

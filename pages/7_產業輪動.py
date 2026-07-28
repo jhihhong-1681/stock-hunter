@@ -12,16 +12,31 @@ st.markdown("透過各產業 ETF 的相對強弱，判斷目前資金流向哪�
 
 SECTOR_ETFS = {
     "科技": "XLK",
+    "半導體": "SOXX",
+    "軟體服務": "XSW",
     "金融": "XLF",
+    "銀行": "KBE",
+    "金融科技": "FINX",
     "能源": "XLE",
-    "醫療": "XLV",
-    "工業": "XLI",
-    "非必需消費": "XLY",
-    "必需消費": "XLP",
+    "油氣開採": "XOP",
     "公用事業": "XLU",
+    "核能鈾礦": "URA",
+    "醫療保健": "XLV",
+    "生技": "XBI",
+    "製藥": "XPH",
+    "工業": "XLI",
+    "國防太空": "ITA",
+    "運輸": "XTN",
+    "非必需消費": "XLY",
+    "零售": "XRT",
+    "房屋建築": "XHB",
+    "必需消費": "XLP",
     "原材料": "XLB",
+    "稀土關鍵金屬": "REMX",
+    "礦業": "XME",
     "房地產": "XLRE",
     "通訊服務": "XLC",
+    "資安": "CIBR",
 }
 
 PERIODS = {
@@ -67,7 +82,15 @@ for period_name, offset in PERIODS.items():
         if etf in close.columns
     }
 
-sectors = list(SECTOR_ETFS.keys())
+all_sectors = list(SECTOR_ETFS.keys())
+sectors = st.multiselect(
+    "選擇要顯示的產業（預設全部，可取消勾選以簡化圖表）",
+    all_sectors,
+    default=all_sectors
+)
+if not sectors:
+    st.info("請至少選擇一個產業。")
+    st.stop()
 
 # --- 週期選擇 ---
 selected = st.multiselect(

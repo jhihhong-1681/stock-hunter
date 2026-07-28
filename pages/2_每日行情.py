@@ -185,19 +185,25 @@ if st.button(f"🚀 產生 {selected_market} 熱力圖", type="primary"):
             valid_tickers = []
             size_map = {}
             name_map = {}
-            
+            price_map = {}
+
             for item in tw_price:
                 code = item.get('Code', '')
                 try:
                     t_val = float(item.get('TradeValue', 0))
                 except:
                     t_val = 0
-                    
+                try:
+                    c_price = float(item.get('ClosingPrice', 0) or 0)
+                except:
+                    c_price = 0
+
                 # 過濾掉交易額過低(防雷) 或沒有產業代碼的
                 if code in tw_ind_map and t_val > 1000000:
                     valid_tickers.append(f"{code}.TW")
                     size_map[f"{code}.TW"] = t_val
                     name_map[f"{code}.TW"] = f"{code} {item.get('Name', '')}"
+                    price_map[f"{code}.TW"] = c_price
 
             # 為了效能與畫面簡潔，只取成交金額前 N 大的股票
             sorted_valid = sorted(valid_tickers, key=lambda x: size_map[x], reverse=True)[:top_n]
@@ -221,12 +227,13 @@ if st.button(f"🚀 產生 {selected_market} 熱力圖", type="primary"):
                         "Stock": name_map.get(tkr, tkr),
                         "Size": size_map[tkr],
                         "Change": change_map[tkr],
-                        "Label": f"{name_map.get(tkr, tkr)}<br>{change_map[tkr]:+.2f}%"
+                        "Price": price_map.get(tkr, 0),
+                        "Label": f"{name_map.get(tkr, tkr)}<br>{price_map.get(tkr, 0):,.2f}<br>{change_map[tkr]:+.2f}%"
                     })
-                    
+
             if plot_data:
                 plot_df = pd.DataFrame(plot_data)
-                
+
                 fig = px.treemap(
                     plot_df,
                     path=[px.Constant("台股市場"), 'Industry', 'Stock'],
@@ -234,14 +241,14 @@ if st.button(f"🚀 產生 {selected_market} 熱力圖", type="primary"):
                     color='Change',
                     color_continuous_scale=color_scale,
                     color_continuous_midpoint=0,
-                    custom_data=['Label']
+                    custom_data=['Label', 'Price']
                 )
-                
+
                 fig.update_traces(
                     texttemplate="%{customdata[0]}",
                     textposition="middle center",
                     textfont_color="white",
-                    hovertemplate="<b>%{label}</b><br>漲跌幅: %{color:+.2f}%<br>成交規模: %{value:,.0f}<extra></extra>"
+                    hovertemplate="<b>%{label}</b><br>價格: %{customdata[1]:,.2f}<br>漲跌幅: %{color:+.2f}%<br>成交規模: %{value:,.0f}<extra></extra>"
                 )
                 
                 fig.update_layout(height=800, margin=dict(t=30, l=10, r=10, b=10))
@@ -265,6 +272,7 @@ if st.button(f"🚀 產生 {selected_market} 熱力圖", type="primary"):
             
             # 計算粗估市值 (Volume * Close) 作為板塊大小
             size_map = {}
+            price_map = {}
             if 'Volume' in df_hist and 'Close' in df_hist:
                 for t in us_tickers:
                     if t in df_hist['Volume'] and t in df_hist['Close']:
@@ -272,6 +280,7 @@ if st.button(f"🚀 產生 {selected_market} 熱力圖", type="primary"):
                         c = df_hist['Close'][t].dropna()
                         if not v.empty and not c.empty:
                             size_map[t] = float(v.iloc[-1]) * float(c.iloc[-1])
+                            price_map[t] = float(c.iloc[-1])
             
             # 依照估計市值排序，過濾出前 N 大
             sorted_us_tickers = sorted(
@@ -293,12 +302,13 @@ if st.button(f"🚀 產生 {selected_market} 熱力圖", type="primary"):
                     "Stock": name_sym,
                     "Size": size_map[tkr],
                     "Change": change_map[tkr],
-                    "Label": f"{name_sym}<br>{change_map[tkr]:+.2f}%"
+                    "Price": price_map.get(tkr, 0),
+                    "Label": f"{name_sym}<br>${price_map.get(tkr, 0):,.2f}<br>{change_map[tkr]:+.2f}%"
                 })
-                    
+
             if plot_data:
                 plot_df = pd.DataFrame(plot_data)
-                
+
                 fig = px.treemap(
                     plot_df,
                     path=[px.Constant("美股市場 (S&P 500)"), 'Sector', 'Stock'],
@@ -306,14 +316,14 @@ if st.button(f"🚀 產生 {selected_market} 熱力圖", type="primary"):
                     color='Change',
                     color_continuous_scale=color_scale,
                     color_continuous_midpoint=0,
-                    custom_data=['Label']
+                    custom_data=['Label', 'Price']
                 )
-                
+
                 fig.update_traces(
                     texttemplate="%{customdata[0]}",
                     textposition="middle center",
                     textfont_color="white",
-                    hovertemplate="<b>%{label}</b><br>漲跌幅: %{color:+.2f}%<br>市場規模估算: %{value:,.0f}<extra></extra>"
+                    hovertemplate="<b>%{label}</b><br>股價: $%{customdata[1]:,.2f}<br>漲跌幅: %{color:+.2f}%<br>市場規模估算: %{value:,.0f}<extra></extra>"
                 )
                 
                 fig.update_layout(height=800, margin=dict(t=30, l=10, r=10, b=10))
