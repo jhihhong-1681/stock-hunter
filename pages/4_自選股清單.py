@@ -67,6 +67,46 @@ def save_watchlist(tickers: list) -> str:
     LOCAL_FILE.write_text(json.dumps(tickers, ensure_ascii=False), encoding="utf-8")
     return ""
 
+# --- 從「輸輸贏贏 那也沒辦法」投資組合試算表同步目前持股 ---
+PORTFOLIO_SHEET_ID = "1eaUErkLJUOH7aaIKhDWM5vQwAbE2Zrl0w9jI3KK-9yU"
+PORTFOLIO_CSV_URL = f"https://docs.google.com/spreadsheets/d/{PORTFOLIO_SHEET_ID}/export?format=csv"
+
+@st.cache_data(ttl=1800)
+def fetch_portfolio_tickers() -> list:
+    """讀「美股持有庫存」分頁，只取市場+股票代號+股數來判斷目前還有持有的標的，
+    不讀成本/現值/損益等金額欄位，避免把財務金額寫進清單或畫面。"""
+    try:
+        raw = pd.read_csv(PORTFOLIO_CSV_URL, header=None)
+    except Exception:
+        return []
+
+    header_row = None
+    for i, row in raw.iterrows():
+        if row.astype(str).str.contains("股票代號").any():
+            header_row = i
+            break
+    if header_row is None:
+        return []
+
+    df = raw.iloc[header_row + 1:].copy()
+    df.columns = raw.iloc[header_row]
+
+    tickers = []
+    for _, r in df.iterrows():
+        market = str(r.get("市場", "")).strip()
+        code = str(r.get("股票代號", "")).strip()
+        shares = str(r.get("股數", "")).strip()
+        if not code or code.lower() == "nan" or market not in ("美股", "台股"):
+            continue
+        try:
+            if float(shares) <= 0:
+                continue
+        except ValueError:
+            continue
+        tickers.append(f"{code}.TW" if market == "台股" else code.upper())
+
+    return sorted(set(tickers))
+
 if 'watchlist' not in st.session_state:
     st.session_state.watchlist = load_watchlist()
 if 'sync_error' not in st.session_state:
@@ -86,6 +126,22 @@ with col2:
         if t and t not in st.session_state.watchlist:
             st.session_state.watchlist.append(t)
             st.session_state.sync_error = save_watchlist(st.session_state.watchlist)
+            st.rerun()
+
+# --- 從投資組合同步 ---
+with st.expander("🔗 從輸輸贏贏投資組合同步目前持股", expanded=False):
+    st.caption("直接抓試算表裡目前還有持股的代號加進清單，只取代號，不會顯示或儲存金額。")
+    if st.button("📥 同步目前持股"):
+        with st.spinner("讀取投資組合中..."):
+            portfolio_tickers = fetch_portfolio_tickers()
+        if not portfolio_tickers:
+            st.error("讀取不到投資組合資料，請確認試算表分享權限是否為「知道連結的使用者可檢視」。")
+        else:
+            added = [t for t in portfolio_tickers if t not in st.session_state.watchlist]
+            st.session_state.watchlist.extend(added)
+            st.session_state.sync_error = save_watchlist(st.session_state.watchlist)
+            if not st.session_state.sync_error:
+                st.success(f"已從投資組合同步 {len(added)} 檔新代號（共偵測到 {len(portfolio_tickers)} 檔持股）✅")
             st.rerun()
 
 # --- 批次匯入 ---
