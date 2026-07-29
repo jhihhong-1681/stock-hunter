@@ -85,12 +85,20 @@ def get_sp500_tickers():
 
 @st.cache_data(ttl=3600*24)
 def get_nasdaq100_tickers():
+    """Wikipedia『Nasdaq-100』頁面已經把成分股表格拿掉、只留外部連結，抓不到了，
+    改直接查 Nasdaq 官方（指數的發行方本身）API，更權威也更不容易再跑掉。"""
     try:
-        html = fetch_url('https://en.wikipedia.org/wiki/Nasdaq-100')
-        tables = pd.read_html(io.StringIO(html))
-        df = tables[4]
-        col = 'Ticker' if 'Ticker' in df.columns else df.columns[0]
-        return df[col].str.replace('.', '-', regex=False).tolist()
+        hdrs = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'application/json, text/plain, */*',
+        }
+        r = requests.get('https://api.nasdaq.com/api/quote/list-type/nasdaq100',
+                          headers=hdrs, verify=False, timeout=20)
+        rows = r.json()['data']['data']['rows']
+        tickers = [row['symbol'].replace('.', '-') for row in rows if row.get('symbol')]
+        if not tickers:
+            st.error("Nasdaq 100 名單失敗")
+        return tickers
     except Exception as e:
         st.error(f"Nasdaq 100 名單失敗: {e}"); return []
 
