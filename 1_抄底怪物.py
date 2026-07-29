@@ -417,55 +417,98 @@ SECTOR_ZH = {
 }
 
 @st.cache_data(ttl=3600*24*7, show_spinner=False)
-def translate_industry_zh(industry: str) -> str:
-    """industry 詞彙比 sector 細很多（上百種），沒有窮舉對照表，用機器翻譯，
-    但用 industry 字串本身當快取鍵、快取 7 天：同一個 industry 名稱只會翻一次，
-    之後所有股票命中同個 industry 都會拿到同一句翻譯，避免同一詞彙每次結果不一致。"""
+def translate_zh(text: str) -> str:
+    """短詞彙（yfinance industry、SEC SIC 分類）翻譯，用原文字串本身當快取鍵、快取 7 天：
+    同一個詞彙只會翻一次，之後全部股票命中同一詞彙都拿到同一句翻譯，避免結果不一致。"""
     try:
-        return GoogleTranslator(source='auto', target='zh-TW').translate(industry)
+        return GoogleTranslator(source='auto', target='zh-TW').translate(text)
     except Exception:
-        return industry
+        return text
+
+# SEC EDGAR 是美國證管會官方公開資料，全部美股上市公司依法要註冊、有公開 API，
+# 不像 Yahoo Finance 的 .info 端點會對雲端主機的共用 IP 做限流封鎖，抓取穩定很多。
+# 用它的 SIC（標準產業分類）當「產業類別」的主要來源；缺點是沒有行銷式的公司簡介文字，
+# 「公司簡介」還是盡量嘗試 Yahoo Finance 的 longBusinessSummary（失敗就用 SEC 資料退而求其次）。
+_SEC_HEADERS = {"User-Agent": "stock-hunter-app (personal project; contact: jhihhong0810@gmail.com)"}
+
+@st.cache_data(ttl=3600*24, show_spinner=False)
+def fetch_sec_ticker_cik_map() -> dict:
+    """SEC 官方的『股票代號 -> CIK』對照表，每天只需要下載一次。"""
+    try:
+        r = requests.get("https://www.sec.gov/files/company_tickers.json",
+                          headers=_SEC_HEADERS, timeout=15)
+        data = r.json()
+        return {v["ticker"].upper(): str(v["cik_str"]).zfill(10) for v in data.values()}
+    except Exception:
+        return {}
+
+@st.cache_data(ttl=3600*24, show_spinner=False)
+def fetch_sec_profile(ticker: str, cik10: str):
+    """回傳 (公司全名, SIC 產業分類英文) 或 None（查無這家公司/請求失敗）。"""
+    try:
+        r = requests.get(f"https://data.sec.gov/submissions/CIK{cik10}.json",
+                          headers=_SEC_HEADERS, timeout=15)
+        if r.status_code != 200:
+            return None
+        j = r.json()
+        return j.get("name") or ticker, j.get("sicDescription") or ""
+    except Exception:
+        return None
 
 @st.cache_data(ttl=3600*6, show_spinner=False)
 def fetch_sector_info(tickers_tuple):
     """
-    給篩選『最終結果』用：抓每檔股票的產業分類（sector/industry，翻成中文）+ 簡短公司簡介。
+    給篩選『最終結果』用：抓每檔股票的產業分類 + 簡短公司簡介（全中文）。
     只在最終清單（通常幾十檔內）上抓，不會拖慢技術面/基本面篩選本身。
 
-    注意：部分冷門小型股、權證（代號常以 W 結尾）或下市股票，Yahoo Finance
-    本身就沒有 sector/industry/公司簡介資料，這種情況會顯示「查無資料」——
-    是資料源沒有這筆資訊，不是翻譯失敗，無法無中生有。
+    產業類別：主要來源是 SEC EDGAR 官方公開資料（SIC 產業分類），這是政府公開資料、
+    幾乎所有美股上市公司都查得到，不會被雲端主機限流；查不到才代表這家公司真的沒有
+    在 SEC 註冊公開資訊（例如極少數 ADR/外國私募發行人），才會顯示「查無資料」。
+
+    公司簡介：盡量嘗試 Yahoo Finance 的簡介文字（較generative、可讀性較好），
+    但只嘗試一次不重試（避免被限流拖慢整批速度）；抓不到就退而求其次，
+    用 SEC 的公司全名 + SIC 分類組成一句簡介，一樣是真實公開資料、不是編造的。
 
     回傳 dict: { ticker: { category, brief } }
     """
     result = {}
+    cik_map = fetch_sec_ticker_cik_map()
 
     def _fetch_one(ticker):
-        for attempt in range(2):
-            try:
-                info = yf.Ticker(ticker).info
-                sector_en = info.get('sector') or ''
-                industry_en = info.get('industry') or ''
-                sector_zh = SECTOR_ZH.get(sector_en, sector_en)
-                industry_zh = translate_industry_zh(industry_en) if industry_en else ''
-                parts = [p for p in (sector_zh, industry_zh) if p]
-                category = " / ".join(parts) if parts else '查無資料'
+        category = "查無資料"
+        brief = "查無資料"
+        company_name = ticker
+        sic_desc_zh = ""
 
-                summary = info.get('longBusinessSummary', '')
-                brief = '查無資料'
-                if summary:
-                    try:
-                        brief = GoogleTranslator(source='auto', target='zh-TW').translate(summary[:400])
-                    except Exception:
-                        brief = summary
-                    if len(brief) > 120:
-                        brief = brief[:120] + '...'
-                return ticker, {'category': category, 'brief': brief}
-            except Exception:
-                if attempt == 0: time.sleep(1)
-        return ticker, {'category': '查無資料', 'brief': '查無資料'}
+        cik10 = cik_map.get(ticker.upper())
+        if cik10:
+            profile = fetch_sec_profile(ticker, cik10)
+            if profile:
+                company_name, sic_desc_en = profile
+                if sic_desc_en:
+                    sic_desc_zh = translate_zh(sic_desc_en)
+                    category = sic_desc_zh
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as ex:
+        # 公司簡介：Yahoo 只嘗試一次，失敗就用 SEC 資料退而求其次，不重試、不卡整批速度
+        try:
+            info = yf.Ticker(ticker).info
+            summary = (info or {}).get('longBusinessSummary', '')
+            if summary:
+                try:
+                    brief = GoogleTranslator(source='auto', target='zh-TW').translate(summary[:400])
+                except Exception:
+                    brief = summary
+                if len(brief) > 120:
+                    brief = brief[:120] + '...'
+        except Exception:
+            pass
+
+        if brief == "查無資料" and sic_desc_zh:
+            brief = f"{company_name}，產業分類：{sic_desc_zh}（來源：SEC EDGAR，Yahoo Finance 簡介暫時抓不到）"
+
+        return ticker, {'category': category, 'brief': brief}
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
         futures = {ex.submit(_fetch_one, t): t for t in tickers_tuple}
         for future in concurrent.futures.as_completed(futures):
             ticker, data = future.result()
