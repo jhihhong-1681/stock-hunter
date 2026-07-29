@@ -333,6 +333,45 @@ def fetch_fundamentals_yf(tickers_tuple):
 
     return result
 
+@st.cache_data(ttl=3600*6, show_spinner=False)
+def fetch_sector_info(tickers_tuple):
+    """
+    給篩選『最終結果』用：抓每檔股票的產業分類（sector/industry）+ 簡短公司簡介。
+    只在最終清單（通常幾十檔內）上抓，不會拖慢技術面/基本面篩選本身。
+    回傳 dict: { ticker: { category, brief } }
+    """
+    result = {}
+
+    def _fetch_one(ticker):
+        for attempt in range(2):
+            try:
+                info = yf.Ticker(ticker).info
+                sector = info.get('sector') or ''
+                industry = info.get('industry') or ''
+                category = " / ".join(p for p in (sector, industry) if p) or '未知'
+                summary = info.get('longBusinessSummary', '')
+                brief = '無簡介'
+                if summary:
+                    try:
+                        translator = GoogleTranslator(source='auto', target='zh-TW')
+                        brief = translator.translate(summary[:400])
+                    except Exception:
+                        brief = summary
+                    if len(brief) > 120:
+                        brief = brief[:120] + '...'
+                return ticker, {'category': category, 'brief': brief}
+            except Exception:
+                if attempt == 0: time.sleep(1)
+        return ticker, {'category': '未知', 'brief': '無簡介'}
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as ex:
+        futures = {ex.submit(_fetch_one, t): t for t in tickers_tuple}
+        for future in concurrent.futures.as_completed(futures):
+            ticker, data = future.result()
+            result[ticker] = data
+
+    return result
+
 @st.cache_data(ttl=3600)
 def get_historical_data(ticker):
     try:
@@ -483,17 +522,6 @@ if run_button:
             d     = fin_data.get(t, {})
             name  = tw_mapping.get(t, d.get('shortName', t))
 
-            # 公司簡介（翻譯）
-            summary = d.get('longBusinessSummary', '')
-            biz = '無簡介'
-            if summary:
-                try:
-                    translator = GoogleTranslator(source='auto', target='zh-TW')
-                    biz = translator.translate(summary[:1500])
-                    biz = f"【業務與優勢】\n{biz}"
-                except:
-                    biz = summary[:200] + '...'
-
             final_results.append({
                 '公司名稱':              name,
                 '股票代號':              t,
@@ -503,11 +531,19 @@ if run_button:
                 'Rule of 30 (%)':        item['rule30'] * 100,
                 '營收成長 YoY (%)':      item['rev'] * 100,
                 '淨利率 (%)':            item['margin'] * 100,
-                '公司簡介':              biz,
             })
 
         progress_bar.progress(1.0)
         status_text.empty()
+
+    # ── 補上產業類別 + 簡短公司簡介（只針對最終清單抓，避免拖慢篩選本身） ──
+    if final_results:
+        with st.spinner(f"抓取 {len(final_results)} 檔股票的產業分類與簡介..."):
+            sector_info = fetch_sector_info(tuple(r['股票代號'] for r in final_results))
+        for r in final_results:
+            info = sector_info.get(r['股票代號'], {})
+            r['產業類別'] = info.get('category', '未知')
+            r['公司簡介'] = info.get('brief', '無簡介')
 
     st.session_state['scanned']        = True
     st.session_state['final_results']  = final_results
@@ -584,31 +620,59 @@ if st.session_state.get('scanned', False):
                 )
 
             # ── K 線圖（標示選取區間） ──
-            fig_tv = go.Figure(data=[go.Candlestick(
-                x=ohlcv.index,
-                open=ohlcv['Open'], high=ohlcv['High'],
-                low=ohlcv['Low'],   close=ohlcv['Close'],
-                increasing_line_color='#ff4b4b',
-                decreasing_line_color='#21c354',
-                name=sel_ticker
-            )])
-            # 標示區間
-            fig_tv.add_vrect(
-                x0=str(range_start), x1=str(range_end),
-                fillcolor="rgba(255,200,0,0.08)",
-                line=dict(color="rgba(255,200,0,0.5)", width=1),
-                layer="below"
-            )
-            fig_tv.update_layout(
-                height=520, template="plotly_dark",
-                title=f"{sel_ticker}　完整歷史 K 線圖",
-                xaxis_title="日期", yaxis_title="股價",
-                xaxis_rangeslider_visible=False,
-                hovermode="x unified", dragmode="pan",
-                margin=dict(l=10, r=10, t=40, b=10)
-            )
-            st.plotly_chart(fig_tv, use_container_width=True,
-                            config={"scrollZoom": True, "displayModeBar": True})
+            if is_tw:
+                fig_tv = go.Figure(data=[go.Candlestick(
+                    x=ohlcv.index,
+                    open=ohlcv['Open'], high=ohlcv['High'],
+                    low=ohlcv['Low'],   close=ohlcv['Close'],
+                    increasing_line_color='#ff4b4b',
+                    decreasing_line_color='#21c354',
+                    name=sel_ticker
+                )])
+                # 標示區間
+                fig_tv.add_vrect(
+                    x0=str(range_start), x1=str(range_end),
+                    fillcolor="rgba(255,200,0,0.08)",
+                    line=dict(color="rgba(255,200,0,0.5)", width=1),
+                    layer="below"
+                )
+                fig_tv.update_layout(
+                    height=520, template="plotly_dark",
+                    title=f"{sel_ticker}　完整歷史 K 線圖",
+                    xaxis_title="日期", yaxis_title="股價",
+                    xaxis_rangeslider_visible=False,
+                    hovermode="x unified", dragmode="pan",
+                    margin=dict(l=10, r=10, t=40, b=10)
+                )
+                st.plotly_chart(fig_tv, use_container_width=True,
+                                config={"scrollZoom": True, "displayModeBar": True})
+            else:
+                # 美股：直接嵌入 TradingView 互動圖表
+                import streamlit.components.v1 as components
+                widget_id = "tv_" + sel_ticker.replace('-', '_').replace('.', '_')
+                tv_html = f"""
+                <div class="tradingview-widget-container" style="height:520px;width:100%">
+                  <div id="{widget_id}" style="height:100%;width:100%"></div>
+                  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+                  <script type="text/javascript">
+                  new TradingView.widget({{
+                    "autosize": true,
+                    "symbol": "{sym}",
+                    "interval": "D",
+                    "timezone": "Asia/Taipei",
+                    "theme": "dark",
+                    "style": "1",
+                    "locale": "zh_TW",
+                    "toolbar_bg": "#131722",
+                    "enable_publishing": false,
+                    "hide_top_toolbar": false,
+                    "save_image": false,
+                    "container_id": "{widget_id}"
+                  }});
+                  </script>
+                </div>
+                """
+                components.html(tv_html, height=540)
             st.markdown(f"👉 [在 TradingView 開啟完整線圖](https://www.tradingview.com/chart/?symbol={sym})")
         else:
             st.warning(f"無法取得 {sel_ticker} 的歷史資料。")

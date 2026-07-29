@@ -3,6 +3,8 @@ import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
+import json
+from pathlib import Path
 
 st.set_page_config(page_title="產業輪動 - 阿紘的股票儀表板", page_icon="🔄", layout="wide")
 from utils.styles import load_css
@@ -84,6 +86,12 @@ def fetch_holdings(etf_ticker: str) -> pd.DataFrame:
         return df
     except Exception:
         return pd.DataFrame()
+
+WATCHLIST_FILE = Path(__file__).parent.parent / "data" / "watchlist.json"
+try:
+    my_holdings = set(json.loads(WATCHLIST_FILE.read_text(encoding="utf-8")))
+except Exception:
+    my_holdings = set()
 
 with st.spinner("載入產業 ETF 資料..."):
     close = fetch_sector_data()
@@ -229,6 +237,10 @@ if selected_rows:
     if holdings_df.empty:
         st.info("查無這檔 ETF 的成分股資料。")
     else:
+        holdings_df = holdings_df.copy()
+        holdings_df.insert(0, "持有", holdings_df["代號"].apply(lambda c: "⭐" if c in my_holdings else ""))
+        if my_holdings:
+            st.caption("⭐ = 你自選股清單裡目前持有的標的（需先在「自選股清單」頁按過同步才是最新）")
         st.dataframe(
             holdings_df.style.format({"權重": "{:.2f}%"}),
             use_container_width=True,
