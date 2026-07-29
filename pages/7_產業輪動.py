@@ -3,8 +3,6 @@ import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
-import json
-from pathlib import Path
 
 st.set_page_config(page_title="產業輪動 - 阿紘的股票儀表板", page_icon="🔄", layout="wide")
 from utils.styles import load_css
@@ -87,11 +85,46 @@ def fetch_holdings(etf_ticker: str) -> pd.DataFrame:
     except Exception:
         return pd.DataFrame()
 
-WATCHLIST_FILE = Path(__file__).parent.parent / "data" / "watchlist.json"
-try:
-    my_holdings = set(json.loads(WATCHLIST_FILE.read_text(encoding="utf-8")))
-except Exception:
-    my_holdings = set()
+PORTFOLIO_SHEET_ID = "1eaUErkLJUOH7aaIKhDWM5vQwAbE2Zrl0w9jI3KK-9yU"
+PORTFOLIO_CSV_URL = f"https://docs.google.com/spreadsheets/d/{PORTFOLIO_SHEET_ID}/export?format=csv"
+
+@st.cache_data(ttl=1800)
+def fetch_current_holdings() -> set:
+    """直接讀『輸輸贏贏』試算表目前還有部位的持股代號，不透過自選股清單，
+    避免要手動按同步才是最新。
+    注意：不能用「股數」欄位判斷是否還有持有——出清後股數欄位仍會保留原本數字，
+    只有「總投入」和「現值」欄位會被清空，所以要用這兩欄是否同時有值來判斷。"""
+    try:
+        raw = pd.read_csv(PORTFOLIO_CSV_URL, header=None)
+    except Exception:
+        return set()
+
+    header_row = None
+    for i, row in raw.iterrows():
+        if row.astype(str).str.contains("股票代號").any():
+            header_row = i
+            break
+    if header_row is None:
+        return set()
+
+    df = raw.iloc[header_row + 1:].copy()
+    df.columns = raw.iloc[header_row]
+
+    tickers = set()
+    for _, r in df.iterrows():
+        market = str(r.get("市場", "")).strip()
+        code = str(r.get("股票代號", "")).strip()
+        invested = str(r.get("總投入", "")).strip()
+        value = str(r.get("現值", "")).strip()
+        if not code or code.lower() == "nan" or market not in ("美股", "台股"):
+            continue
+        if not invested or invested.lower() == "nan" or not value or value.lower() == "nan":
+            continue
+        tickers.add(f"{code}.TW" if market == "台股" else code.upper())
+
+    return tickers
+
+my_holdings = fetch_current_holdings()
 
 with st.spinner("載入產業 ETF 資料..."):
     close = fetch_sector_data()
@@ -238,9 +271,11 @@ if selected_rows:
         st.info("查無這檔 ETF 的成分股資料。")
     else:
         holdings_df = holdings_df.copy()
-        holdings_df.insert(0, "持有", holdings_df["代號"].apply(lambda c: "⭐" if c in my_holdings else ""))
+        holdings_df["名稱"] = holdings_df.apply(
+            lambda r: f"⭐ {r['名稱']}" if r["代號"] in my_holdings else r["名稱"], axis=1
+        )
         if my_holdings:
-            st.caption("⭐ = 你自選股清單裡目前持有的標的（需先在「自選股清單」頁按過同步才是最新）")
+            st.caption("⭐ = 你目前還持有的標的（直接讀輸輸贏贏試算表的目前部位）")
         st.dataframe(
             holdings_df.style.format({"權重": "{:.2f}%"}),
             use_container_width=True,
