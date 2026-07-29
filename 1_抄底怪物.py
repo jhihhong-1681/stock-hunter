@@ -427,8 +427,7 @@ def translate_zh(text: str) -> str:
 
 # SEC EDGAR 是美國證管會官方公開資料，全部美股上市公司依法要註冊、有公開 API，
 # 不像 Yahoo Finance 的 .info 端點會對雲端主機的共用 IP 做限流封鎖，抓取穩定很多。
-# 用它的 SIC（標準產業分類）當「產業類別」的主要來源；缺點是沒有行銷式的公司簡介文字，
-# 「公司簡介」還是盡量嘗試 Yahoo Finance 的 longBusinessSummary（失敗就用 SEC 資料退而求其次）。
+# 用它的 SIC（標準產業分類）當「產業類別」的來源。
 _SEC_HEADERS = {"User-Agent": "stock-hunter-app (personal project; contact: jhihhong0810@gmail.com)"}
 
 @st.cache_data(ttl=3600*24, show_spinner=False)
@@ -455,82 +454,31 @@ def fetch_sec_profile(ticker: str, cik10: str):
     except Exception:
         return None
 
-def _strip_leading_company_name(summary: str, names: list) -> str:
-    """公司簡介欄位已經有『公司名稱』一欄了，簡介本身不用再重講一次名字——
-    Yahoo 的 longBusinessSummary 幾乎都是『公司全名 + 逗號/句點 + 業務敘述』開頭，
-    把開頭那段公司名稱（以及後面常接的 Inc./Corp./Ltd. 等字尾、逗點）去掉，
-    讓翻譯後的簡介直接從業務內容講起。"""
-    s = summary.strip()
-    for name in names:
-        name = (name or "").strip()
-        if name and s.lower().startswith(name.lower()):
-            s = s[len(name):].lstrip()
-            s = re.sub(
-                r'^[,.]?\s*(Inc\.?|Incorporated|Corp\.?|Corporation|Co\.?|Ltd\.?|Limited|LLC|L\.P\.|plc|N\.V\.|S\.A\.|AB|AG)?[,.]?\s*',
-                '', s, count=1, flags=re.IGNORECASE
-            )
-            break
-    return s or summary
-
 @st.cache_data(ttl=3600*6, show_spinner=False)
 def fetch_sector_info(tickers_tuple):
     """
-    給篩選『最終結果』用：抓每檔股票的產業分類 + 簡短公司簡介（全中文）。
-    只在最終清單（通常幾十檔內）上抓，不會拖慢技術面/基本面篩選本身。
+    給篩選『最終結果』用：抓每檔股票的產業類別（SEC EDGAR 的 SIC 分類，翻成中文）。
+    只在最終清單上抓，不會拖慢技術面/基本面篩選本身。SEC 是政府公開 API，不會像
+    Yahoo Finance 那樣對雲端主機的共用 IP 限流，用較高併發（8）抓也很穩定。
 
-    產業類別：主要來源是 SEC EDGAR 官方公開資料（SIC 產業分類），這是政府公開資料、
-    幾乎所有美股上市公司都查得到，不會被雲端主機限流；查不到才代表這家公司真的沒有
-    在 SEC 註冊公開資訊（例如極少數 ADR/外國私募發行人），才會顯示「查無資料」。
-
-    公司簡介：盡量嘗試 Yahoo Finance 的簡介文字（較generative、可讀性較好），
-    但只嘗試一次不重試（避免被限流拖慢整批速度）；抓不到就退而求其次，
-    用 SEC 的公司全名 + SIC 分類組成一句簡介，一樣是真實公開資料、不是編造的。
-
-    回傳 dict: { ticker: { category, brief } }
+    回傳 dict: { ticker: { category } }
     """
-    result = {}
     cik_map = fetch_sec_ticker_cik_map()
+    result = {}
 
-    def _fetch_one(ticker):
+    def _fetch_sec(ticker):
         category = "查無資料"
-        brief = "查無資料"
-        company_name = ticker
-        sic_desc_zh = ""
-
         cik10 = cik_map.get(ticker.upper())
         if cik10:
             profile = fetch_sec_profile(ticker, cik10)
             if profile:
-                company_name, sic_desc_en = profile
+                _, sic_desc_en = profile
                 if sic_desc_en:
-                    sic_desc_zh = translate_zh(sic_desc_en)
-                    category = sic_desc_zh
+                    category = translate_zh(sic_desc_en)
+        return ticker, {'category': category}
 
-        # 公司簡介：Yahoo 只嘗試一次，失敗就用 SEC 資料退而求其次，不重試、不卡整批速度
-        try:
-            info = yf.Ticker(ticker).info
-            summary = (info or {}).get('longBusinessSummary', '')
-            if summary:
-                names = [info.get('longName', ''), info.get('shortName', ''), company_name]
-                summary = _strip_leading_company_name(summary, names)
-                try:
-                    brief = GoogleTranslator(source='auto', target='zh-TW').translate(summary[:400])
-                except Exception:
-                    brief = summary
-                if len(brief) > 120:
-                    brief = brief[:120] + '...'
-        except Exception:
-            pass
-
-        if brief == "查無資料" and sic_desc_zh:
-            brief = f"產業分類：{sic_desc_zh}（來源：SEC EDGAR，Yahoo Finance 簡介暫時抓不到）"
-
-        return ticker, {'category': category, 'brief': brief}
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
-        futures = {ex.submit(_fetch_one, t): t for t in tickers_tuple}
-        for future in concurrent.futures.as_completed(futures):
-            ticker, data = future.result()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+        for ticker, data in ex.map(_fetch_sec, tickers_tuple):
             result[ticker] = data
 
     return result
@@ -699,14 +647,13 @@ if run_button:
         progress_bar.progress(1.0)
         status_text.empty()
 
-    # ── 補上產業類別 + 簡短公司簡介（只針對最終清單抓，避免拖慢篩選本身） ──
+    # ── 補上產業類別（只針對最終清單抓，避免拖慢篩選本身） ──
     if final_results:
-        with st.spinner(f"抓取 {len(final_results)} 檔股票的產業分類與簡介..."):
+        with st.spinner(f"抓取 {len(final_results)} 檔股票的產業分類..."):
             sector_info = fetch_sector_info(tuple(r['股票代號'] for r in final_results))
         for r in final_results:
             info = sector_info.get(r['股票代號'], {})
-            r['產業類別'] = info.get('category', '未知')
-            r['公司簡介'] = info.get('brief', '無簡介')
+            r['產業類別'] = info.get('category', '查無資料')
 
     st.session_state['scanned']        = True
     st.session_state['final_results']  = final_results
