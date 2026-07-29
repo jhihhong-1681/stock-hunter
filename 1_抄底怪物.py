@@ -455,6 +455,23 @@ def fetch_sec_profile(ticker: str, cik10: str):
     except Exception:
         return None
 
+def _strip_leading_company_name(summary: str, names: list) -> str:
+    """公司簡介欄位已經有『公司名稱』一欄了，簡介本身不用再重講一次名字——
+    Yahoo 的 longBusinessSummary 幾乎都是『公司全名 + 逗號/句點 + 業務敘述』開頭，
+    把開頭那段公司名稱（以及後面常接的 Inc./Corp./Ltd. 等字尾、逗點）去掉，
+    讓翻譯後的簡介直接從業務內容講起。"""
+    s = summary.strip()
+    for name in names:
+        name = (name or "").strip()
+        if name and s.lower().startswith(name.lower()):
+            s = s[len(name):].lstrip()
+            s = re.sub(
+                r'^[,.]?\s*(Inc\.?|Incorporated|Corp\.?|Corporation|Co\.?|Ltd\.?|Limited|LLC|L\.P\.|plc|N\.V\.|S\.A\.|AB|AG)?[,.]?\s*',
+                '', s, count=1, flags=re.IGNORECASE
+            )
+            break
+    return s or summary
+
 @st.cache_data(ttl=3600*6, show_spinner=False)
 def fetch_sector_info(tickers_tuple):
     """
@@ -494,6 +511,8 @@ def fetch_sector_info(tickers_tuple):
             info = yf.Ticker(ticker).info
             summary = (info or {}).get('longBusinessSummary', '')
             if summary:
+                names = [info.get('longName', ''), info.get('shortName', ''), company_name]
+                summary = _strip_leading_company_name(summary, names)
                 try:
                     brief = GoogleTranslator(source='auto', target='zh-TW').translate(summary[:400])
                 except Exception:
@@ -504,7 +523,7 @@ def fetch_sector_info(tickers_tuple):
             pass
 
         if brief == "查無資料" and sic_desc_zh:
-            brief = f"{company_name}，產業分類：{sic_desc_zh}（來源：SEC EDGAR，Yahoo Finance 簡介暫時抓不到）"
+            brief = f"產業分類：{sic_desc_zh}（來源：SEC EDGAR，Yahoo Finance 簡介暫時抓不到）"
 
         return ticker, {'category': category, 'brief': brief}
 
