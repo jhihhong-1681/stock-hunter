@@ -3,10 +3,10 @@ import yfinance as yf
 import pandas as pd
 import datetime
 import ssl
-import yahoo_fin.stock_info as si
 from deep_translator import GoogleTranslator
 import requests
 import io
+import re
 import urllib3
 import concurrent.futures
 import time
@@ -94,18 +94,85 @@ def get_nasdaq100_tickers():
     except Exception as e:
         st.error(f"Nasdaq 100 名單失敗: {e}"); return []
 
+_NON_COMMON_STOCK_PATTERN = re.compile(
+    r'\b(warrants?|rights?|units?|preferred|notes?|debentures?)\b',
+    re.IGNORECASE
+)
+
+@st.cache_data(ttl=3600*24)
+def _fetch_nasdaq_trader_common_stock(url: str, symbol_col: str, name_col: str) -> list:
+    """
+    直接讀 NASDAQ Trader 官方證券名單（nasdaqlisted.txt / otherlisted.txt），
+    用「Security Name」欄位過濾掉權證(Warrant)/認購權利(Rights)/SPAC Units/
+    特別股(Preferred)/存託憑證特別股/債券(Notes) 等非普通股工具，只留一般普通股，
+    同時排除 ETF 與 Test Issue，避免篩選結果混進這些股價篩選邏輯不適用的商品。
+    （yahoo_fin 的 tickers_nasdaq()/tickers_other() 只回傳代號，沒有證券名稱可以拿來判斷類型，
+    所以改直接讀原始名單檔案。）
+    """
+    try:
+        hdrs = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        r = requests.get(url, headers=hdrs, verify=False, timeout=20)
+        lines = [l for l in r.text.strip().splitlines() if l.strip()]
+    except Exception:
+        return []
+    if len(lines) < 2:
+        return []
+
+    header = lines[0].split('|')
+    try:
+        si_ = header.index(symbol_col)
+        ni_ = header.index(name_col)
+        ei_ = header.index('ETF')
+        ti_ = header.index('Test Issue')
+    except ValueError:
+        return []
+
+    tickers = []
+    # 最後一行通常是「File Creation Time」註記列，不是資料
+    for line in lines[1:]:
+        parts = line.split('|')
+        if len(parts) <= max(si_, ni_, ei_, ti_):
+            continue
+        symbol = parts[si_].strip()
+        name   = parts[ni_].strip()
+        if not symbol or parts[ei_].strip() == 'Y' or parts[ti_].strip() == 'Y':
+            continue
+        if '$' in symbol:  # 特別股類別代號常見符號
+            continue
+        if _NON_COMMON_STOCK_PATTERN.search(name):
+            continue
+        tickers.append(symbol.replace('.', '-'))
+
+    return tickers
+
 @st.cache_data(ttl=3600*24)
 def get_all_nasdaq_tickers():
     try:
-        return [t.replace('.', '-') for t in si.tickers_nasdaq()]
+        tickers = _fetch_nasdaq_trader_common_stock(
+            'https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt',
+            'Symbol', 'Security Name'
+        )
+        if not tickers:
+            st.error("Nasdaq 名單失敗")
+        return tickers
     except Exception as e:
         st.error(f"Nasdaq 名單失敗: {e}"); return []
 
 @st.cache_data(ttl=3600*24)
 def get_all_us_tickers():
     try:
-        all_t = list(set(si.tickers_nasdaq() + si.tickers_other()))
-        return [t.replace('.', '-') for t in all_t if '$' not in t]
+        nasdaq = _fetch_nasdaq_trader_common_stock(
+            'https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt',
+            'Symbol', 'Security Name'
+        )
+        other = _fetch_nasdaq_trader_common_stock(
+            'https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt',
+            'ACT Symbol', 'Security Name'
+        )
+        tickers = sorted(set(nasdaq + other))
+        if not tickers:
+            st.error("全美市場名單失敗")
+        return tickers
     except Exception as e:
         st.error(f"全美市場名單失敗: {e}"); return []
 
@@ -333,11 +400,42 @@ def fetch_fundamentals_yf(tickers_tuple):
 
     return result
 
+# yfinance/Yahoo Finance 的 11 大類 sector 是固定詞彙，用固定對照表保證翻譯正確又穩定，
+# 不會像即時機器翻譯那樣同一個詞每次抓出來的中文可能不一樣。
+SECTOR_ZH = {
+    "Technology": "科技",
+    "Financial Services": "金融服務",
+    "Healthcare": "醫療保健",
+    "Consumer Cyclical": "非必需消費",
+    "Communication Services": "通訊服務",
+    "Industrials": "工業",
+    "Consumer Defensive": "必需消費",
+    "Energy": "能源",
+    "Basic Materials": "原物料",
+    "Real Estate": "房地產",
+    "Utilities": "公用事業",
+}
+
+@st.cache_data(ttl=3600*24*7, show_spinner=False)
+def translate_industry_zh(industry: str) -> str:
+    """industry 詞彙比 sector 細很多（上百種），沒有窮舉對照表，用機器翻譯，
+    但用 industry 字串本身當快取鍵、快取 7 天：同一個 industry 名稱只會翻一次，
+    之後所有股票命中同個 industry 都會拿到同一句翻譯，避免同一詞彙每次結果不一致。"""
+    try:
+        return GoogleTranslator(source='auto', target='zh-TW').translate(industry)
+    except Exception:
+        return industry
+
 @st.cache_data(ttl=3600*6, show_spinner=False)
 def fetch_sector_info(tickers_tuple):
     """
-    給篩選『最終結果』用：抓每檔股票的產業分類（sector/industry）+ 簡短公司簡介。
+    給篩選『最終結果』用：抓每檔股票的產業分類（sector/industry，翻成中文）+ 簡短公司簡介。
     只在最終清單（通常幾十檔內）上抓，不會拖慢技術面/基本面篩選本身。
+
+    注意：部分冷門小型股、權證（代號常以 W 結尾）或下市股票，Yahoo Finance
+    本身就沒有 sector/industry/公司簡介資料，這種情況會顯示「查無資料」——
+    是資料源沒有這筆資訊，不是翻譯失敗，無法無中生有。
+
     回傳 dict: { ticker: { category, brief } }
     """
     result = {}
@@ -346,15 +444,18 @@ def fetch_sector_info(tickers_tuple):
         for attempt in range(2):
             try:
                 info = yf.Ticker(ticker).info
-                sector = info.get('sector') or ''
-                industry = info.get('industry') or ''
-                category = " / ".join(p for p in (sector, industry) if p) or '未知'
+                sector_en = info.get('sector') or ''
+                industry_en = info.get('industry') or ''
+                sector_zh = SECTOR_ZH.get(sector_en, sector_en)
+                industry_zh = translate_industry_zh(industry_en) if industry_en else ''
+                parts = [p for p in (sector_zh, industry_zh) if p]
+                category = " / ".join(parts) if parts else '查無資料'
+
                 summary = info.get('longBusinessSummary', '')
-                brief = '無簡介'
+                brief = '查無資料'
                 if summary:
                     try:
-                        translator = GoogleTranslator(source='auto', target='zh-TW')
-                        brief = translator.translate(summary[:400])
+                        brief = GoogleTranslator(source='auto', target='zh-TW').translate(summary[:400])
                     except Exception:
                         brief = summary
                     if len(brief) > 120:
@@ -362,7 +463,7 @@ def fetch_sector_info(tickers_tuple):
                 return ticker, {'category': category, 'brief': brief}
             except Exception:
                 if attempt == 0: time.sleep(1)
-        return ticker, {'category': '未知', 'brief': '無簡介'}
+        return ticker, {'category': '查無資料', 'brief': '查無資料'}
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as ex:
         futures = {ex.submit(_fetch_one, t): t for t in tickers_tuple}
