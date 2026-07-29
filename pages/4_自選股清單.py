@@ -73,8 +73,11 @@ PORTFOLIO_CSV_URL = f"https://docs.google.com/spreadsheets/d/{PORTFOLIO_SHEET_ID
 
 @st.cache_data(ttl=1800)
 def fetch_portfolio_tickers() -> list:
-    """讀「美股持有庫存」分頁，只取市場+股票代號+股數來判斷目前還有持有的標的，
-    不讀成本/現值/損益等金額欄位，避免把財務金額寫進清單或畫面。"""
+    """讀「美股持有庫存」分頁，只取市場+股票代號來判斷目前還有持有的標的，
+    只把「總投入」「現值」兩欄拿來檢查是否為空（有沒有部位），不會把實際金額
+    存進清單、畫面或 session_state，維持「不把財務金額寫進清單」的原則。
+    注意：不能用「股數」欄位判斷——股票出清後股數欄位仍會保留原本數字，
+    只有「總投入」「現值」會被清空，所以要用這兩欄是否同時有值來判斷。"""
     try:
         raw = pd.read_csv(PORTFOLIO_CSV_URL, header=None)
     except Exception:
@@ -95,13 +98,11 @@ def fetch_portfolio_tickers() -> list:
     for _, r in df.iterrows():
         market = str(r.get("市場", "")).strip()
         code = str(r.get("股票代號", "")).strip()
-        shares = str(r.get("股數", "")).strip()
+        invested = str(r.get("總投入", "")).strip()
+        value = str(r.get("現值", "")).strip()
         if not code or code.lower() == "nan" or market not in ("美股", "台股"):
             continue
-        try:
-            if float(shares) <= 0:
-                continue
-        except ValueError:
+        if not invested or invested.lower() == "nan" or not value or value.lower() == "nan":
             continue
         tickers.append(f"{code}.TW" if market == "台股" else code.upper())
 
