@@ -70,6 +70,21 @@ def fetch_sector_data():
 
     return close
 
+@st.cache_data(ttl=86400)
+def fetch_holdings(etf_ticker: str) -> pd.DataFrame:
+    try:
+        fd = yf.Ticker(etf_ticker).funds_data
+        holdings = fd.top_holdings
+        if holdings is None or holdings.empty:
+            return pd.DataFrame()
+        df = holdings.reset_index().rename(columns={
+            "Symbol": "代號", "Name": "名稱", "Holding Percent": "權重"
+        })
+        df["權重"] = df["權重"] * 100
+        return df
+    except Exception:
+        return pd.DataFrame()
+
 with st.spinner("載入產業 ETF 資料..."):
     close = fetch_sector_data()
 
@@ -170,10 +185,14 @@ st.plotly_chart(fig2, use_container_width=True)
 # --- 明細表（數值，帶紅綠色） ---
 st.markdown("---")
 st.subheader("📋 完整報酬率明細")
+st.caption("👆 點一下表格中的產業列，可在下方看到該產業 ETF 追蹤的成分股與權重。")
+
 table_num = pd.DataFrame(
     {period: {s: results[period].get(s, 0) for s in sectors}
      for period in PERIODS.keys()}
 )
+table_display = table_num.reset_index().rename(columns={"index": "產業"})
+period_cols = list(PERIODS.keys())
 
 def color_cell(val):
     if val > 0:
@@ -183,12 +202,37 @@ def color_cell(val):
     return ""
 
 try:
-    styled_table = table_num.style \
-        .map(color_cell) \
-        .format("{:+.2f}%")
+    styled_table = table_display.style \
+        .map(color_cell, subset=period_cols) \
+        .format({p: "{:+.2f}%" for p in period_cols})
 except AttributeError:
-    styled_table = table_num.style \
-        .applymap(color_cell) \
-        .format("{:+.2f}%")
+    styled_table = table_display.style \
+        .applymap(color_cell, subset=period_cols) \
+        .format({p: "{:+.2f}%" for p in period_cols})
 
-st.dataframe(styled_table, use_container_width=True)
+event = st.dataframe(
+    styled_table,
+    use_container_width=True,
+    hide_index=True,
+    on_select="rerun",
+    selection_mode="single-row",
+    key="sector_detail_table",
+)
+
+selected_rows = event.selection.rows if event and event.selection else []
+if selected_rows:
+    picked_sector = table_display.iloc[selected_rows[0]]["產業"]
+    etf = SECTOR_ETFS.get(picked_sector)
+    st.markdown(f"#### 🔎 {picked_sector}（{etf}）追蹤成分股與權重")
+    with st.spinner(f"載入 {etf} 成分股..."):
+        holdings_df = fetch_holdings(etf)
+    if holdings_df.empty:
+        st.info("查無這檔 ETF 的成分股資料。")
+    else:
+        st.dataframe(
+            holdings_df.style.format({"權重": "{:.2f}%"}),
+            use_container_width=True,
+            hide_index=True,
+        )
+else:
+    st.info("👆 點一下上表任一列，查看該產業的成分股與權重")
