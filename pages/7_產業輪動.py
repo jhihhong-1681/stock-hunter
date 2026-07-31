@@ -1,3 +1,4 @@
+import time
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -72,18 +73,23 @@ def fetch_sector_data():
 
 @st.cache_data(ttl=86400)
 def fetch_holdings(etf_ticker: str) -> pd.DataFrame:
-    try:
-        fd = yf.Ticker(etf_ticker).funds_data
-        holdings = fd.top_holdings
-        if holdings is None or holdings.empty:
-            return pd.DataFrame()
-        df = holdings.reset_index().rename(columns={
-            "Symbol": "代號", "Name": "名稱", "Holding Percent": "權重"
-        })
-        df["權重"] = df["權重"] * 100
-        return df
-    except Exception:
-        return pd.DataFrame()
+    # Yahoo 的 fund holdings 端點在 Cloud IP 上偶爾會回傳空值或被限流，
+    # 單次失敗就直接快取空結果會讓查詢卡住 24 小時，改成重試幾次再放棄。
+    for attempt in range(3):
+        try:
+            fd = yf.Ticker(etf_ticker).funds_data
+            holdings = fd.top_holdings
+            if holdings is not None and not holdings.empty:
+                df = holdings.reset_index().rename(columns={
+                    "Symbol": "代號", "Name": "名稱", "Holding Percent": "權重"
+                })
+                df["權重"] = df["權重"] * 100
+                return df
+        except Exception:
+            pass
+        if attempt < 2:
+            time.sleep(2)
+    return pd.DataFrame()
 
 PORTFOLIO_SHEET_ID = "1eaUErkLJUOH7aaIKhDWM5vQwAbE2Zrl0w9jI3KK-9yU"
 PORTFOLIO_CSV_URL = f"https://docs.google.com/spreadsheets/d/{PORTFOLIO_SHEET_ID}/export?format=csv"

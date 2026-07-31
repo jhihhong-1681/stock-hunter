@@ -102,17 +102,31 @@ TWSE_INDUSTRY_MAP = {
 
 @st.cache_data(ttl=3600*12)
 def get_tw_industry_data():
+    # 改用 FinMind 抓台股清單與產業分類：openapi.twse.com.tw 部署在
+    # Streamlit Community Cloud（國外雲端主機）上會被證交所擋掉，只有本機
+    # 執行才正常；FinMind 的 API 沒有這個限制，雲端跟本機都能正常抓到。
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        url_info = "https://openapi.twse.com.tw/v1/opendata/t187ap03_L"
-        info_json = requests.get(url_info, headers=headers, verify=False, timeout=10).json()
-        industry_map = {item['公司代號']: item['產業別'] for item in info_json if '公司代號' in item}
-        
-        url_price = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
-        price_json = requests.get(url_price, headers=headers, verify=False, timeout=10).json()
-        return industry_map, price_json
-    except Exception as e:
-        return {}, []
+        finmind_url = "https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo"
+        r = requests.get(finmind_url, timeout=15).json()
+        tw_ind_map = {}
+        tw_name_map = {}
+        seen = set()
+        valid_tickers = []
+        for item in r.get('data', []):
+            code = item.get('stock_id', '')
+            if len(code) == 4 and code.isdigit():
+                suffix = ".TW" if item.get('type') == 'twse' else ".TWO"
+                tkr = f"{code}{suffix}"
+                tw_ind_map[code] = item.get('industry_category', '其他')
+                tw_name_map[tkr] = f"{code} {item.get('stock_name', '')}"
+                # FinMind 的 TaiwanStockInfo 對同一檔股票可能有多筆歷史紀錄
+                # （改名、上市櫃別變更等），要去重避免 yfinance 抓到重複欄位
+                if tkr not in seen:
+                    seen.add(tkr)
+                    valid_tickers.append(tkr)
+        return tw_ind_map, tw_name_map, valid_tickers
+    except Exception:
+        return {}, {}, []
 
 @st.cache_data(ttl=3600*24)
 def get_sp500_components():
@@ -130,9 +144,29 @@ def get_sp500_components():
 
 @st.cache_data(ttl=3600)
 def fetch_historical_prices(tickers, period):
-    # 分批避免 Timeout
-    df = yf.download(tickers, period=period, progress=False, threads=True)
-    return df
+    # 台股全市場有 3000+ 檔，一次性下載會觸發 Yahoo 的 YFRateLimitError，
+    # 改成分批下載、批次間短暫停頓以降低瞬間請求量，避免整批被限流。
+    chunk_size = 250
+    chunks = [tickers[i:i + chunk_size] for i in range(0, len(tickers), chunk_size)]
+    if len(chunks) <= 1:
+        return yf.download(tickers, period=period, progress=False, threads=True)
+
+    frames = []
+    for i, chunk in enumerate(chunks):
+        try:
+            part = yf.download(chunk, period=period, progress=False, threads=True)
+            if not part.empty:
+                frames.append(part)
+        except Exception:
+            pass
+        if i < len(chunks) - 1:
+            time.sleep(2)
+
+    if not frames:
+        return pd.DataFrame()
+    # concat 後每個 chunk 的欄位各自一段，MultiIndex 沒有排序，之後對
+    # df_hist['Volume']/['Close'] 逐檔查詢會變得非常慢，先排序恢復查詢效能
+    return pd.concat(frames, axis=1).sort_index(axis=1)
 
 def calculate_period_change(df, tf_label):
     if df is None or df.empty or 'Close' not in df:
@@ -172,51 +206,42 @@ if st.button(f"🚀 產生 {selected_market} 熱力圖", type="primary"):
     color_scale = ['#007a00', '#222222', '#d90000']
     
     if selected_market == "台灣股市 (上市櫃全市場)":
-        with st.spinner("正在獲取台股產業分類與價格..."):
-            tw_ind_map, tw_price = get_tw_industry_data()
-            
+        with st.spinner("正在透過 FinMind 獲取台股清單與產業分類..."):
+            tw_ind_map, name_map, all_tickers = get_tw_industry_data()
+
             if not tw_ind_map:
-                st.error("無法取得台股資料 (這通常發生在公開發佈到國外雲端主機時被台灣證交所阻擋)。請嘗試在本機端執行！")
+                st.error("無法取得台股資料，請稍後再試。")
                 st.stop()
-                
+
             yq_period = timeframe_map[selected_tf]
-            
-            # 過濾只取有產業別的有價證券
-            valid_tickers = []
+            st.info(f"成功抓取全市場 {len(all_tickers)} 檔股票。正在下載 {selected_tf} 的歷史數據進行運算，這稍微需要一段時間...")
+
+            df_hist = fetch_historical_prices(all_tickers, yq_period)
+
+            # 用成交量*收盤價估算成交金額，篩出前 N 大活躍股票
+            # 先把 Volume/Close 兩個子表切出來，避免在迴圈裡對上千檔股票
+            # 重複做 MultiIndex 欄位查詢（會拖慢很多）
             size_map = {}
-            name_map = {}
             price_map = {}
+            if 'Volume' in df_hist and 'Close' in df_hist:
+                vol_df = df_hist['Volume']
+                close_df = df_hist['Close']
+                for t in all_tickers:
+                    if t in vol_df and t in close_df:
+                        v = vol_df[t].dropna()
+                        c = close_df[t].dropna()
+                        if not v.empty and not c.empty:
+                            size_map[t] = float(v.iloc[-1]) * float(c.iloc[-1])
+                            price_map[t] = float(c.iloc[-1])
 
-            for item in tw_price:
-                code = item.get('Code', '')
-                try:
-                    t_val = float(item.get('TradeValue', 0))
-                except:
-                    t_val = 0
-                try:
-                    c_price = float(item.get('ClosingPrice', 0) or 0)
-                except:
-                    c_price = 0
+            sorted_valid = sorted([t for t in all_tickers if size_map.get(t, 0) > 0], key=lambda x: size_map[x], reverse=True)[:top_n]
 
-                # 過濾掉交易額過低(防雷) 或沒有產業代碼的
-                if code in tw_ind_map and t_val > 1000000:
-                    valid_tickers.append(f"{code}.TW")
-                    size_map[f"{code}.TW"] = t_val
-                    name_map[f"{code}.TW"] = f"{code} {item.get('Name', '')}"
-                    price_map[f"{code}.TW"] = c_price
-
-            # 為了效能與畫面簡潔，只取成交金額前 N 大的股票
-            sorted_valid = sorted(valid_tickers, key=lambda x: size_map[x], reverse=True)[:top_n]
-
-            st.info(f"成功抓取全市場最活躍之 {len(sorted_valid)} 檔股票。正在下載 {selected_tf} 的歷史數據進行運算...")
-
-            df_hist = fetch_historical_prices(sorted_valid, yq_period)
             change_map = calculate_period_change(df_hist, selected_tf)
             
             plot_data = []
             for tkr in sorted_valid:
                 if tkr in change_map and tkr in size_map:
-                    raw_code = tkr.replace('.TW', '')
+                    raw_code = tkr.split('.')[0]
                     ind_code = tw_ind_map.get(raw_code, '')
                     # API 可能回傳數字代碼或直接是文字名稱，兩種都處理
                     ind_name = TWSE_INDUSTRY_MAP.get(ind_code, ind_code if ind_code else '其他')
