@@ -1,9 +1,14 @@
+import json
 import time
+from pathlib import Path
+
 import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
+
+ETF_HOLDINGS_FILE = Path(__file__).parent.parent / "data" / "etf_holdings.json"
 
 st.set_page_config(page_title="產業輪動 - 阿紘的股票儀表板", page_icon="🔄", layout="wide")
 from utils.styles import load_css
@@ -71,8 +76,27 @@ def fetch_sector_data():
 
     return close
 
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=3600)
+def load_static_holdings() -> dict:
+    """每天由 GitHub Actions（scripts/fetch_etf_holdings.py）預先抓好存檔，
+    使用者點擊時直接讀這個檔案，不用即時打 Yahoo，不會遇到雲端 IP 限流。"""
+    try:
+        payload = json.loads(ETF_HOLDINGS_FILE.read_text(encoding="utf-8"))
+        return payload.get("holdings", {})
+    except Exception:
+        return {}
+
+
 def fetch_holdings(etf_ticker: str) -> pd.DataFrame:
+    static = load_static_holdings()
+    if etf_ticker in static:
+        return pd.DataFrame(static[etf_ticker])
+    # 排程還沒收錄這檔（例如剛加進 SECTOR_ETFS），退回即時抓取。
+    return fetch_holdings_live(etf_ticker)
+
+
+@st.cache_data(ttl=86400)
+def fetch_holdings_live(etf_ticker: str) -> pd.DataFrame:
     # Yahoo 的 fund holdings 端點在 Cloud IP 上偶爾會回傳空值或被限流，重試幾次再放棄。
     # 注意：失敗時用 raise 而不是回傳空 DataFrame——st.cache_data 不會快取拋出例外的呼叫，
     # 回傳空表格則會被當成「正常結果」快取 24 小時，害之後重整也只是重播同一次失敗。
