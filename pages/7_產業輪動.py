@@ -73,8 +73,10 @@ def fetch_sector_data():
 
 @st.cache_data(ttl=86400)
 def fetch_holdings(etf_ticker: str) -> pd.DataFrame:
-    # Yahoo 的 fund holdings 端點在 Cloud IP 上偶爾會回傳空值或被限流，
-    # 單次失敗就直接快取空結果會讓查詢卡住 24 小時，改成重試幾次再放棄。
+    # Yahoo 的 fund holdings 端點在 Cloud IP 上偶爾會回傳空值或被限流，重試幾次再放棄。
+    # 注意：失敗時用 raise 而不是回傳空 DataFrame——st.cache_data 不會快取拋出例外的呼叫，
+    # 回傳空表格則會被當成「正常結果」快取 24 小時，害之後重整也只是重播同一次失敗。
+    last_error = None
     for attempt in range(3):
         try:
             fd = yf.Ticker(etf_ticker).funds_data
@@ -85,11 +87,11 @@ def fetch_holdings(etf_ticker: str) -> pd.DataFrame:
                 })
                 df["權重"] = df["權重"] * 100
                 return df
-        except Exception:
-            pass
+        except Exception as e:
+            last_error = e
         if attempt < 2:
             time.sleep(2)
-    return pd.DataFrame()
+    raise RuntimeError(f"抓不到 {etf_ticker} 的成分股資料") from last_error
 
 PORTFOLIO_SHEET_ID = "1eaUErkLJUOH7aaIKhDWM5vQwAbE2Zrl0w9jI3KK-9yU"
 PORTFOLIO_CSV_URL = f"https://docs.google.com/spreadsheets/d/{PORTFOLIO_SHEET_ID}/export?format=csv"
@@ -271,10 +273,14 @@ if selected_rows:
     picked_sector = table_display.iloc[selected_rows[0]]["產業"]
     etf = SECTOR_ETFS.get(picked_sector)
     st.markdown(f"#### 🔎 {picked_sector}（{etf}）追蹤成分股與權重")
-    with st.spinner(f"載入 {etf} 成分股..."):
-        holdings_df = fetch_holdings(etf)
+    try:
+        with st.spinner(f"載入 {etf} 成分股..."):
+            holdings_df = fetch_holdings(etf)
+    except Exception:
+        holdings_df = pd.DataFrame()
+
     if holdings_df.empty:
-        st.info("查無這檔 ETF 的成分股資料。")
+        st.warning(f"暫時抓不到 {etf} 的成分股資料，通常是 Yahoo 短暫限流，重新整理頁面再試一次即可。")
     else:
         holdings_df = holdings_df.copy()
         holdings_df["名稱"] = holdings_df.apply(
