@@ -1,3 +1,4 @@
+import time
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -11,4 +12,4 @@ EDITOR_URL = "https://jhihhong-1681.github.io/portfolio-calendar/holdings-editor
 
 st.link_button("↗ 在新分頁開啟完整版", EDITOR_URL)
 
-components.iframe(EDITOR_URL, height=1400, scrolling=True)
+components.iframe(f"{EDITOR_URL}?v={int(time.time())}", height=1400, scrolling=True)

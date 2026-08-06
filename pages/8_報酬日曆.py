@@ -1,3 +1,4 @@
+import time
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -11,4 +12,6 @@ CALENDAR_URL = "https://jhihhong-1681.github.io/portfolio-calendar/"
 
 st.link_button("↗ 在新分頁開啟完整版", CALENDAR_URL)
 
-components.iframe(CALENDAR_URL, height=1400, scrolling=True)
+# 加上時間戳查詢參數，避免 GitHub Pages CDN 或瀏覽器把 iframe 內容快取住，
+# 導致改版後這裡還顯示舊畫面。
+components.iframe(f"{CALENDAR_URL}?v={int(time.time())}", height=1400, scrolling=True)
