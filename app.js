@@ -1002,9 +1002,6 @@ function renderHoldings() {
   renderDonutChart();
 }
 
-// 暴露給 firebase-sync.js：雲端資料一有更新（例如在「持股更新」頁面改了東西），
-// 這裡就會被叫到，重新畫這個唯讀面板，不用重新整理頁面。
-window.renderHoldings = renderHoldings;
 renderHoldings();
 renderYtdChart();
 
