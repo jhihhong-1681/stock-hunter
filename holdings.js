@@ -5,12 +5,12 @@ window.HOLDINGS = {
   asOf: "2026-08-10",
   totals: {
     invested: 982665,
-    value: 910575.59,
-    unrealizedPL: -72089.41,
+    value: 910576.59,
+    unrealizedPL: -72088.41,
     unrealizedPct: -7.34,
     realizedPL: 358073.03,
     cash: 187055,
-    totalAssets: 1097630.59
+    totalAssets: 1097631.59
   },
   positions: [
     { symbol: "ASTS", name: "AST Spacemobile", shares: 53, avgCost: 74.2, price: 68.8, invested: 121861, value: 112973, pl: -8888.32, pct: -7.29, realized: null },
