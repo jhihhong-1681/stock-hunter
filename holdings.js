@@ -5,12 +5,12 @@ window.HOLDINGS = {
   asOf: "2026-08-10",
   totals: {
     invested: 982665,
-    value: 910576.34,
-    unrealizedPL: -72088.66,
+    value: 910575.59,
+    unrealizedPL: -72089.41,
     unrealizedPct: -7.34,
     realizedPL: 358073.03,
     cash: 187055,
-    totalAssets: 1097631.34
+    totalAssets: 1097630.59
   },
   positions: [
     { symbol: "ASTS", name: "AST Spacemobile", shares: 53, avgCost: 74.2, price: 68.8, invested: 121861, value: 112973, pl: -8888.32, pct: -7.29, realized: null },
@@ -29,7 +29,7 @@ window.HOLDINGS = {
     { symbol: "ALGM", name: "Allegro MicroSystems", shares: 20, avgCost: 45.2, price: 42.5, invested: 28024, value: 26325, pl: -1698.80, pct: -6.06, realized: null },
     { symbol: "CAG", name: "ConAgra Brands", shares: 50, avgCost: 15.5, price: 14.8, invested: 24025, value: 22894, pl: -1131.50, pct: -4.71, realized: null },
     { symbol: "MRCY", name: "Mercury Systems", shares: 2, avgCost: 112.0, price: 108.6, invested: 6944, value: 6736, pl: -208.32, pct: -3.00, realized: null },
-    { symbol: "HOOD", name: "HOOD 09/18/26 100 Call", type: "option", shares: 100, avgCost: null, price: null, invested: 57350, value: 65937, pl: 8587.00, pct: 14.97, realized: -41850.00 },
+    { symbol: "HOOD", name: "HOOD 09/18/26 75 Call", type: "option", shares: 100, avgCost: null, price: 21.27, invested: 57350, value: 65936.25, pl: 8586.25, pct: 14.97, realized: -41850.00 },
     { symbol: "XOM", name: "XOM 09/18/26 145 Call", type: "option", shares: 100, avgCost: null, price: 15.75, invested: 39370, value: 48824.23, pl: 9454.23, pct: 24.01, realized: null },
     { symbol: "HAL", name: "HAL 10/16/26 32 Call", type: "option", shares: 300, avgCost: null, price: 2.94, invested: 32147, value: 27340.41, pl: -4806.59, pct: -14.95, realized: null },
     { symbol: "GSK", name: "GSK 11/20/26 45 Call", type: "option", shares: null, avgCost: null, price: 7.69, invested: 23870, value: 23838.38, pl: -31.62, pct: -0.13, realized: null },
