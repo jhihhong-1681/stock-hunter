@@ -778,7 +778,11 @@ const THEME_MAP = {
   FVRR: "消費網路",
   UGL: "貴金屬避險",
   B: "貴金屬避險",
-  CAG: "民生消費"
+  CAG: "民生消費",
+  SMCI: "AI基建/半導體",
+  ONDS: "國防太空",
+  SOFI: "金融科技",
+  SBET: "加密貨幣"
 };
 
 const THEME_COLORS = [
@@ -877,16 +881,20 @@ function renderOptionExpiry(positions) {
   expiryListEl.innerHTML = options
     .map((p) => {
       const plCls = p.pl > 0 ? "gain" : p.pl < 0 ? "loss" : "flat";
+      const sharesTxt = p.shares !== null && p.shares !== undefined ? `${p.shares} 股` : "";
+      const investTxt = `投入 ${fmtAmount(p.invested).replace(/^[+-]/, "")} → 現值 ${fmtAmount(p.value).replace(/^[+-]/, "")}`;
+      const plHtml = `${fmtAmount(p.pl)} <span class="expiry-pct">(${fmtPct(p.pct)})</span>`;
       if (!p.parsed) {
         return `
           <div class="expiry-row">
             <div class="expiry-main">
-              <span class="expiry-symbol">${p.symbol}</span>
+              <div class="expiry-symbol-row"><span class="expiry-symbol">${p.symbol}</span><span class="expiry-shares">${sharesTxt}</span></div>
               <span class="expiry-name">${p.name || ""}</span>
+              <span class="expiry-invest">${investTxt}</span>
             </div>
             <div class="expiry-right">
               <div class="expiry-days flat">到期日未知</div>
-              <div class="expiry-pl ${plCls}">${fmtAmount(p.pl)}</div>
+              <div class="expiry-pl ${plCls}">${plHtml}</div>
             </div>
           </div>
         `;
@@ -899,17 +907,111 @@ function renderOptionExpiry(positions) {
       return `
         <div class="expiry-row ${urgencyCls}">
           <div class="expiry-main">
-            <span class="expiry-symbol">${p.symbol}</span>
+            <div class="expiry-symbol-row"><span class="expiry-symbol">${p.symbol}</span><span class="expiry-shares">${sharesTxt}</span></div>
             <span class="expiry-name">${p.parsed.strike} ${p.parsed.optType} · ${p.parsed.dateStr}</span>
+            <span class="expiry-invest">${investTxt}</span>
           </div>
           <div class="expiry-right">
             <div class="expiry-days">${daysTxt}</div>
-            <div class="expiry-pl ${plCls}">${fmtAmount(p.pl)}</div>
+            <div class="expiry-pl ${plCls}">${plHtml}</div>
           </div>
         </div>
       `;
     })
     .join("");
+}
+
+// 目前持股卡片一多就要滾很久，預設只顯示前 N 檔，其餘收在「顯示全部」按鈕後面。
+const HOLDINGS_COLLAPSE_COUNT = 8;
+let holdingsExpanded = false;
+const holdingsExpandBtnEl = document.getElementById("holdingsExpandBtn");
+
+function renderHoldingRow(p) {
+  const borderCls = p.pl > 0 ? "gain-border" : p.pl < 0 ? "loss-border" : "";
+  const plCls = p.pl > 0 ? "gain" : p.pl < 0 ? "loss" : "flat";
+  const isOption = p.type === "option";
+  const sharesTxt = p.shares !== null && p.shares !== undefined ? `${p.shares} 股` : "";
+  const optionTag = isOption ? '<span class="h-tag">期權</span>' : "";
+  const nameTxt = p.name && p.name !== p.symbol ? `<div class="h-name">${p.name}</div>` : "";
+  const costLine = p.avgCost !== null && p.avgCost !== undefined
+    ? `成本 ${fmtUsd(p.avgCost)} → 現價 ${fmtUsd(p.price)}`
+    : "";
+  const investLine = `投入 ${fmtAmount(p.invested).replace(/^[+-]/, "")} → 現值 ${fmtAmount(p.value).replace(/^[+-]/, "")}`;
+  const realizedLine = p.realized !== null && p.realized !== undefined
+    ? `<div class="h-line3">已實現：<span class="${p.realized > 0 ? "gain" : p.realized < 0 ? "loss" : "flat"}">${fmtAmount(p.realized)}</span></div>`
+    : "";
+  return `
+    <div class="holding-row ${borderCls}">
+      <div class="h-line1">
+        <span><span class="h-symbol">${p.symbol}</span><span class="h-shares">${sharesTxt}</span>${optionTag}</span>
+        <span class="h-pl ${plCls}">${fmtAmount(p.pl)} <span style="font-size:10.5px;">(${fmtPct(p.pct)})</span></span>
+      </div>
+      ${nameTxt}
+      <div class="h-line2">
+        <span>${costLine}</span>
+        <span>${investLine}</span>
+      </div>
+      ${realizedLine}
+    </div>
+  `;
+}
+
+function renderOpenPositionsList(positions) {
+  const needsCollapse = positions.length > HOLDINGS_COLLAPSE_COUNT;
+  const showAll = holdingsExpanded || !needsCollapse;
+  const visible = showAll ? positions : positions.slice(0, HOLDINGS_COLLAPSE_COUNT);
+
+  holdingsListEl.innerHTML = visible.map(renderHoldingRow).join("");
+
+  if (!needsCollapse) {
+    holdingsExpandBtnEl.textContent = "";
+    holdingsExpandBtnEl.onclick = null;
+    return;
+  }
+  holdingsExpandBtnEl.textContent = showAll ? "收起 ▲" : `顯示全部 ${positions.length} 檔 ▾`;
+  holdingsExpandBtnEl.onclick = () => {
+    holdingsExpanded = !holdingsExpanded;
+    renderOpenPositionsList(positions);
+  };
+}
+
+const closedHeaderEl = document.getElementById("closedHeader");
+const closedHeaderTitleEl = document.getElementById("closedHeaderTitle");
+const closedListEl = document.getElementById("closedList");
+const closedSectionEl = document.querySelector(".closed-section");
+
+// 已平倉紀錄整個區塊預設收起（只顯示標題+筆數+已實現損益合計），點了才展開明細，
+// 依已實現損益排序（最賺的排最前面，最賠的排最後面），比照原始 Sheet 順序反而看不出重點。
+function renderClosedPositions(closedPositions) {
+  if (!closedPositions.length) {
+    closedSectionEl.style.display = "none";
+    return;
+  }
+  closedSectionEl.style.display = "";
+
+  const sorted = [...closedPositions].sort((a, b) => b.realized - a.realized);
+  const totalRealized = sorted.reduce((s, p) => s + p.realized, 0);
+  closedHeaderTitleEl.textContent = `已平倉紀錄（${sorted.length} 筆，合計 ${fmtAmount(totalRealized)}）`;
+
+  closedListEl.innerHTML = sorted
+    .map((p) => {
+      const cls = p.realized > 0 ? "gain-border" : p.realized < 0 ? "loss-border" : "";
+      const plCls = p.realized > 0 ? "gain" : p.realized < 0 ? "loss" : "flat";
+      const noteTxt = p.note ? `・${p.note}` : "";
+      return `
+        <div class="closed-row ${cls}">
+          <span class="cr-symbol">${p.symbol}</span>
+          <span class="cr-name">${p.name || ""}${noteTxt}</span>
+          <span class="cr-pl ${plCls}">${fmtAmount(p.realized)}</span>
+        </div>
+      `;
+    })
+    .join("");
+
+  closedHeaderEl.onclick = () => {
+    const isOpen = closedListEl.classList.toggle("open");
+    closedHeaderEl.classList.toggle("open", isOpen);
+  };
 }
 
 function renderHoldings() {
@@ -956,45 +1058,15 @@ function renderHoldings() {
     </div>
   `;
 
-  // 目前持股面板只顯示還持有的部位；已平倉的歷史交易只在「持股更新」頁面看得到，
-  // 但它們的已實現損益已經算進上面的 totals.realizedPL 裡了。
+  // 目前持股面板只顯示還持有的部位；已經全部賣光的部位改到下面的「已平倉紀錄」手風琴區塊，
+  // 它們的已實現損益已經算進上面的 totals.realizedPL 裡了。
   const openPositions = (h.positions || []).filter((p) => !p.closed);
 
   renderThemeExposure(openPositions);
   renderOptionExpiry(openPositions);
-
-  const positions = openPositions;
-  holdingsListEl.innerHTML = positions
-    .map((p) => {
-      const borderCls = p.pl > 0 ? "gain-border" : p.pl < 0 ? "loss-border" : "";
-      const plCls = p.pl > 0 ? "gain" : p.pl < 0 ? "loss" : "flat";
-      const isOption = p.type === "option";
-      const sharesTxt = p.shares !== null && p.shares !== undefined ? `${p.shares} 股` : "";
-      const optionTag = isOption ? '<span class="h-tag">期權</span>' : "";
-      const nameTxt = p.name && p.name !== p.symbol ? `<div class="h-name">${p.name}</div>` : "";
-      const costLine = p.avgCost !== null && p.avgCost !== undefined
-        ? `成本 ${fmtUsd(p.avgCost)} → 現價 ${fmtUsd(p.price)}`
-        : "";
-      const investLine = `投入 ${fmtAmount(p.invested).replace(/^[+-]/, "")} → 現值 ${fmtAmount(p.value).replace(/^[+-]/, "")}`;
-      const realizedLine = p.realized !== null && p.realized !== undefined
-        ? `<div class="h-line3">已實現：<span class="${p.realized > 0 ? "gain" : p.realized < 0 ? "loss" : "flat"}">${fmtAmount(p.realized)}</span></div>`
-        : "";
-      return `
-        <div class="holding-row ${borderCls}">
-          <div class="h-line1">
-            <span><span class="h-symbol">${p.symbol}</span><span class="h-shares">${sharesTxt}</span>${optionTag}</span>
-            <span class="h-pl ${plCls}">${fmtAmount(p.pl)} <span style="font-size:10.5px;">(${fmtPct(p.pct)})</span></span>
-          </div>
-          ${nameTxt}
-          <div class="h-line2">
-            <span>${costLine}</span>
-            <span>${investLine}</span>
-          </div>
-          ${realizedLine}
-        </div>
-      `;
-    })
-    .join("");
+  // 期權已經在報酬日曆卡片的「選擇權到期日」列出完整資訊了，這裡的持股清單只留股票，避免重複。
+  renderOpenPositionsList(openPositions.filter((p) => p.type !== "option"));
+  renderClosedPositions(h.closedPositions || []);
 
   holdingsFooterEl.textContent = `快照時間：${h.asOf}`;
 

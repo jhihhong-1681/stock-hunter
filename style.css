@@ -392,6 +392,14 @@ body {
   border-bottom: 1px solid #232833;
 }
 
+/* 選擇權到期日搬到報酬日曆卡片後，改用跟同卡片其他區塊一樣的「上邊框」分隔線 */
+.expiry-section-in-calendar {
+  margin: 24px 0 0;
+  padding: 18px 0 0;
+  border-bottom: none;
+  border-top: 1px solid #232833;
+}
+
 .expiry-list {
   display: flex;
   flex-direction: column;
@@ -419,15 +427,31 @@ body {
   min-width: 0;
 }
 
+.expiry-symbol-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
 .expiry-symbol {
   font-weight: 700;
   font-size: 13px;
   color: #e6e6e6;
 }
 
+.expiry-shares {
+  font-size: 10.5px;
+  color: #8a8f98;
+}
+
 .expiry-name {
   font-size: 10.5px;
   color: #9aa0a8;
+}
+
+.expiry-invest {
+  font-size: 10.5px;
+  color: #8a8f98;
 }
 
 .expiry-right {
@@ -445,8 +469,14 @@ body {
 .expiry-row.expiry-soon .expiry-days { color: #f5c518; }
 
 .expiry-pl {
+  font-size: 11.5px;
+  margin-top: 4px;
+  font-weight: 700;
+}
+
+.expiry-pct {
   font-size: 10.5px;
-  margin-top: 2px;
+  font-weight: 400;
 }
 
 .holdings-list {
@@ -517,6 +547,100 @@ body {
   font-size: 10.5px;
   color: #8a8f98;
   margin-top: 3px;
+}
+
+.expand-btn {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  background: #1b2029;
+  color: #9aa0a8;
+  border: 1px solid #232833;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: center;
+}
+.expand-btn:hover { background: #232833; color: #cfd3d8; }
+.expand-btn:empty { display: none; }
+
+/* ---- 已平倉紀錄（手風琴，預設收起） ---- */
+
+.closed-section {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #232833;
+}
+
+.closed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.closed-header-title {
+  margin-bottom: 0;
+}
+
+.closed-chevron {
+  font-size: 12px;
+  color: #6b7078;
+  transition: transform 0.15s ease;
+}
+
+.closed-header.open .closed-chevron {
+  transform: rotate(180deg);
+}
+
+.closed-list {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.closed-list.open {
+  display: flex;
+}
+
+.closed-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  border-left: 3px solid #3a3f4a;
+  background: #1b2029;
+  font-size: 11.5px;
+}
+
+.closed-row.gain-border { border-left-color: #ff5c5c; }
+.closed-row.loss-border { border-left-color: #2fbf6a; }
+
+.closed-row .cr-symbol {
+  font-weight: 700;
+  color: #e6e6e6;
+  flex: none;
+}
+
+.closed-row .cr-name {
+  color: #7d8590;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.closed-row .cr-pl {
+  font-weight: 700;
+  flex: none;
+  margin-left: auto;
 }
 
 /* ---- Hero 摘要卡 ---- */

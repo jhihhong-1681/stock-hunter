@@ -123,6 +123,11 @@
         <div class="compare-legend" id="compareLegend"></div>
       </div>
 
+      <div class="expiry-section expiry-section-in-calendar">
+        <div class="compare-title">選擇權到期日</div>
+        <div class="expiry-list" id="expiryList"></div>
+      </div>
+
       <div class="footer" id="footer"></div>
     </div>
 
@@ -139,12 +144,16 @@
         <div class="theme-exposure" id="themeExposure"></div>
       </div>
 
-      <div class="expiry-section">
-        <div class="compare-title">選擇權到期日</div>
-        <div class="expiry-list" id="expiryList"></div>
-      </div>
-
       <div class="holdings-list" id="holdingsList"></div>
+      <button class="expand-btn" id="holdingsExpandBtn"></button>
+
+      <div class="closed-section">
+        <div class="closed-header" id="closedHeader">
+          <span class="compare-title closed-header-title" id="closedHeaderTitle">已平倉紀錄</span>
+          <span class="closed-chevron" id="closedChevron">▾</span>
+        </div>
+        <div class="closed-list" id="closedList"></div>
+      </div>
 
       <div class="footer" id="holdingsFooter"></div>
     </div>
