@@ -1,0 +1,204 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #f8f9fa;
+  font-family: "Microsoft JhengHei", "PingFang TC", -apple-system, sans-serif;
+  color: #202124;
+  padding: 20px 16px 60px;
+}
+
+.sheet-wrap {
+  max-width: 1400px;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sheet-header h1 {
+  font-size: 18px;
+  margin: 0;
+  color: #202124;
+}
+
+.auth-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.auth-status { color: #5f6368; }
+
+.fx-row {
+  color: #5f6368;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.fx-row input {
+  width: 64px;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  padding: 3px 5px;
+  font-family: inherit;
+  font-size: 12px;
+  color: #202124;
+}
+
+.fx-row input:disabled {
+  background: transparent;
+  border-color: transparent;
+  color: #202124;
+  font-weight: 700;
+}
+
+.sheet-note {
+  font-size: 11px;
+  color: #80868b;
+  margin: -6px 0 12px;
+}
+
+.auth-btn {
+  background: #1a73e8;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-btn:hover { background: #1765cc; }
+
+.table-scroll {
+  overflow-x: auto;
+  border: 1px solid #e0e0e0;
+}
+
+.sheet-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 1150px;
+  font-size: 12.5px;
+}
+
+.sheet-table th {
+  background: #f1f3f4;
+  color: #5f6368;
+  font-weight: 700;
+  text-align: left;
+  padding: 7px 8px;
+  border: 1px solid #e0e0e0;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.sheet-table td {
+  border: 1px solid #e8eaed;
+  padding: 3px 4px;
+  white-space: nowrap;
+}
+
+.sheet-table tbody tr:hover { background: #f8f9fa; }
+
+.sheet-table input,
+.sheet-table select {
+  width: 100%;
+  min-width: 56px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+  padding: 4px 5px;
+  border-radius: 3px;
+  color: #202124;
+}
+
+.sheet-table input:disabled,
+.sheet-table select:disabled {
+  color: #202124;
+  background: transparent;
+  opacity: 1;
+}
+
+.sheet-table input:not(:disabled):hover,
+.sheet-table select:not(:disabled):hover {
+  border-color: #dadce0;
+}
+
+.sheet-table input:not(:disabled):focus,
+.sheet-table select:not(:disabled):focus {
+  outline: none;
+  border-color: #1a73e8;
+  background: #fff;
+  box-shadow: 0 0 0 1px #1a73e8;
+}
+
+.cell-readonly {
+  padding: 4px 5px;
+  display: block;
+  font-weight: 700;
+}
+
+.money-input {
+  font-weight: 700;
+}
+
+/* 台股慣例：紅 = 賺錢(正), 綠 = 賠錢(負) */
+.gain-text { color: #d93025; font-weight: 700; }
+.loss-text { color: #188038; font-weight: 700; }
+
+.del-cell-btn {
+  background: transparent;
+  border: none;
+  color: #d93025;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+}
+
+.del-cell-btn:hover { background: #fce8e6; border-radius: 4px; }
+
+tfoot td {
+  background: #f1f3f4;
+  font-weight: 700;
+  border: 1px solid #e0e0e0;
+}
+
+.add-row-btn {
+  margin-top: 10px;
+  background: #fff;
+  border: 1px dashed #dadce0;
+  color: #1a73e8;
+  border-radius: 6px;
+  padding: 9px;
+  font-size: 13px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.add-row-btn:hover { background: #f8f9fa; }
+
+.sheet-footer {
+  margin-top: 10px;
+  font-size: 11px;
+  color: #80868b;
+  text-align: right;
+}

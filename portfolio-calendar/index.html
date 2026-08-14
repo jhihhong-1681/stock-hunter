@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>報酬日曆</title>
+<script>
+  // 每次都用當下時間戳當版本號，強迫瀏覽器每次都重新抓最新的 CSS/JS，
+  // 這樣排程任務每天更新完資料後，打開網站就一定是最新的，不用手動清快取。
+  document.write('<link rel="stylesheet" href="style.css?v=' + Date.now() + '">');
+</script>
+</head>
+<body>
+  <div class="page">
+    <div class="card hero-card">
+      <div class="hero-header">
+        <div class="hero-date" id="heroDate"></div>
+        <div class="hero-title">💼 資產管理儀表板</div>
+      </div>
+
+      <div class="networth-block">
+        <div class="networth-label-group">
+          <div class="networth-label">總資產</div>
+          <div class="networth-label-en">TOTAL ASSETS</div>
+        </div>
+        <div class="networth-value-row">
+          <div class="networth-value" id="heroTotalAssets">--</div>
+          <div class="networth-breakdown">
+            <div class="breakdown-item">
+              <div class="breakdown-label">未實現損益</div>
+              <div class="breakdown-value" id="heroUnrealized">--</div>
+            </div>
+            <div class="breakdown-item">
+              <div class="breakdown-label">已實現損益</div>
+              <div class="breakdown-value" id="heroRealized">--</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stat-tile-row">
+        <div class="stat-tile">
+          <div class="stat-label">月增率 (MoM)</div>
+          <div class="stat-value" id="statMom">--</div>
+          <div class="stat-sub">↗ 本月至今</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-label">累計年增 (YTD)</div>
+          <div class="stat-value" id="statYtd">--</div>
+          <div class="stat-sub">↑ 今年至今</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-label">現金水位</div>
+          <div class="stat-value" id="statCash">--</div>
+          <div class="stat-sub">💰 現金 / 總資產</div>
+        </div>
+      </div>
+
+      <div class="donut-section">
+        <div class="section-title">📊 持股分佈（依現值）</div>
+        <div class="donut-body">
+          <div class="donut-chart-wrap" id="donutChart"></div>
+          <div class="donut-legend" id="donutLegend"></div>
+        </div>
+      </div>
+
+      <div class="ytd-section">
+        <div class="ytd-title-row">
+          <div class="section-title">📈 今年表現（累計報酬%）</div>
+          <div class="ytd-badge" id="ytdYearBadge">--</div>
+        </div>
+        <div class="chart-wrap" id="ytdChartWrap">
+          <div id="ytdChart"></div>
+          <div class="chart-tooltip" id="ytdTooltip"></div>
+        </div>
+        <div class="ytd-stats-row" id="ytdStatsRow"></div>
+      </div>
+    </div>
+
+    <div class="card calendar-card">
+      <div class="title-row">
+        <span class="title-icon">📅</span>
+        <span class="title-text">報酬日曆</span>
+      </div>
+
+      <div class="month-row">
+        <button id="prevBtn" class="nav-btn">‹</button>
+        <div class="month-label" id="monthLabel">2026/07 報酬</div>
+        <button id="nextBtn" class="nav-btn">›</button>
+      </div>
+
+      <div class="summary-row">
+        <div class="summary-block">
+          <div class="summary-label">報酬率</div>
+          <div class="summary-pct" id="monthPct">--%</div>
+        </div>
+        <div class="summary-amount" id="monthAmount">NT$0</div>
+      </div>
+
+      <div class="weekday-row">
+        <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+      </div>
+
+      <div class="grid" id="grid"></div>
+
+      <div class="asset-section">
+        <div class="compare-title">總資產走勢</div>
+        <div class="chart-wrap" id="assetChartWrap">
+          <div id="assetChart"></div>
+          <div class="chart-tooltip" id="assetTooltip"></div>
+        </div>
+      </div>
+
+      <div class="compare-section">
+        <div class="compare-title">大盤比較（本月累積報酬%）</div>
+        <div class="chart-wrap" id="compareChartWrap">
+          <div id="compareChart"></div>
+          <div class="chart-tooltip" id="compareTooltip"></div>
+        </div>
+        <div class="compare-legend" id="compareLegend"></div>
+      </div>
+
+      <div class="expiry-section expiry-section-in-calendar">
+        <div class="compare-title">選擇權到期日</div>
+        <div class="expiry-list" id="expiryList"></div>
+      </div>
+
+      <div class="footer" id="footer"></div>
+    </div>
+
+    <div class="card holdings-card">
+      <div class="title-row">
+        <span class="title-icon">📊</span>
+        <span class="title-text">目前持股</span>
+      </div>
+
+      <div class="holdings-summary" id="holdingsSummary"></div>
+
+      <div class="theme-section">
+        <div class="compare-title">主題曝險（占持股現值比例）</div>
+        <div class="theme-exposure" id="themeExposure"></div>
+      </div>
+
+      <div class="holdings-list" id="holdingsList"></div>
+      <button class="expand-btn" id="holdingsExpandBtn"></button>
+
+      <div class="closed-section">
+        <div class="closed-header" id="closedHeader">
+          <span class="compare-title closed-header-title" id="closedHeaderTitle">已平倉紀錄</span>
+          <span class="closed-chevron" id="closedChevron">▾</span>
+        </div>
+        <div class="closed-list" id="closedList"></div>
+      </div>
+
+      <div class="footer" id="holdingsFooter"></div>
+    </div>
+  </div>
+
+  <script>
+    // 同上：幫每個資料檔跟主程式加上當下時間戳，確保每次打開都抓到當天排程任務推上去的最新版本。
+    var __v = Date.now();
+    document.write('<script src="data.js?v=' + __v + '"><\/script>');
+    document.write('<script src="indices.js?v=' + __v + '"><\/script>');
+    document.write('<script src="holdings.js?v=' + __v + '"><\/script>');
+    document.write('<script src="app.js?v=' + __v + '"><\/script>');
+  </script>
+</body>
+</html>

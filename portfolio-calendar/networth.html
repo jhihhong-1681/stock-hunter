@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>資產淨值</title>
+<script>
+  document.write('<link rel="stylesheet" href="holdings-editor.css?v=' + Date.now() + '">');
+  document.write('<link rel="stylesheet" href="networth.css?v=' + Date.now() + '">');
+</script>
+</head>
+<body>
+      <div class="sheet-wrap nw-wrap">
+        <div class="sheet-header">
+          <h1>資產淨值</h1>
+          <div class="auth-row">
+            <span class="auth-status" id="authStatus">連線中…</span>
+            <button class="auth-btn" id="authBtn" type="button">登入編輯</button>
+          </div>
+        </div>
+
+        <div class="nw-chart-section">
+          <div class="nw-chart-title">總資產走勢（每月）</div>
+          <div class="nw-chart-wrap" id="nwChartWrap">
+            <div id="nwChart"></div>
+            <div class="nw-chart-tooltip" id="nwChartTooltip"></div>
+          </div>
+          <div class="nw-legend" id="nwLegend"></div>
+        </div>
+
+        <div class="table-scroll">
+          <table class="sheet-table">
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>美股總現值</th>
+                <th>美股現金部位</th>
+                <th>總本金</th>
+                <th>美股總資產</th>
+                <th>報酬率</th>
+                <th>YOY</th>
+                <th>MOM</th>
+                <th>現金水位</th>
+                <th>國泰現金</th>
+                <th>中信現金</th>
+                <th>玉山現金</th>
+                <th>玉山期貨</th>
+                <th>加密貨幣</th>
+                <th>期貨+台幣+加密</th>
+                <th>總資產</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="nwBody"></tbody>
+          </table>
+        </div>
+
+        <button class="add-row-btn" id="addRowBtn" type="button" style="display:none;">＋ 新增一列</button>
+
+        <div class="sheet-footer" id="sheetFooter"></div>
+      </div>
+
+  <script type="module" src="networth.js"></script>
+</body>
+</html>

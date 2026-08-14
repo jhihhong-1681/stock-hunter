@@ -1,0 +1,222 @@
+// 大盤指數每日漲跌幅紀錄（%）。date 對齊 data.js 的快照日期，
+// 數值是當天可取得的最新收盤漲跌幅（台股/美股收盤時間不同，抓取當下能拿到的最新一筆）。
+// 這個檔案會由每日自動排程任務持續新增資料，不需要手動編輯。
+window.INDEX_HISTORY = [
+  {
+    date: "2026-07-01",
+    taiex: 2.50,    // 台股加權指數
+    sp500: 0.79,    // S&P 500
+    nasdaq: 1.52,   // 那斯達克綜合指數
+    sox: 3.92       // 費城半導體指數
+  },
+  {
+    date: "2026-07-02",
+    taiex: 1.94,    // 台股加權指數
+    sp500: -0.22,   // S&P 500
+    nasdaq: -0.66,  // 那斯達克綜合指數
+    sox: -6.27      // 費城半導體指數
+  },
+  {
+    date: "2026-07-03",
+    taiex: -0.58,   // 台股加權指數
+    sp500: 0.00,    // S&P 500（美股7/3為國慶日觀察假期，休市）
+    nasdaq: -0.80,  // 那斯達克綜合指數
+    sox: -5.45      // 費城半導體指數
+  },
+  {
+    date: "2026-07-06",
+    taiex: 0.08,    // 台股加權指數
+    sp500: 0.00,    // S&P 500（美股連續假期後尚無新收盤，沿用上一筆）
+    nasdaq: -0.80,  // 那斯達克綜合指數
+    sox: -5.45      // 費城半導體指數
+  },
+  {
+    date: "2026-07-07",
+    taiex: -0.48,   // 台股加權指數
+    sp500: 0.72,    // S&P 500
+    nasdaq: 1.12,   // 那斯達克綜合指數
+    sox: 2.17       // 費城半導體指數
+  },
+  {
+    date: "2026-07-08",
+    taiex: -2.31,   // 台股加權指數
+    sp500: -0.45,   // S&P 500
+    nasdaq: -1.16,  // 那斯達克綜合指數
+    sox: -4.65      // 費城半導體指數
+  },
+  {
+    date: "2026-07-09",
+    taiex: 0.56,    // 台股加權指數
+    sp500: -0.28,   // S&P 500
+    nasdaq: 0.20,   // 那斯達克綜合指數
+    sox: 2.23       // 費城半導體指數
+  },
+  {
+    date: "2026-07-10",
+    taiex: -0.83,   // 台股加權指數
+    sp500: 0.81,    // S&P 500
+    nasdaq: 1.30,   // 那斯達克綜合指數
+    sox: 3.06       // 費城半導體指數
+  },
+  {
+    date: "2026-07-13",
+    taiex: 0.06,    // 台股加權指數
+    sp500: 0.42,    // S&P 500
+    nasdaq: 0.29,   // 那斯達克綜合指數
+    sox: 0.06       // 費城半導體指數
+  },
+  {
+    date: "2026-07-14",
+    taiex: -1.42,   // 台股加權指數
+    sp500: -0.79,   // S&P 500
+    nasdaq: -1.55,  // 那斯達克綜合指數
+    sox: -4.78      // 費城半導體指數
+  },
+  {
+    date: "2026-07-15",
+    taiex: 2.00,    // 台股加權指數
+    sp500: 0.38,    // S&P 500
+    nasdaq: 0.90,   // 那斯達克綜合指數
+    sox: 2.54       // 費城半導體指數
+  },
+  {
+    date: "2026-07-16",
+    taiex: -0.01,   // 台股加權指數
+    sp500: 0.38,    // S&P 500
+    nasdaq: 0.62,   // 那斯達克綜合指數
+    sox: -2.08      // 費城半導體指數
+  },
+  {
+    date: "2026-07-17",
+    taiex: -6.47,   // 台股加權指數
+    sp500: -0.51,   // S&P 500
+    nasdaq: -1.47,  // 那斯達克綜合指數
+    sox: -4.29      // 費城半導體指數
+  },
+  {
+    date: "2026-07-18",
+    taiex: -6.47,   // 台股加權指數
+    sp500: -1.01,   // S&P 500
+    nasdaq: -1.40,  // 那斯達克綜合指數
+    sox: -1.63      // 費城半導體指數
+  },
+  {
+    date: "2026-07-21",
+    taiex: 4.20,    // 台股加權指數
+    sp500: -0.19,   // S&P 500
+    nasdaq: -0.05,  // 那斯達克綜合指數（次要來源比對失敗，採用Yahoo Finance）
+    sox: 0.60       // 費城半導體指數（次要來源比對失敗，採用Yahoo Finance）
+  },
+  {
+    date: "2026-07-22",
+    taiex: 1.34,    // 台股加權指數
+    sp500: 0.89,    // S&P 500
+    nasdaq: 1.29,   // 那斯達克綜合指數
+    sox: 5.21       // 費城半導體指數（次要來源比對失敗，採用Yahoo Finance）
+  },
+  {
+    date: "2026-07-23",
+    taiex: 0.06,    // 台股加權指數（finance.yahoo.com過期沿用前一日，改用tw.stock.yahoo.com即時收盤數字）
+    sp500: -0.14,   // S&P 500
+    nasdaq: -0.57,  // 那斯達克綜合指數
+    sox: 0.44       // 費城半導體指數（次要來源比對失敗，採用Yahoo Finance）
+  },
+  {
+    date: "2026-07-24",
+    taiex: -2.67,   // 台股加權指數
+    sp500: 0.05,    // S&P 500
+    nasdaq: -0.64,  // 那斯達克綜合指數
+    sox: -4.25      // 費城半導體指數
+  },
+  {
+    date: "2026-07-27",
+    taiex: -0.05,   // 台股加權指數
+    sp500: 0.02,    // S&P 500
+    nasdaq: -0.18,  // 那斯達克綜合指數（次要來源比對失敗，抓到盤中即時價，採用Yahoo Finance收盤數字）
+    sox: -2.23      // 費城半導體指數（次要來源查無可比對的收盤數字，採用Yahoo Finance）
+  },
+  {
+    date: "2026-07-28",
+    taiex: -4.65,   // 台股加權指數
+    sp500: 0.21,    // S&P 500（次要來源比對失敗，正負號不一致，採用Yahoo Finance）
+    nasdaq: -0.22,  // 那斯達克綜合指數
+    sox: -4.49      // 費城半導體指數（次要來源查無可比對的收盤數字，採用Yahoo Finance）
+  },
+  {
+    date: "2026-07-29",
+    taiex: -3.76,   // 台股加權指數
+    sp500: -1.52,   // S&P 500（次要來源抓到過期舊資料-0.05%，比對失敗，採用Yahoo Finance）
+    nasdaq: -1.74,  // 那斯達克綜合指數
+    sox: -5.33      // 費城半導體指數（次要來源抓到過期/錯誤數字+1.57%，正負號不一致，採用Yahoo Finance）
+  },
+  {
+    date: "2026-07-30",
+    taiex: -0.26,   // 台股加權指數（finance.yahoo.com 503無法取得，改用tw.stock.yahoo.com昨收+WebSearch交叉確認）
+    sp500: 1.66,    // S&P 500
+    nasdaq: 2.78,   // 那斯達克綜合指數
+    sox: 8.16       // 費城半導體指數（Yahoo Finance +8.16%，investing.com +8.19%、Google Finance +8.18% 交叉比對成功）
+  },
+  {
+    date: "2026-07-31",
+    taiex: null,    // 台股加權指數（finance.yahoo.com/history 連續503無法取得，僅WebSearch有數字但無法比對，依規則留空）
+    sp500: 0.70,    // S&P 500
+    nasdaq: 1.00,   // 那斯達克綜合指數
+    sox: 1.18       // 費城半導體指數（次要來源查無可比對的收盤數字，採用Yahoo Finance）
+  },
+  {
+    date: "2026-08-03",
+    taiex: 0.62,    // 台股加權指數（tw.stock.yahoo.com收盤43,386.41 與 WebSearch +0.62% 交叉比對成功）
+    sp500: 1.48,    // S&P 500（Yahoo Finance收盤7,600.50 與 WebSearch +1.48% 交叉比對成功）
+    nasdaq: 2.13,   // 那斯達克綜合指數（Yahoo Finance收盤25,913.90 與 WebSearch +2.1% 交叉比對成功）
+    sox: 1.05       // 費城半導體指數（Yahoo Finance收盤11,430.35 與 investing.com收盤11,430.4 交叉比對成功）
+  },
+  {
+    date: "2026-08-04",
+    taiex: -0.06,   // 台股加權指數（tw.stock.yahoo.com收盤43,360.66 與 WebSearch -0.06% 交叉比對成功）
+    sp500: 1.79,    // S&P 500（Yahoo Finance收盤7,736.52 與 WebSearch +1.79% 交叉比對成功）
+    nasdaq: 2.59,   // 那斯達克綜合指數（Yahoo Finance收盤26,584.99 與 WebSearch +2.59% 交叉比對成功）
+    sox: 6.55       // 費城半導體指數（finance.yahoo.com僅有delayed盤中數字不可用，改用investing.com收盤12,179.3；次要來源WebSearch +6.18%與此差0.37pp比對失敗，採用investing.com數字）
+  },
+  {
+    date: "2026-08-05",
+    taiex: 2.88,    // 台股加權指數（tw.stock.yahoo.com收盤44,611.60 與 WebSearch +2.88% 交叉比對成功）
+    sp500: -0.17,   // S&P 500（Yahoo Finance收盤7,723.55 與 WebSearch -0.05%~-0.2% 區間交叉比對成功）
+    nasdaq: -0.83,  // 那斯達克綜合指數（Yahoo Finance收盤26,363.44 與 WebSearch另一數字-0.8%交叉比對成功）
+    sox: -1.40      // 費城半導體指數（finance.yahoo.com連續503無法取得，改用investing.com收盤12,008.9；次要來源WebSearch查無可比對收盤數字，採用investing.com數字）
+  },
+  {
+    date: "2026-08-06",
+    taiex: null,    // 台股加權指數（finance.yahoo.com/history連續503、finance.yahoo.com與tw.stock.yahoo.com即時頁互相矛盾且與WebSearch正負號不一致，無法建立可信數字，依規則留空）
+    sp500: -0.18,   // S&P 500（Yahoo Finance收盤7,709.96 與 WebSearch -0.17% 交叉比對成功）
+    nasdaq: -0.06,  // 那斯達克綜合指數（Yahoo Finance收盤26,348.35 與 WebSearch -0.14% 交叉比對成功）
+    sox: -0.98      // 費城半導體指數（次要來源WebSearch查無可比對收盤數字，採用Yahoo Finance數字）
+  },
+  {
+    date: "2026-08-07",
+    taiex: -0.38,   // 台股加權指數（tw.stock.yahoo.com「昨收」44,225.91 與 WebSearch 44,225.91/-0.38% 完全吻合）
+    sp500: 0.62,    // S&P 500（Yahoo Finance收盤7,757.64 與 WebSearch +0.62% 完全吻合）
+    nasdaq: 1.30,   // 那斯達克綜合指數（Yahoo Finance收盤26,690.62 與 WebSearch +1.30% 完全吻合）
+    sox: 2.56       // 費城半導體指數（finance.yahoo.com持續回傳與日期無關的舊快取數字不可用，改用investing.com收盤12,356.8；次要來源WebSearch查無可比對的當日收盤數字，採用investing.com數字）
+  },
+  {
+    date: "2026-08-10",
+    taiex: 1.59,    // 台股加權指數（finance.yahoo.com/history連續503無法取得，改用tw.stock.yahoo.com昨收44,928.76 與多篇新聞WebSearch「漲702.85點/+1.59%」交叉比對成功）
+    sp500: -0.06,   // S&P 500（Yahoo Finance收盤7,753.11/-0.06% 與 WebSearch抓到過期的8/7舊資料+0.62%，正負號不一致，採用Yahoo Finance）
+    nasdaq: -0.32,  // 那斯達克綜合指數（Yahoo Finance收盤26,605.36 與 WebSearch -0.32% 完全吻合）
+    sox: -2.94      // 費城半導體指數（finance.yahoo.com回傳與日期無關的舊快取數字-0.98%不可用，改用investing.com收盤11,993.9 與 Google Finance 11,993.86 交叉比對成功）
+  },
+  {
+    date: "2026-08-11",
+    taiex: 0.43,    // 台股加權指數（tw.stock.yahoo.com「昨收」45,120.72 與 WebSearch新聞「終場收在45,120.72/+0.43%」完全吻合）
+    sp500: -0.32,   // S&P 500（Yahoo Finance收盤7,728.20/-0.32% 與 WebSearch抓到8/10舊資料7,753/-0.06%，比對失敗，採用Yahoo Finance）
+    nasdaq: -0.60,  // 那斯達克綜合指數（Yahoo Finance收盤26,445.45/-0.60% 與 WebSearch -0.60% 完全吻合）
+    sox: 0.87       // 費城半導體指數（Yahoo Finance收盤12,098.47/+0.87%；次要來源查無可比對的當日收盤數字，採用Yahoo Finance）
+  },
+  {
+    date: "2026-08-12",
+    taiex: 0.88,    // 台股加權指數（finance.yahoo.com/history 503無法取得，改用tw.stock.yahoo.com昨收45,518.07推算漲跌點+397.35，與WebSearch新聞「收盤45,518.07/+0.88%」完全吻合）
+    sp500: 0.26,    // S&P 500（Yahoo Finance收盤7,748.50/+0.26% 與 WebSearch另一數字+0.18%，差0.08pp在容許範圍內，交叉比對成功）
+    nasdaq: 0.54,   // 那斯達克綜合指數（Yahoo Finance收盤26,588.49/+0.54% 與 WebSearch +0.54% 完全吻合）
+    sox: 2.49       // 費城半導體指數（Yahoo Finance收盤12,399.38/+2.49%；次要來源查無可比對的當日收盤數字，採用Yahoo Finance）
+  }
+];
