@@ -8,7 +8,7 @@ load_css()
 st.title("💰 資產淨值")
 st.markdown("每月資產淨值總表，複製自原本 Google Sheet 的月結紀錄：美股部位、國泰/中信/玉山現金、期貨、加密貨幣與總資產走勢。")
 
-NETWORTH_URL = "https://jhihhong-1681.github.io/portfolio-calendar/networth.html"
+NETWORTH_URL = "https://jhihhong-1681.github.io/stock-hunter/portfolio-calendar/networth.html"
 
 st.link_button("↗ 在新分頁開啟完整版", NETWORTH_URL)
 

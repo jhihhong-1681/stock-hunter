@@ -8,7 +8,7 @@ load_css()
 st.title("📅 報酬日曆")
 st.markdown("每個交易日自動更新的投資組合快照：月曆式每日損益、資產走勢、大盤對比、持股明細與主題曝險。")
 
-CALENDAR_URL = "https://jhihhong-1681.github.io/portfolio-calendar/"
+CALENDAR_URL = "https://jhihhong-1681.github.io/stock-hunter/portfolio-calendar/"
 
 st.link_button("↗ 在新分頁開啟完整版", CALENDAR_URL)
 
