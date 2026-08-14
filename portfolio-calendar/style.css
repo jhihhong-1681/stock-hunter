@@ -417,8 +417,8 @@ body {
   border-left: 3px solid #3a3f4a;
 }
 
-.expiry-row.expiry-soon { border-left-color: #f5c518; }
-.expiry-row.expiry-urgent { border-left-color: #ff5c5c; }
+.expiry-row.gain-border { border-left-color: #ff5c5c; }
+.expiry-row.loss-border { border-left-color: #2fbf6a; }
 
 .expiry-main {
   display: flex;
@@ -465,8 +465,8 @@ body {
   color: #cfd3d8;
 }
 
-.expiry-row.expiry-urgent .expiry-days { color: #ff5c5c; }
-.expiry-row.expiry-soon .expiry-days { color: #f5c518; }
+.expiry-days.expiry-urgent { color: #ff5c5c; }
+.expiry-days.expiry-soon { color: #f5c518; }
 
 .expiry-pl {
   font-size: 11.5px;

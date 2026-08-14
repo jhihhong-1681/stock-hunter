@@ -883,12 +883,13 @@ function renderOptionExpiry(positions) {
   expiryListEl.innerHTML = options
     .map((p) => {
       const plCls = p.pl > 0 ? "gain" : p.pl < 0 ? "loss" : "flat";
+      const borderCls = p.pl > 0 ? "gain-border" : p.pl < 0 ? "loss-border" : "";
       const sharesTxt = p.shares !== null && p.shares !== undefined ? `${p.shares} 股` : "";
       const investTxt = `投入 ${fmtAmount(p.invested).replace(/^[+-]/, "")} → 現值 ${fmtAmount(p.value).replace(/^[+-]/, "")}`;
       const plHtml = `${fmtAmount(p.pl)} <span class="expiry-pct">(${fmtPct(p.pct)})</span>`;
       if (!p.parsed) {
         return `
-          <div class="expiry-row">
+          <div class="expiry-row ${borderCls}">
             <div class="expiry-main">
               <div class="expiry-symbol-row"><span class="expiry-symbol">${p.symbol}</span><span class="expiry-shares">${sharesTxt}</span></div>
               <span class="expiry-name">${p.name || ""}</span>
@@ -907,14 +908,14 @@ function renderOptionExpiry(positions) {
       else if (days <= 30) urgencyCls = "expiry-soon";
       const daysTxt = days < 0 ? "已到期" : days === 0 ? "今天到期" : `${days} 天`;
       return `
-        <div class="expiry-row ${urgencyCls}">
+        <div class="expiry-row ${borderCls}">
           <div class="expiry-main">
             <div class="expiry-symbol-row"><span class="expiry-symbol">${p.symbol}</span><span class="expiry-shares">${sharesTxt}</span></div>
             <span class="expiry-name">${p.parsed.strike} ${p.parsed.optType} · ${p.parsed.dateStr}</span>
             <span class="expiry-invest">${investTxt}</span>
           </div>
           <div class="expiry-right">
-            <div class="expiry-days">${daysTxt}</div>
+            <div class="expiry-days ${urgencyCls}">${daysTxt}</div>
             <div class="expiry-pl ${plCls}">${plHtml}</div>
           </div>
         </div>
