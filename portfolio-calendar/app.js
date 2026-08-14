@@ -782,7 +782,9 @@ const THEME_MAP = {
   SMCI: "AI基建/半導體",
   ONDS: "國防太空",
   SOFI: "金融科技",
-  SBET: "加密貨幣"
+  SBET: "加密貨幣",
+  AESI: "能源/石油",
+  MSTR: "加密貨幣"
 };
 
 const THEME_COLORS = [
