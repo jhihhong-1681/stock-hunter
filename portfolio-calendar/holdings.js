@@ -57,7 +57,7 @@ window.HOLDINGS = {
     { symbol: "XOM", name: "XOM 08/21/26 125 Call", note: null, realized: 23436.00 },
     { symbol: "NBIL", name: "2X Long NBIS", note: "30賣出", realized: 2356.00 },
     { symbol: "COP", name: "COP 08/21/26 115 Call", note: null, realized: 10323.00 },
-    { symbol: "XOM", name: "XOM 08/21/26 125 Call（另一批）", note: null, realized: 23249.38 },
+    { symbol: "XOM", name: "XOM 08/21/26 135 Call", note: null, realized: 23249.38 },
     { symbol: "J", name: "Jacobs Solutions Inc", note: "126賣出6股", realized: 372.00 },
     { symbol: "DXYZ", name: "Destiny Tech100", note: "28.4賣出 27.5賣出40股", realized: -9326.00 },
     { symbol: "GCT", name: "GigaCloud Technology", note: "33.3賣出", realized: -2697.00 },
