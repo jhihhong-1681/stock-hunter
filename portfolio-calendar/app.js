@@ -784,7 +784,10 @@ const THEME_MAP = {
   SOFI: "金融科技",
   SBET: "加密貨幣",
   AESI: "能源/石油",
-  MSTR: "加密貨幣"
+  MSTR: "加密貨幣",
+  PBR: "能源/石油",
+  SLV: "貴金屬避險",
+  VIAV: "網通設備"
 };
 
 const THEME_COLORS = [
