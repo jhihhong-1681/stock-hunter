@@ -30,17 +30,17 @@ window.HOLDINGS = {
     { symbol: "CAG", name: "ConAgra Brands", shares: 50, avgCost: 15.5, price: 16.2, invested: 24025, value: 25141, pl: 1116.00, pct: 4.65, realized: null },
     { symbol: "AESI", name: "Atlas Energy Solutions", shares: 50, avgCost: 11.85, price: 13.0, invested: 18368, value: 20197, pl: 1829.00, pct: 9.96, realized: null },
     { symbol: "MRCY", name: "Mercury Systems", shares: 2, avgCost: 112.0, price: 101.3, invested: 6944, value: 6278, pl: -666.50, pct: -9.60, realized: null },
-    { symbol: "HOOD", name: "HOOD 09/18/26 75 Call", type: "option", shares: 100, avgCost: null, price: null, invested: 57350, value: 66991, pl: 9641.00, pct: 16.81, realized: -41850.00, priceUnchangedDays: 0 },
-    { symbol: "XOM", name: "XOM 09/18/26 145 Call", type: "option", shares: 100, avgCost: null, price: null, invested: 39370, value: 64728, pl: 25358.00, pct: 64.41, realized: null, priceUnchangedDays: 0 },
-    { symbol: "HAL", name: "HAL 10/16/26 32 Call", type: "option", shares: 300, avgCost: null, price: null, invested: 32147, value: 33945, pl: 1798.00, pct: 5.59, realized: null, priceUnchangedDays: 0 },
-    { symbol: "GSK", name: "GSK 11/20/26 45 Call", type: "option", shares: 100, avgCost: null, price: null, invested: 23870, value: 25730, pl: 1860.00, pct: 7.79, realized: null, priceUnchangedDays: 0 },
-    { symbol: "ONDS", name: "ONDS 09/18/26 13 Call", type: "option", shares: 1500, avgCost: null, price: null, invested: 20925, value: 5580, pl: -15345.00, pct: -73.33, realized: null, priceUnchangedDays: 0 },
-    { symbol: "SLV", name: "SLV 09/18/26 58 Call", type: "option", shares: 200, avgCost: null, price: null, invested: 16306, value: 25730, pl: 9424.00, pct: 57.79, realized: null, priceUnchangedDays: 0 },
-    { symbol: "SOFI", name: "SOFI 08/21/26 20 Call", type: "option", shares: 5000, avgCost: null, price: null, invested: 15500, value: 3100, pl: -12400.00, pct: -80.00, realized: null, priceUnchangedDays: 0 },
-    { symbol: "BMNR", name: "BMNR 09/18/26 14 Call", type: "option", shares: 100, avgCost: null, price: null, invested: 13950, value: 20057, pl: 6107.00, pct: 43.78, realized: null, priceUnchangedDays: 0 },
-    { symbol: "PBR", name: "PBR 09/18/26 19 Call", type: "option", shares: 2000, avgCost: null, price: null, invested: 13640, value: 19840, pl: 6200.00, pct: 45.45, realized: null, priceUnchangedDays: 0 },
-    { symbol: "SBET", name: "SBET 01/15/27 5 Call", type: "option", shares: 200, avgCost: null, price: null, invested: 13640, value: 16120, pl: 2480.00, pct: 18.18, realized: null, priceUnchangedDays: 0 },
-    { symbol: "CLF", name: "CLF 11/20/26 10 Call", type: "option", shares: 200, avgCost: null, price: null, invested: 12400, value: 11780, pl: -620.00, pct: -5.00, realized: null, priceUnchangedDays: 0 }
+    { symbol: "HOOD", name: "HOOD 09/18/26 75 Call", type: "option", shares: 100, avgCost: null, price: null, underlyingPrice: 95.77, invested: 57350, value: 66991, pl: 9641.00, pct: 16.81, realized: -41850.00, priceUnchangedDays: 0 },
+    { symbol: "XOM", name: "XOM 09/18/26 145 Call", type: "option", shares: 100, avgCost: null, price: null, underlyingPrice: 164.77, invested: 39370, value: 64728, pl: 25358.00, pct: 64.41, realized: null, priceUnchangedDays: 0 },
+    { symbol: "HAL", name: "HAL 10/16/26 32 Call", type: "option", shares: 300, avgCost: null, price: null, underlyingPrice: 35.02, invested: 32147, value: 33945, pl: 1798.00, pct: 5.59, realized: null, priceUnchangedDays: 0 },
+    { symbol: "GSK", name: "GSK 11/20/26 45 Call", type: "option", shares: 100, avgCost: null, price: null, underlyingPrice: 52.88, invested: 23870, value: 25730, pl: 1860.00, pct: 7.79, realized: null, priceUnchangedDays: 0 },
+    { symbol: "ONDS", name: "ONDS 09/18/26 13 Call", type: "option", shares: 1500, avgCost: null, price: null, underlyingPrice: 8.90, invested: 20925, value: 5580, pl: -15345.00, pct: -73.33, realized: null, priceUnchangedDays: 0 },
+    { symbol: "SLV", name: "SLV 09/18/26 58 Call", type: "option", shares: 200, avgCost: null, price: null, underlyingPrice: 60.01, invested: 16306, value: 25730, pl: 9424.00, pct: 57.79, realized: null, priceUnchangedDays: 0 },
+    { symbol: "SOFI", name: "SOFI 08/21/26 20 Call", type: "option", shares: 5000, avgCost: null, price: null, underlyingPrice: 18.42, invested: 15500, value: 3100, pl: -12400.00, pct: -80.00, realized: null, priceUnchangedDays: 0 },
+    { symbol: "BMNR", name: "BMNR 09/18/26 14 Call", type: "option", shares: 100, avgCost: null, price: null, underlyingPrice: 20.24, invested: 13950, value: 20057, pl: 6107.00, pct: 43.78, realized: null, priceUnchangedDays: 0 },
+    { symbol: "PBR", name: "PBR 09/18/26 19 Call", type: "option", shares: 2000, avgCost: null, price: null, underlyingPrice: 18.54, invested: 13640, value: 19840, pl: 6200.00, pct: 45.45, realized: null, priceUnchangedDays: 0 },
+    { symbol: "SBET", name: "SBET 01/15/27 5 Call", type: "option", shares: 200, avgCost: null, price: null, underlyingPrice: 7.08, invested: 13640, value: 16120, pl: 2480.00, pct: 18.18, realized: null, priceUnchangedDays: 0 },
+    { symbol: "CLF", name: "CLF 11/20/26 10 Call", type: "option", shares: 200, avgCost: null, price: null, underlyingPrice: 11.17, invested: 12400, value: 11780, pl: -620.00, pct: -5.00, realized: null, priceUnchangedDays: 0 }
   ],
   // 已經全部賣光/到期的舊部位（只保留股票名稱、賣出記錄跟已實現損益，沒有現值/報酬率這些「還在追蹤」的欄位）。
   // 這裡的 realized 加總 + 上面 positions 裡各筆的 realized 加總 = totals.realizedPL。

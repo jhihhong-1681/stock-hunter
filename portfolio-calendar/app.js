@@ -859,6 +859,15 @@ function parseOptionExpiry(name) {
   return { date, dateStr, strike: parseFloat(strike), optType: optType[0].toUpperCase() + optType.slice(1).toLowerCase() };
 }
 
+// 選擇權標的現價距履約價的百分比。Call：現價高於履約價是價內；Put：現價低於履約價是價內。
+function optionMoneyness(underlyingPrice, strike, optType) {
+  if (underlyingPrice === null || underlyingPrice === undefined || !strike) return null;
+  const pct = optType === "Put"
+    ? ((strike - underlyingPrice) / strike) * 100
+    : ((underlyingPrice - strike) / strike) * 100;
+  return { pct, itm: pct > 0 };
+}
+
 function daysUntil(date) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -911,11 +920,16 @@ function renderOptionExpiry(positions) {
       if (days <= 7) urgencyCls = "expiry-urgent";
       else if (days <= 30) urgencyCls = "expiry-soon";
       const daysTxt = days < 0 ? "已到期" : days === 0 ? "今天到期" : `${days} 天`;
+      const moneyness = optionMoneyness(p.underlyingPrice, p.parsed.strike, p.parsed.optType);
+      const underlyingHtml = moneyness
+        ? `<span class="expiry-underlying">標的現價 ${fmtUsd(p.underlyingPrice)} · <span class="${moneyness.pct > 0 ? "gain" : moneyness.pct < 0 ? "loss" : "flat"}">距履約價 ${fmtPct(moneyness.pct)}</span>（${moneyness.itm ? "價內" : "價外"}）</span>`
+        : "";
       return `
         <div class="expiry-row ${borderCls}">
           <div class="expiry-main">
             <div class="expiry-symbol-row"><span class="expiry-symbol">${p.symbol}</span><span class="expiry-shares">${sharesTxt}</span></div>
             <span class="expiry-name">${p.parsed.strike} ${p.parsed.optType} · ${p.parsed.dateStr}</span>
+            ${underlyingHtml}
             <span class="expiry-invest">${investTxt}</span>
           </div>
           <div class="expiry-right">

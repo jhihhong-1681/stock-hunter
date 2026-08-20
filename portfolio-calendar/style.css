@@ -454,6 +454,11 @@ body {
   color: #8a8f98;
 }
 
+.expiry-underlying {
+  font-size: 10.5px;
+  color: #8a8f98;
+}
+
 .expiry-right {
   text-align: right;
   flex: none;
