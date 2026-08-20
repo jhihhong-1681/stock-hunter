@@ -786,6 +786,7 @@ const THEME_MAP = {
   AESI: "能源/石油",
   MSTR: "加密貨幣",
   PBR: "能源/石油",
+  CLF: "能源/石油",
   SLV: "貴金屬避險",
   VIAV: "網通設備"
 };
