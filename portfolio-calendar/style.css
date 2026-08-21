@@ -368,6 +368,20 @@ body {
   color: #e6e6e6;
 }
 
+.theme-warn-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #ff5c5c;
+  background: rgba(255, 92, 92, 0.15);
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+.theme-row.theme-row-warn .theme-bar-fill {
+  box-shadow: 0 0 0 1px #ff5c5c inset;
+}
+
 .theme-row-symbols {
   font-size: 11px;
   color: #7d8590;
@@ -484,6 +498,41 @@ body {
   font-weight: 400;
 }
 
+.expiry-right .profit-badge {
+  margin-top: 4px;
+}
+
+.holdings-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.holdings-search {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: #1b2029;
+  border: 1px solid #232833;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: #e6e6e6;
+  outline: none;
+}
+.holdings-search:focus { border-color: #4da3ff; }
+.holdings-search::placeholder { color: #6b7078; }
+
+.holdings-sort {
+  flex: none;
+  background: #1b2029;
+  border: 1px solid #232833;
+  border-radius: 6px;
+  padding: 7px 8px;
+  font-size: 12px;
+  color: #cfd3d8;
+  outline: none;
+}
+
 .holdings-list {
   display: flex;
   flex-direction: column;
@@ -554,6 +603,20 @@ body {
   margin-top: 3px;
 }
 
+.h-badge-row {
+  margin-top: 4px;
+}
+
+.profit-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #f5c518;
+  background: rgba(245, 197, 24, 0.15);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
 .expand-btn {
   display: block;
   width: 100%;
@@ -603,14 +666,33 @@ body {
 .closed-list {
   display: none;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
   margin-top: 12px;
-  max-height: 420px;
-  overflow-y: auto;
 }
 
 .closed-list.open {
   display: flex;
+}
+
+.closed-search {
+  flex: none;
+  background: #1b2029;
+  border: 1px solid #232833;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: #e6e6e6;
+  outline: none;
+}
+.closed-search:focus { border-color: #4da3ff; }
+.closed-search::placeholder { color: #6b7078; }
+
+.closed-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 380px;
+  overflow-y: auto;
 }
 
 .closed-row {

@@ -801,6 +801,9 @@ function fmtUsd(n) {
   return "$" + Number(n).toLocaleString("en-US", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
 }
 
+// 單一主題占持股現值超過這個比例就視為集中度偏高，跟 daily-risk-signal-monitor skill 用的門檻一致。
+const THEME_CONCENTRATION_THRESHOLD = 20;
+
 // 依 THEME_MAP 把持股現值分組加總，畫成橫向比例條，看整體主題曝險集中度。
 function renderThemeExposure(positions) {
   if (!positions.length) {
@@ -830,10 +833,15 @@ function renderThemeExposure(positions) {
       const pct = (value / grandTotal) * 100;
       const color = THEME_COLORS[i % THEME_COLORS.length];
       const symbols = symbolsByTheme.get(theme).join("、");
+      const isOver = pct > THEME_CONCENTRATION_THRESHOLD;
+      const warnBadge = isOver
+        ? `<span class="theme-warn-badge" title="單一主題占持股現值超過 ${THEME_CONCENTRATION_THRESHOLD}%">⚠ 集中度偏高</span>`
+        : "";
       return `
-        <div class="theme-row">
+        <div class="theme-row ${isOver ? "theme-row-warn" : ""}">
           <div class="theme-row-label">
             <span class="legend-dot" style="background:${color}"></span>${theme}
+            ${warnBadge}
             <span class="theme-row-value">${fmtAmount(value).replace(/^[+-]/, "")}（${pct.toFixed(1)}%）</span>
           </div>
           <div class="theme-row-symbols" style="color:${color}">${symbols}</div>
@@ -876,6 +884,14 @@ function daysUntil(date) {
   return Math.round((target - today) / 86400000);
 }
 
+// 未實現獲利達這個百分比，視為可以考慮停利的參考門檻（跟 daily-risk-signal-monitor skill 一致）。
+const PROFIT_TAKING_THRESHOLD = 50;
+function profitBadgeHtml(pct) {
+  return pct !== null && pct !== undefined && pct >= PROFIT_TAKING_THRESHOLD
+    ? '<span class="profit-badge" title="未實現獲利達 ' + PROFIT_TAKING_THRESHOLD + '%，可考慮停利">🎯 停利參考</span>'
+    : "";
+}
+
 // 選擇權部位依到期日由近到遠排序，30天內標黃、7天內標紅提醒。
 function renderOptionExpiry(positions) {
   const options = (positions || [])
@@ -911,6 +927,7 @@ function renderOptionExpiry(positions) {
             <div class="expiry-right">
               <div class="expiry-days flat">到期日未知</div>
               <div class="expiry-pl ${plCls}">${plHtml}</div>
+              ${profitBadgeHtml(p.pct)}
             </div>
           </div>
         `;
@@ -935,6 +952,7 @@ function renderOptionExpiry(positions) {
           <div class="expiry-right">
             <div class="expiry-days ${urgencyCls}">${daysTxt}</div>
             <div class="expiry-pl ${plCls}">${plHtml}</div>
+            ${profitBadgeHtml(p.pct)}
           </div>
         </div>
       `;
@@ -946,6 +964,39 @@ function renderOptionExpiry(positions) {
 const HOLDINGS_COLLAPSE_COUNT = 8;
 let holdingsExpanded = false;
 const holdingsExpandBtnEl = document.getElementById("holdingsExpandBtn");
+
+// 持股清單的搜尋字串 + 排序方式，兩者都是使用者互動狀態，跨次 render 要保留。
+let holdingsSearchTerm = "";
+let holdingsSortKey = "value";
+let currentStockPositions = [];
+const holdingsSearchEl = document.getElementById("holdingsSearch");
+const holdingsSortEl = document.getElementById("holdingsSort");
+
+function applyHoldingsFilterSort(positions) {
+  let list = positions;
+  if (holdingsSearchTerm.trim()) {
+    const term = holdingsSearchTerm.trim().toUpperCase();
+    list = list.filter(
+      (p) => p.symbol.toUpperCase().includes(term) || (p.name || "").toUpperCase().includes(term)
+    );
+  }
+  const sorters = {
+    value: (a, b) => (b.value || 0) - (a.value || 0),
+    pct: (a, b) => (b.pct || 0) - (a.pct || 0),
+    pl: (a, b) => (b.pl || 0) - (a.pl || 0),
+    symbol: (a, b) => a.symbol.localeCompare(b.symbol)
+  };
+  return [...list].sort(sorters[holdingsSortKey] || sorters.value);
+}
+
+holdingsSearchEl.addEventListener("input", (e) => {
+  holdingsSearchTerm = e.target.value;
+  renderOpenPositionsList(currentStockPositions);
+});
+holdingsSortEl.addEventListener("change", (e) => {
+  holdingsSortKey = e.target.value;
+  renderOpenPositionsList(currentStockPositions);
+});
 
 function renderHoldingRow(p) {
   const borderCls = p.pl > 0 ? "gain-border" : p.pl < 0 ? "loss-border" : "";
@@ -961,6 +1012,7 @@ function renderHoldingRow(p) {
   const realizedLine = p.realized !== null && p.realized !== undefined
     ? `<div class="h-line3">已實現：<span class="${p.realized > 0 ? "gain" : p.realized < 0 ? "loss" : "flat"}">${fmtAmount(p.realized)}</span></div>`
     : "";
+  const profitBadge = profitBadgeHtml(p.pct);
   return `
     <div class="holding-row ${borderCls}">
       <div class="h-line1">
@@ -973,23 +1025,28 @@ function renderHoldingRow(p) {
         <span>${investLine}</span>
       </div>
       ${realizedLine}
+      ${profitBadge ? `<div class="h-badge-row">${profitBadge}</div>` : ""}
     </div>
   `;
 }
 
 function renderOpenPositionsList(positions) {
-  const needsCollapse = positions.length > HOLDINGS_COLLAPSE_COUNT;
+  currentStockPositions = positions;
+  const filtered = applyHoldingsFilterSort(positions);
+  const needsCollapse = filtered.length > HOLDINGS_COLLAPSE_COUNT;
   const showAll = holdingsExpanded || !needsCollapse;
-  const visible = showAll ? positions : positions.slice(0, HOLDINGS_COLLAPSE_COUNT);
+  const visible = showAll ? filtered : filtered.slice(0, HOLDINGS_COLLAPSE_COUNT);
 
-  holdingsListEl.innerHTML = visible.map(renderHoldingRow).join("");
+  holdingsListEl.innerHTML = filtered.length
+    ? visible.map(renderHoldingRow).join("")
+    : '<div class="flat" style="font-size:12px;padding:8px 0;text-align:center;">沒有符合的持股</div>';
 
   if (!needsCollapse) {
     holdingsExpandBtnEl.textContent = "";
     holdingsExpandBtnEl.onclick = null;
     return;
   }
-  holdingsExpandBtnEl.textContent = showAll ? "收起 ▲" : `顯示全部 ${positions.length} 檔 ▾`;
+  holdingsExpandBtnEl.textContent = showAll ? "收起 ▲" : `顯示全部 ${filtered.length} 檔 ▾`;
   holdingsExpandBtnEl.onclick = () => {
     holdingsExpanded = !holdingsExpanded;
     renderOpenPositionsList(positions);
@@ -999,10 +1056,44 @@ function renderOpenPositionsList(positions) {
 const closedHeaderEl = document.getElementById("closedHeader");
 const closedHeaderTitleEl = document.getElementById("closedHeaderTitle");
 const closedListEl = document.getElementById("closedList");
+const closedRowsEl = document.getElementById("closedRows");
+const closedSearchEl = document.getElementById("closedSearch");
 const closedSectionEl = document.querySelector(".closed-section");
 
-// 已平倉紀錄整個區塊預設收起（只顯示標題+筆數+已實現損益合計），點了才展開明細，
-// 依已實現損益排序（最賺的排最前面，最賠的排最後面），比照原始 Sheet 順序反而看不出重點。
+let allClosedPositions = [];
+let closedSearchTerm = "";
+
+// 依已實現損益排序（最賺的排最前面，最賠的排最後面），比照原始 Sheet 順序反而看不出重點，
+// 搜尋框只篩選代號/名稱，跟排序邏輯分開，77 筆紀錄要找特定一檔時不用整份手動滑找。
+function renderClosedRows() {
+  let list = allClosedPositions;
+  if (closedSearchTerm.trim()) {
+    const term = closedSearchTerm.trim().toUpperCase();
+    list = list.filter(
+      (p) => p.symbol.toUpperCase().includes(term) || (p.name || "").toUpperCase().includes(term)
+    );
+  }
+  const sorted = [...list].sort((a, b) => b.realized - a.realized);
+
+  closedRowsEl.innerHTML = sorted.length
+    ? sorted
+        .map((p) => {
+          const cls = p.realized > 0 ? "gain-border" : p.realized < 0 ? "loss-border" : "";
+          const plCls = p.realized > 0 ? "gain" : p.realized < 0 ? "loss" : "flat";
+          const noteTxt = p.note ? `・${p.note}` : "";
+          return `
+            <div class="closed-row ${cls}">
+              <span class="cr-symbol">${p.symbol}</span>
+              <span class="cr-name">${p.name || ""}${noteTxt}</span>
+              <span class="cr-pl ${plCls}">${fmtAmount(p.realized)}</span>
+            </div>
+          `;
+        })
+        .join("")
+    : '<div class="flat" style="font-size:11.5px;padding:8px 0;text-align:center;">沒有符合的紀錄</div>';
+}
+
+// 已平倉紀錄整個區塊預設收起（只顯示標題+筆數+已實現損益合計），點了才展開明細。
 function renderClosedPositions(closedPositions) {
   if (!closedPositions.length) {
     closedSectionEl.style.display = "none";
@@ -1010,28 +1101,19 @@ function renderClosedPositions(closedPositions) {
   }
   closedSectionEl.style.display = "";
 
-  const sorted = [...closedPositions].sort((a, b) => b.realized - a.realized);
-  const totalRealized = sorted.reduce((s, p) => s + p.realized, 0);
-  closedHeaderTitleEl.textContent = `已平倉紀錄（${sorted.length} 筆，合計 ${fmtAmount(totalRealized)}）`;
+  allClosedPositions = closedPositions;
+  const totalRealized = closedPositions.reduce((s, p) => s + p.realized, 0);
+  closedHeaderTitleEl.textContent = `已平倉紀錄（${closedPositions.length} 筆，合計 ${fmtAmount(totalRealized)}）`;
 
-  closedListEl.innerHTML = sorted
-    .map((p) => {
-      const cls = p.realized > 0 ? "gain-border" : p.realized < 0 ? "loss-border" : "";
-      const plCls = p.realized > 0 ? "gain" : p.realized < 0 ? "loss" : "flat";
-      const noteTxt = p.note ? `・${p.note}` : "";
-      return `
-        <div class="closed-row ${cls}">
-          <span class="cr-symbol">${p.symbol}</span>
-          <span class="cr-name">${p.name || ""}${noteTxt}</span>
-          <span class="cr-pl ${plCls}">${fmtAmount(p.realized)}</span>
-        </div>
-      `;
-    })
-    .join("");
+  renderClosedRows();
 
   closedHeaderEl.onclick = () => {
     const isOpen = closedListEl.classList.toggle("open");
     closedHeaderEl.classList.toggle("open", isOpen);
+  };
+  closedSearchEl.oninput = (e) => {
+    closedSearchTerm = e.target.value;
+    renderClosedRows();
   };
 }
 
