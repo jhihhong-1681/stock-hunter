@@ -187,6 +187,10 @@ body {
   border-top-color: rgba(255,255,255,0.06);
 }
 
+.cell.clickable { cursor: pointer; }
+.cell.clickable:hover { outline: 1px solid rgba(255,255,255,0.25); }
+.cell.selected { outline: 2px solid #4da3ff; }
+
 /* 台股慣例：紅 = 賺錢(正), 綠 = 賠錢(負) */
 .lvl-gain-1 { background: #3a1414; color: #ffb3b3; }
 .lvl-gain-2 { background: #5c1717; color: #ffcccc; }
@@ -632,6 +636,89 @@ body {
 }
 .expand-btn:hover { background: #232833; color: #cfd3d8; }
 .expand-btn:empty { display: none; }
+
+/* ---- 點日曆某一天，展開那天的持股損益組成 ---- */
+
+.day-detail {
+  display: none;
+  margin-top: 14px;
+  padding: 14px;
+  background: #1b2029;
+  border-radius: 8px;
+  border: 1px solid #232833;
+}
+
+.day-detail.open { display: block; }
+
+.day-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.day-detail-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e6e6e6;
+}
+
+.day-detail-close {
+  font-size: 11px;
+  color: #6b7078;
+  cursor: pointer;
+  user-select: none;
+}
+.day-detail-close:hover { color: #cfd3d8; }
+
+.day-detail-note {
+  font-size: 10.5px;
+  color: #6b7078;
+  margin-bottom: 10px;
+}
+
+.day-detail-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.day-row-top {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11.5px;
+  margin-bottom: 3px;
+}
+
+.day-row-symbol { font-weight: 700; color: #e6e6e6; flex: none; }
+
+.day-row-name {
+  color: #7d8590;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.day-row-pl { font-weight: 700; flex: none; margin-left: auto; }
+
+.day-bar-track {
+  background: #12151b;
+  border-radius: 4px;
+  height: 6px;
+  overflow: hidden;
+}
+
+.day-bar-fill { height: 100%; border-radius: 4px; }
+
+.day-detail-empty {
+  font-size: 11.5px;
+  color: #7d8590;
+  text-align: center;
+  padding: 10px 0;
+}
 
 /* ---- 已平倉紀錄（手風琴，預設收起） ---- */
 

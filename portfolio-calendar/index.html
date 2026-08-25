@@ -106,6 +106,14 @@
 
       <div class="grid" id="grid"></div>
 
+      <div class="day-detail" id="dayDetail">
+        <div class="day-detail-header">
+          <span class="day-detail-title" id="dayDetailTitle"></span>
+          <span class="day-detail-close" id="dayDetailClose">收起 ▲</span>
+        </div>
+        <div class="day-detail-body" id="dayDetailBody"></div>
+      </div>
+
       <div class="asset-section">
         <div class="compare-title">總資產走勢</div>
         <div class="chart-wrap" id="assetChartWrap">
@@ -177,6 +185,7 @@
     document.write('<script src="data.js?v=' + __v + '"><\/script>');
     document.write('<script src="indices.js?v=' + __v + '"><\/script>');
     document.write('<script src="holdings.js?v=' + __v + '"><\/script>');
+    document.write('<script src="positions_history.js?v=' + __v + '"><\/script>');
     document.write('<script src="app.js?v=' + __v + '"><\/script>');
   </script>
 </body>

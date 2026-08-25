@@ -94,12 +94,133 @@ const monthAmountEl = document.getElementById("monthAmount");
 const monthPctEl = document.getElementById("monthPct");
 const footerEl = document.getElementById("footer");
 
+// dateStr -> 那天的持股組成快照（見 positions_history.js 檔頭註解），用來拆解報酬日曆某一天的漲跌組成。
+const positionsHistory = window.POSITIONS_HISTORY || {};
+const positionsHistoryDates = Object.keys(positionsHistory).sort();
+
+const dayDetailEl = document.getElementById("dayDetail");
+const dayDetailTitleEl = document.getElementById("dayDetailTitle");
+const dayDetailBodyEl = document.getElementById("dayDetailBody");
+const dayDetailCloseEl = document.getElementById("dayDetailClose");
+
+let selectedDayDate = null;
+let dayDetailShowAll = false;
+
+// 算某一天(dateStr)的持股損益是怎麼組成的：跟前一筆有紀錄的日期比較，
+// 每個部位 = (今天未實現損益 − 前一天未實現損益) + (今天累積已實現損益 − 前一天累積已實現損益)。
+// 這樣不管當天有沒有買賣，算出來的都是這個部位「當天真正賺賠多少」，買賣的現金進出不會污染這個數字。
+function computeDayContribution(dateStr) {
+  const idx = positionsHistoryDates.indexOf(dateStr);
+  if (idx <= 0) return null; // 這天沒紀錄，或剛好是紀錄的第一天（沒有前一天可以比較）
+
+  const today = positionsHistory[dateStr];
+  const prev = positionsHistory[positionsHistoryDates[idx - 1]];
+  const prevMap = new Map(prev.map((p) => [`${p.symbol}|${p.name}`, p]));
+
+  const rows = today
+    .map((p) => {
+      const prevP = prevMap.get(`${p.symbol}|${p.name}`);
+      const plToday = p.pl || 0;
+      const realizedToday = p.realized || 0;
+      const plPrev = prevP ? prevP.pl || 0 : 0;
+      const realizedPrev = prevP ? prevP.realized || 0 : 0;
+      const contribution = plToday - plPrev + (realizedToday - realizedPrev);
+      return { symbol: p.symbol, name: p.name, contribution };
+    })
+    .filter((r) => Math.abs(r.contribution) > 0.005)
+    .sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution));
+
+  const total = rows.reduce((s, r) => s + r.contribution, 0);
+  return { rows, total, prevDate: positionsHistoryDates[idx - 1] };
+}
+
+const DAY_DETAIL_COLLAPSE_COUNT = 8;
+
+function renderDayDetail(dateStr) {
+  const result = computeDayContribution(dateStr);
+  dayDetailTitleEl.textContent = `${dateStr} 持股損益組成`;
+
+  if (!result) {
+    const earliest = positionsHistoryDates[0] || "（尚無資料）";
+    dayDetailBodyEl.innerHTML = `<div class="day-detail-empty">這天沒有可拆解的資料（要有「前一天」的紀錄才能比較，最早從 ${earliest} 之後才看得到）</div>`;
+    return;
+  }
+  if (!result.rows.length) {
+    dayDetailBodyEl.innerHTML = `<div class="day-detail-empty">這天所有持股/期權部位都沒有變動</div>`;
+    return;
+  }
+
+  const maxAbs = Math.max(...result.rows.map((r) => Math.abs(r.contribution)));
+  const rowsToShow = dayDetailShowAll ? result.rows : result.rows.slice(0, DAY_DETAIL_COLLAPSE_COUNT);
+
+  const rowsHtml = rowsToShow
+    .map((r) => {
+      const cls = r.contribution > 0 ? "gain" : r.contribution < 0 ? "loss" : "flat";
+      const barColor = r.contribution > 0 ? "#ff5c5c" : "#2fbf6a";
+      const widthPct = maxAbs > 0 ? (Math.abs(r.contribution) / maxAbs) * 100 : 0;
+      return `
+        <div class="day-row">
+          <div class="day-row-top">
+            <span class="day-row-symbol">${r.symbol}</span>
+            <span class="day-row-name">${r.name}</span>
+            <span class="day-row-pl ${cls}">${fmtAmount(r.contribution)}</span>
+          </div>
+          <div class="day-bar-track"><div class="day-bar-fill" style="width:${widthPct.toFixed(1)}%;background:${barColor};"></div></div>
+        </div>
+      `;
+    })
+    .join("");
+
+  const moreBtn =
+    result.rows.length > DAY_DETAIL_COLLAPSE_COUNT
+      ? `<button class="expand-btn" id="dayDetailMoreBtn">${dayDetailShowAll ? "收起 ▲" : `顯示全部 ${result.rows.length} 檔 ▾`}</button>`
+      : "";
+
+  const totalCls = result.total > 0 ? "gain" : result.total < 0 ? "loss" : "flat";
+  dayDetailBodyEl.innerHTML = `
+    <div class="day-detail-note">跟前一筆資料（${result.prevDate}）比較，只算股票/期權部位，現金、期貨、加密貨幣的變動沒有算進來，所以合計不一定等於日曆格子上的當日總損益。持股合計：<span class="${totalCls}">${fmtAmount(result.total)}</span></div>
+    <div class="day-detail-rows">${rowsHtml}</div>
+    ${moreBtn}
+  `;
+
+  const moreBtnEl = document.getElementById("dayDetailMoreBtn");
+  if (moreBtnEl) {
+    moreBtnEl.onclick = () => {
+      dayDetailShowAll = !dayDetailShowAll;
+      renderDayDetail(dateStr);
+    };
+  }
+}
+
+function closeDayDetail() {
+  dayDetailEl.classList.remove("open");
+  selectedDayDate = null;
+  dayDetailShowAll = false;
+  gridEl.querySelectorAll(".cell.selected").forEach((c) => c.classList.remove("selected"));
+}
+
+function toggleDayDetail(dateStr, cellEl) {
+  if (selectedDayDate === dateStr) {
+    closeDayDetail();
+    return;
+  }
+  gridEl.querySelectorAll(".cell.selected").forEach((c) => c.classList.remove("selected"));
+  cellEl.classList.add("selected");
+  selectedDayDate = dateStr;
+  dayDetailShowAll = false;
+  dayDetailEl.classList.add("open");
+  renderDayDetail(dateStr);
+}
+
+dayDetailCloseEl.addEventListener("click", closeDayDetail);
+
 function pad2(n) {
   return String(n).padStart(2, "0");
 }
 
 function render() {
   monthLabelEl.textContent = `${viewYear}/${pad2(viewMonth)} 報酬`;
+  closeDayDetail(); // 換月了，之前選的那一天不在畫面上了，收起明細面板
 
   const daysInMonth = new Date(viewYear, viewMonth, 0).getDate();
   const firstWeekday = new Date(viewYear, viewMonth - 1, 1).getDay();
@@ -147,6 +268,8 @@ function render() {
       totalEl.textContent = Math.round(info.total).toLocaleString("en-US");
       const cls = levelClass(info.pct);
       if (cls) cell.classList.add(cls);
+      cell.classList.add("clickable");
+      cell.addEventListener("click", () => toggleDayDetail(dateStr, cell));
     } else {
       cell.classList.add("no-data");
       amountEl.textContent = info ? (info.basisChange ? "基準變更" : info.gap ? "資料缺漏" : "首筆") : "";
