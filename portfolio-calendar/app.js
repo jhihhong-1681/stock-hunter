@@ -916,8 +916,14 @@ function renderOptionExpiry(positions) {
     .map((p) => {
       const plCls = p.pl > 0 ? "gain" : p.pl < 0 ? "loss" : "flat";
       const borderCls = p.pl > 0 ? "gain-border" : p.pl < 0 ? "loss-border" : "";
-      const sharesTxt = p.shares !== null && p.shares !== undefined ? `${p.shares} 股` : "";
-      const investTxt = `投入 ${fmtAmount(p.invested).replace(/^[+-]/, "")} → 現值 ${fmtAmount(p.value).replace(/^[+-]/, "")}`;
+      // 選擇權 1 口 = 100 股，shares 欄位存的是總股數，換算成口數比較好讀。
+      const contracts = p.shares !== null && p.shares !== undefined ? p.shares / 100 : null;
+      const sharesTxt = contracts !== null ? `${contracts} 口` : "";
+      // 沒有 USD 買進成本資料，用「投入金額 ÷ 口數」換算出每口的台幣均價當作參考。
+      const avgCostTxt = contracts && p.invested !== null && p.invested !== undefined
+        ? `每口成本 NT$${Math.round(p.invested / contracts).toLocaleString("en-US")} · `
+        : "";
+      const investTxt = `${avgCostTxt}投入 ${fmtAmount(p.invested).replace(/^[+-]/, "")} → 現值 ${fmtAmount(p.value).replace(/^[+-]/, "")}`;
       const plHtml = `${fmtAmount(p.pl)} <span class="expiry-pct">(${fmtPct(p.pct)})</span>`;
       if (!p.parsed) {
         return `
