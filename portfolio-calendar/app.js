@@ -788,7 +788,10 @@ const THEME_MAP = {
   PBR: "能源/石油",
   CLF: "能源/石油",
   SLV: "貴金屬避險",
-  VIAV: "網通設備"
+  VIAV: "網通設備",
+  MBOT: "機器人",
+  PRZO: "國防太空",
+  HIVE: "加密貨幣"
 };
 
 const THEME_COLORS = [
