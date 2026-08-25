@@ -887,6 +887,9 @@ function daysUntil(date) {
   return Math.round((target - today) / 86400000);
 }
 
+// 阿紘換匯固定用這個匯率，選擇權沒有記錄 USD 權利金時用這個回推。
+const USD_TWD_RATE = 31;
+
 // 未實現獲利達這個百分比，視為可以考慮停利的參考門檻（跟 daily-risk-signal-monitor skill 一致）。
 const PROFIT_TAKING_THRESHOLD = 50;
 function profitBadgeHtml(pct) {
@@ -919,9 +922,9 @@ function renderOptionExpiry(positions) {
       // 選擇權 1 口 = 100 股，shares 欄位存的是總股數，換算成口數比較好讀。
       const contracts = p.shares !== null && p.shares !== undefined ? p.shares / 100 : null;
       const sharesTxt = contracts !== null ? `${contracts} 口` : "";
-      // 沒有 USD 買進成本資料，用「投入金額 ÷ 口數」換算出每口的台幣均價當作參考。
+      // 沒有直接記錄 USD 買進權利金，但阿紘換匯都用 31 算，所以「投入金額 ÷ 31 ÷ 口數」就是當初每口付的美金權利金。
       const avgCostTxt = contracts && p.invested !== null && p.invested !== undefined
-        ? `每口成本 NT$${Math.round(p.invested / contracts).toLocaleString("en-US")} · `
+        ? `每口成本 ${fmtUsd(p.invested / USD_TWD_RATE / contracts)} · `
         : "";
       const investTxt = `${avgCostTxt}投入 ${fmtAmount(p.invested).replace(/^[+-]/, "")} → 現值 ${fmtAmount(p.value).replace(/^[+-]/, "")}`;
       const plHtml = `${fmtAmount(p.pl)} <span class="expiry-pct">(${fmtPct(p.pct)})</span>`;
