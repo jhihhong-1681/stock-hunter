@@ -804,6 +804,12 @@ function fmtUsd(n) {
   return "$" + Number(n).toLocaleString("en-US", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
 }
 
+// 選擇權權利金金額小，1 位小數不夠精確，固定顯示到小數點後 2 位。
+function fmtUsd2(n) {
+  if (n === null || n === undefined) return "-";
+  return "$" + Number(n).toLocaleString("en-US", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+}
+
 // 單一主題占持股現值超過這個比例就視為集中度偏高，跟 daily-risk-signal-monitor skill 用的門檻一致。
 const THEME_CONCENTRATION_THRESHOLD = 20;
 
@@ -921,7 +927,7 @@ function renderOptionExpiry(positions) {
       const sharesTxt = contracts !== null ? `${contracts} 口` : "";
       // avgCost/price 是每股 USD 權利金（跟券商選擇權報價表同樣的單位），方便跟券商畫面對照算損益。
       const premiumTxt = p.avgCost !== null && p.avgCost !== undefined
-        ? `權利金 ${fmtUsd(p.avgCost)} → ${fmtUsd(p.price)} · `
+        ? `權利金 ${fmtUsd2(p.avgCost)} → ${fmtUsd2(p.price)} · `
         : "";
       const investTxt = `${premiumTxt}投入 ${fmtAmount(p.invested).replace(/^[+-]/, "")} → 現值 ${fmtAmount(p.value).replace(/^[+-]/, "")}`;
       const plHtml = `${fmtAmount(p.pl)} <span class="expiry-pct">(${fmtPct(p.pct)})</span>`;
@@ -1014,8 +1020,10 @@ function renderHoldingRow(p) {
   const sharesTxt = p.shares !== null && p.shares !== undefined ? `${p.shares} 股` : "";
   const optionTag = isOption ? '<span class="h-tag">期權</span>' : "";
   const nameTxt = p.name && p.name !== p.symbol ? `<div class="h-name">${p.name}</div>` : "";
+  // 選擇權權利金金額小，用 2 位小數才看得出差異；股票成本維持原本 1 位小數。
+  const costFmt = isOption ? fmtUsd2 : fmtUsd;
   const costLine = p.avgCost !== null && p.avgCost !== undefined
-    ? `成本 ${fmtUsd(p.avgCost)} → 現價 ${fmtUsd(p.price)}`
+    ? `${isOption ? "權利金" : "成本"} ${costFmt(p.avgCost)} → ${isOption ? "" : "現價 "}${costFmt(p.price)}`
     : "";
   const investLine = `投入 ${fmtAmount(p.invested).replace(/^[+-]/, "")} → 現值 ${fmtAmount(p.value).replace(/^[+-]/, "")}`;
   const realizedLine = p.realized !== null && p.realized !== undefined
