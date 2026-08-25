@@ -109,15 +109,20 @@ let dayDetailShowAll = false;
 // 算某一天(dateStr)的持股損益是怎麼組成的：跟前一筆有紀錄的日期比較，
 // 每個部位 = (今天未實現損益 − 前一天未實現損益) + (今天累積已實現損益 − 前一天累積已實現損益)。
 // 這樣不管當天有沒有買賣，算出來的都是這個部位「當天真正賺賠多少」，買賣的現金進出不會污染這個數字。
+//
+// 現金另外算一行「現金（非交易變動）」：現金的變化大部分是買賣股票的資金進出，這部分已經算在
+// 上面每個部位的貢獻裡了，所以要扣掉交易造成的現金流，只留下存提款/利息這種跟交易無關的變化：
+//   (今天cash − 前一天cash) − (今天realizedPL − 前一天realizedPL) + (今天invested − 前一天invested)
+// 單純買賣股票的日子，這行會剛好是 0（正確，因為已經算在個股那邊了），不會重複計算。
 function computeDayContribution(dateStr) {
   const idx = positionsHistoryDates.indexOf(dateStr);
   if (idx <= 0) return null; // 這天沒紀錄，或剛好是紀錄的第一天（沒有前一天可以比較）
 
   const today = positionsHistory[dateStr];
   const prev = positionsHistory[positionsHistoryDates[idx - 1]];
-  const prevMap = new Map(prev.map((p) => [`${p.symbol}|${p.name}`, p]));
+  const prevMap = new Map(prev.positions.map((p) => [`${p.symbol}|${p.name}`, p]));
 
-  const rows = today
+  const rows = today.positions
     .map((p) => {
       const prevP = prevMap.get(`${p.symbol}|${p.name}`);
       const plToday = p.pl || 0;
@@ -127,9 +132,17 @@ function computeDayContribution(dateStr) {
       const contribution = plToday - plPrev + (realizedToday - realizedPrev);
       return { symbol: p.symbol, name: p.name, contribution };
     })
-    .filter((r) => Math.abs(r.contribution) > 0.005)
-    .sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution));
+    .filter((r) => Math.abs(r.contribution) > 0.005);
 
+  if (today.totals && prev.totals) {
+    const cashDelta =
+      today.totals.cash - prev.totals.cash - (today.totals.realizedPL - prev.totals.realizedPL) + (today.totals.invested - prev.totals.invested);
+    if (Math.abs(cashDelta) > 0.5) {
+      rows.push({ symbol: "CASH", name: "現金（非交易變動，如存提款/利息）", contribution: cashDelta });
+    }
+  }
+
+  rows.sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution));
   const total = rows.reduce((s, r) => s + r.contribution, 0);
   return { rows, total, prevDate: positionsHistoryDates[idx - 1] };
 }
@@ -162,7 +175,7 @@ function renderDayDetail(dateStr) {
         <div class="day-row">
           <div class="day-row-top">
             <span class="day-row-symbol">${r.symbol}</span>
-            <span class="day-row-name">${r.name}</span>
+            <span class="day-row-name" title="${r.name}">${r.name}</span>
             <span class="day-row-pl ${cls}">${fmtAmount(r.contribution)}</span>
           </div>
           <div class="day-bar-track"><div class="day-bar-fill" style="width:${widthPct.toFixed(1)}%;background:${barColor};"></div></div>
@@ -178,7 +191,7 @@ function renderDayDetail(dateStr) {
 
   const totalCls = result.total > 0 ? "gain" : result.total < 0 ? "loss" : "flat";
   dayDetailBodyEl.innerHTML = `
-    <div class="day-detail-note">跟前一筆資料（${result.prevDate}）比較，只算股票/期權部位，現金、期貨、加密貨幣的變動沒有算進來，所以合計不一定等於日曆格子上的當日總損益。持股合計：<span class="${totalCls}">${fmtAmount(result.total)}</span></div>
+    <div class="day-detail-note">跟前一筆資料（${result.prevDate}）比較，已包含股票/期權部位跟美股現金的非交易變動；期貨、加密貨幣、跟其他證券帳戶（國泰/中信/玉山）的變動沒有算進來，所以合計不一定等於日曆格子上的當日總損益。合計：<span class="${totalCls}">${fmtAmount(result.total)}</span></div>
     <div class="day-detail-rows">${rowsHtml}</div>
     ${moreBtn}
   `;
