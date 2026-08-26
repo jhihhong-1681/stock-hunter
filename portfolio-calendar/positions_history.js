@@ -53,5 +53,39 @@ window.POSITIONS_HISTORY = {
       { symbol: "HIVE", name: "HIVE 09/18/26 4 Call", pl: -3720.00, realized: null }
     ],
     totals: { cash: 93078, invested: 1092203, realizedPL: 372674 }
+  },
+  "2026-08-25": {
+    positions: [
+      { symbol: "ASTS", name: "AST Spacemobile", pl: -19978.57, realized: null },
+      { symbol: "MP", name: "MP Materials", pl: 8755.75, realized: -8137.50 },
+      { symbol: "SMR", name: "NuScale Power", pl: -53054.11, realized: -106338.51 },
+      { symbol: "UGL", name: "2x Long Gold", pl: -10705.33, realized: -31372.00 },
+      { symbol: "RKLB", name: "Rocket Lab Corporation", pl: -14484.75, realized: 28585.10 },
+      { symbol: "VPG", name: "Vishay Precision Group", pl: -18321.00, realized: null },
+      { symbol: "VOYG", name: "Voyager Technologies", pl: 7148.60, realized: null },
+      { symbol: "VRT", name: "Vertiv Holding", pl: 999.75, realized: 75717.50 },
+      { symbol: "FVRR", name: "Fiverr International", pl: -520.80, realized: null },
+      { symbol: "PLTR", name: "Palantir", pl: 12448.67, realized: 5541.56 },
+      { symbol: "UUUU", name: "Energy Fuels", pl: -7416.75, realized: -12827.80 },
+      { symbol: "VIAV", name: "Viavi Solutions", pl: -3324.75, realized: null },
+      { symbol: "MU", name: "Micron", pl: 92.07, realized: null },
+      { symbol: "ALGM", name: "Allegro MicroSystems", pl: -4811.20, realized: null },
+      { symbol: "CAG", name: "ConAgra Brands", pl: 1193.50, realized: null },
+      { symbol: "AESI", name: "Atlas Energy Solutions", pl: 263.50, realized: null },
+      { symbol: "MBOT", name: "Microbot Medical", pl: 0.00, realized: null },
+      { symbol: "PRZO", name: "ParaZero Technologies", pl: 2232.00, realized: null },
+      { symbol: "MRCY", name: "Mercury Systems", pl: -1451.42, realized: null },
+      { symbol: "HOOD", name: "HOOD 09/18/26 75 Call", pl: 56420.00, realized: null },
+      { symbol: "XOM", name: "XOM 09/18/26 145 Call", pl: 12307.00, realized: null },
+      { symbol: "HAL", name: "HAL 10/16/26 32 Call", pl: -4247.00, realized: null },
+      { symbol: "GSK", name: "GSK 11/20/26 45 Call", pl: -589.00, realized: null },
+      { symbol: "ONDS", name: "ONDS 09/18/26 13 Call", pl: -18600.00, realized: null },
+      { symbol: "SLV", name: "SLV 09/18/26 58 Call", pl: 17546.00, realized: null },
+      { symbol: "PBR", name: "PBR 09/18/26 19 Call", pl: -620.00, realized: null },
+      { symbol: "CLF", name: "CLF 11/20/26 10 Call", pl: 1302.00, realized: null },
+      { symbol: "HIVE", name: "HIVE 09/18/26 4 Call", pl: 0.00, realized: null },
+      { symbol: "SOUN", name: "SOUN 10/16/26 9 Call", pl: 310.00, realized: null }
+    ],
+    totals: { cash: 72085, invested: 1112260, realizedPL: 372674 }
   }
 };
