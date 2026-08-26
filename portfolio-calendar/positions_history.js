@@ -75,7 +75,7 @@ window.POSITIONS_HISTORY = {
       { symbol: "MBOT", name: "Microbot Medical", pl: 0.00, realized: null },
       { symbol: "PRZO", name: "ParaZero Technologies", pl: 2232.00, realized: null },
       { symbol: "MRCY", name: "Mercury Systems", pl: -1451.42, realized: null },
-      { symbol: "HOOD", name: "HOOD 09/18/26 75 Call", pl: 56420.00, realized: null },
+      { symbol: "HOOD", name: "HOOD 09/18/26 75 Call", pl: 56420.00, realized: -41850.00 },
       { symbol: "XOM", name: "XOM 09/18/26 145 Call", pl: 12307.00, realized: null },
       { symbol: "HAL", name: "HAL 10/16/26 32 Call", pl: -4247.00, realized: null },
       { symbol: "GSK", name: "GSK 11/20/26 45 Call", pl: -589.00, realized: null },

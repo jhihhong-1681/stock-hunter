@@ -32,7 +32,7 @@ window.HOLDINGS = {
     { symbol: "AESI", name: "Atlas Energy Solutions", shares: 50, avgCost: 11.85, price: 12.02, invested: 18368, value: 18631, pl: 263.50, pct: 1.4, realized: null },
     { symbol: "MBOT", name: "Microbot Medical", shares: 200, avgCost: 1.50, price: 1.50, invested: 9300, value: 9300, pl: 0.00, pct: 0.0, realized: null },
     { symbol: "PRZO", name: "ParaZero Technologies", shares: 400, avgCost: 0.64, price: 0.82, invested: 7936, value: 10168, pl: 2232.00, pct: 28.1, realized: null },
-    { symbol: "HOOD", name: "HOOD 09/18/26 75 Call", type: "option", shares: 100, avgCost: 18.50, price: 36.70, underlyingPrice: 112.09, invested: 57350, value: 113770, pl: 56420.00, pct: 98.4, realized: null, priceUnchangedDays: 0 },
+    { symbol: "HOOD", name: "HOOD 09/18/26 75 Call", type: "option", shares: 100, avgCost: 18.50, price: 36.70, underlyingPrice: 112.09, invested: 57350, value: 113770, pl: 56420.00, pct: 98.4, realized: -41850.00, priceUnchangedDays: 0 },
     { symbol: "XOM", name: "XOM 09/18/26 145 Call", type: "option", shares: 100, avgCost: 12.70, price: 16.67, underlyingPrice: 160.64, invested: 39370, value: 51677, pl: 12307.00, pct: 31.3, realized: null, priceUnchangedDays: 0 },
     { symbol: "HAL", name: "HAL 10/16/26 32 Call", type: "option", shares: 300, avgCost: 3.4567, price: 3.00, underlyingPrice: 33.80, invested: 32147, value: 27900, pl: -4247.00, pct: -13.2, realized: null, priceUnchangedDays: 0 },
     { symbol: "GSK", name: "GSK 11/20/26 45 Call", type: "option", shares: 100, avgCost: 7.70, price: 7.51, underlyingPrice: 52.07, invested: 23870, value: 23281, pl: -589.00, pct: -2.5, realized: null, priceUnchangedDays: 1 },
