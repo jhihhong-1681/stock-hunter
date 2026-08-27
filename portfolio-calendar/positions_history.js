@@ -109,8 +109,8 @@ window.POSITIONS_HISTORY = {
       { symbol: "AESI", name: "Atlas Energy Solutions", pl: 341.00, realized: null },
       { symbol: "MBOT", name: "Microbot Medical", pl: 124.00, realized: null },
       { symbol: "PRZO", name: "ParaZero Technologies", pl: 1984.00, realized: null },
-      { symbol: "HOOD", name: "HOOD 09/18/26 75 CALL", pl: 0, realized: 8060.00 },
-      { symbol: "HOOD", name: "HOOD 10/16/26 79 CALL", pl: -2635.00, realized: 8060.00 },
+      { symbol: "HOOD", name: "HOOD 09/18/26 75 Call", pl: 0, realized: 49910.00 },
+      { symbol: "HOOD", name: "HOOD 10/16/26 79 Call", pl: -2635.00, realized: null },
       { symbol: "XOM", name: "XOM 09/18/26 145 Call", pl: 4960.00, realized: null },
       { symbol: "HAL", name: "HAL 10/16/26 32 Call", pl: -2666.00, realized: null },
       { symbol: "GSK", name: "GSK 11/20/26 45 Call", pl: -310.00, realized: null },
@@ -121,6 +121,6 @@ window.POSITIONS_HISTORY = {
       { symbol: "HIVE", name: "HIVE 09/18/26 4 Call", pl: -3720.00, realized: null },
       { symbol: "SOUN", name: "SOUN 10/16/26 9 Call", pl: -310.00, realized: null }
     ],
-    totals: { cash: 177762, invested: 1058692, realizedPL: 432849 }
+    totals: { cash: 177762, invested: 1058692, realizedPL: 466638.72 }
   }
 };

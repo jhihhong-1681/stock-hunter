@@ -8,7 +8,7 @@ window.HOLDINGS = {
     value: 938728,
     unrealizedPL: -119964,
     unrealizedPct: -11.33,
-    realizedPL: 432849,
+    realizedPL: 466638.72,
     cash: 177762,
     totalAssets: 1116490
   },
@@ -31,7 +31,7 @@ window.HOLDINGS = {
     { symbol: "AESI", name: "Atlas Energy Solutions", shares: 50, avgCost: 11.85, price: 12.07, invested: 18368, value: 18709, pl: 341.00, pct: 1.9, realized: null },
     { symbol: "MBOT", name: "Microbot Medical", shares: 200, avgCost: 1.50, price: 1.52, invested: 9300, value: 9424, pl: 124.00, pct: 1.3, realized: null },
     { symbol: "PRZO", name: "ParaZero Technologies", shares: 400, avgCost: 0.64, price: 0.80, invested: 7936, value: 9920, pl: 1984.00, pct: 25.0, realized: null },
-    { symbol: "HOOD", name: "HOOD 10/16/26 79 CALL", type: "option", shares: 100, avgCost: 18.80, price: 17.95, underlyingPrice: 108.54, invested: 58280, value: 55645, pl: -2635.00, pct: -4.5, realized: 8060.00, priceUnchangedDays: 0 },
+    { symbol: "HOOD", name: "HOOD 10/16/26 79 Call", type: "option", shares: 100, avgCost: 18.80, price: 17.95, underlyingPrice: 108.54, invested: 58280, value: 55645, pl: -2635.00, pct: -4.5, realized: null, priceUnchangedDays: 0 },
     { symbol: "XOM", name: "XOM 09/18/26 145 Call", type: "option", shares: 100, avgCost: 12.70, price: 14.30, underlyingPrice: 158.19, invested: 39370, value: 44330, pl: 4960.00, pct: 12.6, realized: null, priceUnchangedDays: 0 },
     { symbol: "HAL", name: "HAL 10/16/26 32 Call", type: "option", shares: 300, avgCost: 3.4567, price: 3.17, underlyingPrice: 34.44, invested: 32147, value: 29481, pl: -2666.00, pct: -8.3, realized: null, priceUnchangedDays: 0 },
     { symbol: "GSK", name: "GSK 11/20/26 45 Call", type: "option", shares: 100, avgCost: 7.70, price: 7.60, underlyingPrice: 51.43, invested: 23870, value: 23560, pl: -310.00, pct: -1.3, realized: null, priceUnchangedDays: 0 },
@@ -45,7 +45,7 @@ window.HOLDINGS = {
   // 已經全部賣光/到期的舊部位（只保留股票名稱、賣出記錄跟已實現損益，沒有現值/報酬率這些「還在追蹤」的欄位）。
   // 這裡的 realized 加總 + 上面 positions 裡各筆的 realized 加總 = totals.realizedPL。
   closedPositions: [
-    { symbol: "HOOD", name: "HOOD 09/18/26 75 CALL", note: null, realized: 8060.00 },
+    { symbol: "HOOD", name: "HOOD 09/18/26 75 Call", note: null, realized: 49910.00 },
     { symbol: "VRT", name: "Vertiv Holding", note: "240賣出5股 264賣出5股 255賣出5股 265賣出5股 268賣出5股 261.3賣出7股", realized: 77922.22 },
     { symbol: "SBET", name: "SBET 01/15/27 5 Call", note: null, realized: 8990.00 },
     { symbol: "SOFI", name: "SOFI 08/21/26 20 Call", note: null, realized: -13950.00 },
