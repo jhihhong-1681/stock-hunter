@@ -8,7 +8,7 @@ window.HOLDINGS = {
     value: 938728,
     unrealizedPL: -119964,
     unrealizedPct: -11.33,
-    realizedPL: 424788.10,
+    realizedPL: 466638.72,
     cash: 177762,
     totalAssets: 1116490
   },
