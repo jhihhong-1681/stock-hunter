@@ -121,6 +121,6 @@ window.POSITIONS_HISTORY = {
       { symbol: "HIVE", name: "HIVE 09/18/26 4 Call", pl: -3720.00, realized: null },
       { symbol: "SOUN", name: "SOUN 10/16/26 9 Call", pl: -310.00, realized: null }
     ],
-    totals: { cash: 177762, invested: 1058692, realizedPL: 466638.72 }
+    totals: { cash: 177762, invested: 1058692, realizedPL: 424788.10 }
   }
 };
