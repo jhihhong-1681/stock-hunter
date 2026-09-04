@@ -1,16 +1,70 @@
+/* 「資產淨值」頁面的深色主題，色票跟報酬日曆頁（style.css 的 ytdChart／資產走勢圖）統一，
+   紅=賺錢/上漲、綠=賠錢/下跌（台股慣例），這樣兩個頁面切著看不會有色調不一致的違和感。
+   下面這些選擇器會覆蓋 holdings-editor.css 的淺色 Google-Sheets 風格（載入順序：
+   holdings-editor.css 先、networth.css 後，見 networth.html），holdings-editor.css 本身不動，
+   保留給未來如果又要做別的表格編輯頁時可以重用。 */
+
+body {
+  background: #0d1117;
+  color: #e6e6e6;
+}
+
 .nw-wrap {
   max-width: 1500px;
+  background: #14181f;
+  border: 1px solid #232833;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.nw-wrap .sheet-header h1 {
+  color: #e6e6e6;
+}
+
+.nw-wrap .sheet-note {
+  color: #6b7078;
+}
+
+.nw-wrap .table-scroll {
+  border-color: #232833;
+}
+
+.nw-wrap .sheet-table th {
+  background: #171c26;
+  color: #9aa0a8;
+  border-color: #232833;
+}
+
+.nw-wrap .sheet-table td {
+  border-color: #1b2029;
+  color: #cfd3d8;
+}
+
+.nw-wrap .sheet-table tbody tr:hover {
+  background: #171c26;
+}
+
+.nw-wrap .cell-readonly {
+  color: #e6e6e6;
+}
+
+/* 台股慣例：紅 = 賺錢(正), 綠 = 賠錢(負)，跟報酬日曆同一組色票 */
+.nw-wrap .gain-text { color: #ff5c5c; font-weight: 700; }
+.nw-wrap .loss-text { color: #2fbf6a; font-weight: 700; }
+
+.nw-wrap .sheet-footer {
+  color: #6b7078;
 }
 
 .nw-chart-section {
   margin-bottom: 18px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #e8eaed;
+  border-bottom: 1px solid #232833;
 }
 
 .nw-chart-title {
   font-size: 13px;
-  color: #5f6368;
+  color: #9aa0a8;
   margin-bottom: 10px;
   font-weight: 700;
 }
@@ -29,19 +83,20 @@
   position: absolute;
   display: none;
   pointer-events: none;
-  background: #202124;
-  color: #fff;
+  background: #1f242e;
+  border: 1px solid #33394a;
+  color: #e6e6e6;
   border-radius: 6px;
   padding: 6px 10px;
   font-size: 11px;
   line-height: 1.6;
   white-space: nowrap;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
   z-index: 5;
 }
 
 .nw-chart-tooltip .tt-date {
-  color: #cfd3d8;
+  color: #9aa0a8;
   font-weight: 700;
   margin-bottom: 3px;
 }
@@ -52,10 +107,10 @@
   gap: 10px 16px;
   margin-top: 10px;
   font-size: 12px;
-  color: #5f6368;
+  color: #9aa0a8;
 }
 
 .nw-legend .legend-value {
   font-weight: 700;
-  color: #202124;
+  color: #e6e6e6;
 }

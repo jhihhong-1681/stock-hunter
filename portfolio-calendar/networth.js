@@ -73,7 +73,8 @@ function renderChart(sorted) {
 
   const lastValue = values[n - 1];
   const firstValue = values[0];
-  const trendColor = lastValue >= firstValue ? "#d93025" : "#188038"; // 台股慣例：漲=紅, 跌=綠
+  // 跟報酬日曆的 ytdChart 同一組色票、同樣的台股慣例：漲(紅)=賺錢, 跌(綠)=賠錢。
+  const trendColor = lastValue >= firstValue ? "#ff5c5c" : "#2fbf6a";
 
   // 月份標籤：把 "2026/07/31" 這種格式轉成 "25/07" 這種短格式。
   function monthLabel(dateStr) {
@@ -82,29 +83,34 @@ function renderChart(sorted) {
     return parts[0].slice(2) + "/" + parts[1].padStart(2, "0");
   }
 
+  const gradId = "nwGrad";
   let svg = `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
+  svg += `<defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="${trendColor}" stop-opacity="0.32" />
+    <stop offset="100%" stop-color="${trendColor}" stop-opacity="0" />
+  </linearGradient></defs>`;
 
   // Y 軸格線 + 標籤（每 20 萬一條）
   for (let v = min; v <= max; v += Y_STEP) {
     const y = yFor(v).toFixed(1);
-    svg += `<line x1="${padL}" y1="${y}" x2="${width - padR}" y2="${y}" stroke="#e8eaed" stroke-width="1" />`;
-    svg += `<text x="${padL - 8}" y="${y}" text-anchor="end" dominant-baseline="middle" font-size="10" fill="#80868b">${(v / 10000).toFixed(0)}萬</text>`;
+    svg += `<line x1="${padL}" y1="${y}" x2="${width - padR}" y2="${y}" stroke="#1e2430" stroke-width="1" />`;
+    svg += `<text x="${padL - 8}" y="${y}" text-anchor="end" dominant-baseline="middle" font-size="10" fill="#6b7078">${(v / 10000).toFixed(0)}萬</text>`;
   }
 
   // X 軸刻度 + 月份標籤（一個月一個單位，每一筆資料畫一個刻度）
   sorted.forEach((r, i) => {
     const x = xFor(i).toFixed(1);
-    svg += `<line x1="${x}" y1="${height - padBottom}" x2="${x}" y2="${height - padBottom + 4}" stroke="#c0c4c9" stroke-width="1" />`;
-    svg += `<text x="${x}" y="${height - padBottom + 16}" text-anchor="middle" font-size="10" fill="#80868b">${monthLabel(r.date)}</text>`;
+    svg += `<line x1="${x}" y1="${height - padBottom}" x2="${x}" y2="${height - padBottom + 4}" stroke="#3a3f4a" stroke-width="1" />`;
+    svg += `<text x="${x}" y="${height - padBottom + 16}" text-anchor="middle" font-size="10" fill="#6b7078">${monthLabel(r.date)}</text>`;
   });
 
-  svg += `<polygon points="${areaPoints}" fill="${trendColor}" fill-opacity="0.10" />`;
+  svg += `<polygon points="${areaPoints}" fill="url(#${gradId})" />`;
   svg += `<polyline points="${points}" fill="none" stroke="${trendColor}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />`;
-  svg += `<circle cx="${xFor(n - 1).toFixed(1)}" cy="${yFor(lastValue).toFixed(1)}" r="3.5" fill="${trendColor}" />`;
+  svg += `<circle cx="${xFor(n - 1).toFixed(1)}" cy="${yFor(lastValue).toFixed(1)}" r="3.5" fill="${trendColor}" stroke="#0d1117" stroke-width="1.5" />`;
   svg += `<rect x="0" y="0" width="${width}" height="${height}" fill="transparent" class="hover-capture" style="cursor:crosshair;" />`;
   svg += `<g class="hover-guide" opacity="0" style="pointer-events:none;">`;
-  svg += `<line class="hg-line" x1="0" y1="${padT}" x2="0" y2="${height - padBottom}" stroke="#c0c4c9" stroke-width="1" stroke-dasharray="2,2" />`;
-  svg += `<circle class="hg-dot" r="4" fill="${trendColor}" stroke="#fff" stroke-width="1.5" />`;
+  svg += `<line class="hg-line" x1="0" y1="${padT}" x2="0" y2="${height - padBottom}" stroke="#8a8f98" stroke-width="1" stroke-dasharray="2,2" />`;
+  svg += `<circle class="hg-dot" r="4" fill="${trendColor}" stroke="#0d1117" stroke-width="1.5" />`;
   svg += `</g>`;
   svg += `</svg>`;
 
@@ -159,38 +165,44 @@ function render() {
   const sorted = [...rows].sort((a, b) => new Date(a.date) - new Date(b.date));
 
   if (!sorted.length) {
-    nwBody.innerHTML = `<tr><td colspan="16" style="text-align:center;color:#80868b;padding:24px;">尚無資料</td></tr>`;
+    nwBody.innerHTML = `<tr><td colspan="16" style="text-align:center;color:#6b7078;padding:24px;">尚無資料</td></tr>`;
     sheetFooterEl.textContent = "";
     nwChartEl.innerHTML = "";
     nwLegendEl.innerHTML = "";
     return;
   }
 
+  // MoM 一定要照時間順序（舊→新）往前抓上一筆才能算對，所以先在 sorted（舊→新）上算完，
+  // 表格顯示才反過來（新→舊，最新一筆在最上面），兩者互不影響。
   recompute(sorted);
   renderChart(sorted);
 
-  nwBody.innerHTML = sorted
+  const displayRows = [...sorted].reverse();
+
+  nwBody.innerHTML = displayRows
     .map((r) => {
       const returnCls = r.returnPct > 0 ? "gain-text" : r.returnPct < 0 ? "loss-text" : "";
       const momCls = r.mom > 0 ? "gain-text" : r.mom < 0 ? "loss-text" : "";
+      // cell-readonly 是 display:block，只能包在 <td> 裡的 <span> 上，
+      // 直接放在 <td> 上會把儲存格擠出表格版面，跟後一欄疊在同一格裡（一行內看起來像上下兩格）。
       return `
         <tr>
           <td>${r.date || ""}</td>
           <td>${fmtMoney(r.usStockValue)}</td>
           <td>${fmtMoney(r.usStockCash)}</td>
           <td>${fmtMoney(r.principal)}</td>
-          <td class="cell-readonly">${fmtMoney(r.usStockTotal)}</td>
-          <td class="cell-readonly ${returnCls}">${fmtPct(r.returnPct)}</td>
+          <td><span class="cell-readonly">${fmtMoney(r.usStockTotal)}</span></td>
+          <td><span class="cell-readonly ${returnCls}">${fmtPct(r.returnPct)}</span></td>
           <td>${num(r.yoy)}</td>
-          <td class="cell-readonly ${momCls}">${fmtPct(r.mom)}</td>
+          <td><span class="cell-readonly ${momCls}">${fmtPct(r.mom)}</span></td>
           <td>${r.cashRatio === null || r.cashRatio === undefined ? "" : fmtPct(r.cashRatio)}</td>
           <td>${fmtMoney(r.cathay)}</td>
           <td>${fmtMoney(r.ctbc)}</td>
           <td>${fmtMoney(r.esun)}</td>
           <td>${fmtMoney(r.esunFutures)}</td>
           <td>${fmtMoney(r.crypto)}</td>
-          <td class="cell-readonly">${fmtMoney(r.otherTotal)}</td>
-          <td class="cell-readonly">${fmtMoney(r.grandTotal)}</td>
+          <td><span class="cell-readonly">${fmtMoney(r.otherTotal)}</span></td>
+          <td><span class="cell-readonly">${fmtMoney(r.grandTotal)}</span></td>
         </tr>
       `;
     })
