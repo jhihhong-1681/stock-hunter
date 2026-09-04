@@ -930,7 +930,11 @@ const THEME_MAP = {
   HIVE: "加密貨幣",
   SOUN: "資安/軟體",
   CPRT: "消費網路",
-  INTC: "AI基建/半導體"
+  INTC: "AI基建/半導體",
+  AGX: "能源/石油",
+  GLD: "貴金屬避險",
+  NVO: "醫療保健",
+  AEO: "民生消費"
 };
 
 const THEME_COLORS = [
