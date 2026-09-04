@@ -15,22 +15,24 @@ function expectedPrevBusinessDate(dateStr) {
 }
 
 // dateStr(YYYY-MM-DD) -> { total, delta, pct, basisChange, gap }
-// basis 不同代表統計口徑換了（例如從「只算美股」換成「總資產」），
-// 或者中間漏了一個交易日的快照，這兩種情況都不能拿來算漲跌，
-// 跟資料的第一天一樣當作沒有前一天可比較，避免把漏掉那幾天的漲跌全部算到下一筆頭上。
+// basis 不同代表統計口徑換了（例如從「只算美股」換成「總資產」），沒辦法拿來算漲跌，
+// 跟資料的第一天一樣當作沒有前一天可比較。
+// 中間漏了交易日快照（gap=true）不會再留白：直接拿「最近一筆有資料的前一天」當基準算漲跌，
+// 等於把中間缺漏的那幾天全部算到這一天頭上——所以這天的 pct 其實是「橋接多天」的累積報酬，
+// 不是單一交易日報酬，畫月曆時要額外標記提醒，不能讓它看起來跟一般單日報酬一樣。
 const dailyMap = new Map();
 for (let i = 0; i < rawHistory.length; i++) {
   const { date, total, basis } = rawHistory[i];
   const prev = i > 0 ? rawHistory[i - 1] : null;
   const basisChanged = !!prev && !!prev.basis && !!basis && prev.basis !== basis;
   const hasGap = !!prev && !basisChanged && prev.date !== expectedPrevBusinessDate(date);
-  if (!prev || basisChanged || hasGap) {
+  if (!prev || basisChanged) {
     dailyMap.set(date, { total, delta: null, pct: null, basisChange: basisChanged, gap: hasGap });
   } else {
     const prevTotal = prev.total;
     const delta = total - prevTotal;
     const pct = prevTotal !== 0 ? (delta / prevTotal) * 100 : null;
-    dailyMap.set(date, { total, delta, pct, basisChange: false, gap: false });
+    dailyMap.set(date, { total, delta, pct, basisChange: false, gap: hasGap });
   }
 }
 
@@ -277,15 +279,18 @@ function render() {
         monthStartTotal = info.total - info.delta;
       }
       amountEl.textContent = fmtAmountShort(info.delta);
-      pctEl.textContent = fmtPct(info.pct);
+      pctEl.textContent = fmtPct(info.pct) + (info.gap ? " ⚠" : "");
       totalEl.textContent = Math.round(info.total).toLocaleString("en-US");
       const cls = levelClass(info.pct);
       if (cls) cell.classList.add(cls);
+      if (info.gap) {
+        cell.title = "中間有排程漏跑的交易日缺資料，這個報酬率是橋接多天的累積報酬，不是單一交易日報酬";
+      }
       cell.classList.add("clickable");
       cell.addEventListener("click", () => toggleDayDetail(dateStr, cell));
     } else {
       cell.classList.add("no-data");
-      amountEl.textContent = info ? (info.basisChange ? "基準變更" : info.gap ? "資料缺漏" : "首筆") : "";
+      amountEl.textContent = info ? (info.basisChange ? "基準變更" : "首筆") : "";
       pctEl.textContent = "";
       totalEl.textContent = info ? Math.round(info.total).toLocaleString("en-US") : "";
     }
