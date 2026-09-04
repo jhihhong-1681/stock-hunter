@@ -16,11 +16,8 @@
       <div class="sheet-wrap nw-wrap">
         <div class="sheet-header">
           <h1>資產淨值</h1>
-          <div class="auth-row">
-            <span class="auth-status" id="authStatus">連線中…</span>
-            <button class="auth-btn" id="authBtn" type="button">登入編輯</button>
-          </div>
         </div>
+        <div class="sheet-note">資料每月由阿紘在 Google Sheet 更新後手動同步，唯讀。</div>
 
         <div class="nw-chart-section">
           <div class="nw-chart-title">總資產走勢（每月）</div>
@@ -51,18 +48,20 @@
                 <th>加密貨幣</th>
                 <th>期貨+台幣+加密</th>
                 <th>總資產</th>
-                <th></th>
               </tr>
             </thead>
             <tbody id="nwBody"></tbody>
           </table>
         </div>
 
-        <button class="add-row-btn" id="addRowBtn" type="button" style="display:none;">＋ 新增一列</button>
-
         <div class="sheet-footer" id="sheetFooter"></div>
       </div>
 
-  <script type="module" src="networth.js"></script>
+  <script>
+    // 每次都用當下時間戳當版本號，確保阿紘每次要求同步後，重新整理就能看到最新資料，不用手動清快取。
+    var __v = Date.now();
+    document.write('<script src="networth_data.js?v=' + __v + '"><\/script>');
+    document.write('<script src="networth.js?v=' + __v + '"><\/script>');
+  </script>
 </body>
 </html>
