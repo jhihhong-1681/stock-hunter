@@ -2,7 +2,7 @@
 // 只列「目前還有部位」的股票/期權（總投入、現值有值的），已經全部賣光的舊部位不會出現在這裡，
 // 但它們的已實現損益仍計入 totals.realizedPL。
 window.HOLDINGS = {
-  asOf: "2026-09-04",
+  asOf: "2026-09-07",
   totals: {
     invested: 1147352,
     value: 1024269,
@@ -32,20 +32,20 @@ window.HOLDINGS = {
     { symbol: "AGX", name: "Argan Inc.", shares: 1, avgCost: 410.00, price: 417.99, invested: 12710, value: 12958, pl: 247.69, pct: 1.9, realized: null },
     { symbol: "MBOT", name: "Microbot Medical", shares: 200, avgCost: 1.50, price: 1.44, invested: 9300, value: 8928, pl: -372.00, pct: -4.0, realized: null },
     { symbol: "PRZO", name: "ParaZero Technologies", shares: 400, avgCost: 0.64, price: 0.81, invested: 7936, value: 10044, pl: 2108.00, pct: 26.6, realized: null },
-    { symbol: "GLD", name: "GLD 10/16/26 395 Call", type: "option", shares: 100, avgCost: 31.00, price: 20.75, underlyingPrice: 406.77, invested: 96100, value: 64325, pl: -31775.00, pct: -33.1, realized: null, priceUnchangedDays: 0 },
-    { symbol: "XOM", name: "XOM 09/18/26 145 Call", type: "option", shares: 100, avgCost: 12.70, price: 14.9032, underlyingPrice: 159.47, invested: 39370, value: 46190, pl: 6820.00, pct: 17.3, realized: null, priceUnchangedDays: 0 },
-    { symbol: "HAL", name: "HAL 10/16/26 32 Call", type: "option", shares: 300, avgCost: 3.4567, price: 5.45, underlyingPrice: 37.07, invested: 32147, value: 50685, pl: 18538.00, pct: 57.7, realized: null, priceUnchangedDays: 0 },
-    { symbol: "GSK", name: "GSK 11/20/26 45 Call", type: "option", shares: 100, avgCost: 7.70, price: 5.80, underlyingPrice: 49.89, invested: 23870, value: 17980, pl: -5890.00, pct: -24.7, realized: null, priceUnchangedDays: 0 },
-    { symbol: "ONDS", name: "ONDS 09/18/26 13 Call", type: "option", shares: 1500, avgCost: 0.45, price: 0.01, underlyingPrice: 7.62, invested: 20925, value: 465, pl: -20460.00, pct: -97.8, realized: null, priceUnchangedDays: 1 },
-    { symbol: "SLV", name: "SLV 09/18/26 58 Call", type: "option", shares: 200, avgCost: 2.63, price: 2.85, underlyingPrice: 59.82, invested: 16306, value: 17670, pl: 1364.00, pct: 8.4, realized: null, priceUnchangedDays: 0 },
-    { symbol: "NVO", name: "NVO 11/20/26 42.5 Call", type: "option", shares: 100, avgCost: 5.40, price: 5.80, underlyingPrice: 46.60, invested: 16740, value: 17980, pl: 1240.00, pct: 7.4, realized: null, priceUnchangedDays: 0 },
-    { symbol: "CPRT", name: "CPRT 11/20/26 30 Call", type: "option", shares: 100, avgCost: 4.10, price: 4.90, underlyingPrice: 33.72, invested: 12710, value: 15190, pl: 2480.00, pct: 19.5, realized: null, priceUnchangedDays: 0 },
-    { symbol: "CLF", name: "CLF 11/20/26 10 Call", type: "option", shares: 200, avgCost: 2.00, price: 3.10, underlyingPrice: 12.50, invested: 12400, value: 19220, pl: 6820.00, pct: 55.0, realized: null, priceUnchangedDays: 1 },
-    { symbol: "AEO", name: "AEO 11/20/26 15 Call", type: "option", shares: 100, avgCost: 3.00, price: 3.20, underlyingPrice: 17.39, invested: 9300, value: 9920, pl: 620.00, pct: 6.7, realized: null, priceUnchangedDays: 0 },
-    { symbol: "HIVE", name: "HIVE 09/18/26 4 Call", type: "option", shares: 3000, avgCost: 0.09, price: 0.00, underlyingPrice: 3.11, invested: 8370, value: 0, pl: -8370.00, pct: -100.0, realized: null, priceUnchangedDays: 0 },
-    { symbol: "SOUN", name: "SOUN 10/16/26 9 Call", type: "option", shares: 1000, avgCost: 0.24, price: 0.12, underlyingPrice: 6.74, invested: 7440, value: 3720, pl: -3720.00, pct: -50.0, realized: null, priceUnchangedDays: 0 },
-    { symbol: "PBR", name: "PBR 09/18/26 19 Call", type: "option", shares: 1000, avgCost: 0.22, price: 1.33, underlyingPrice: 20.12, invested: 6820, value: 41230, pl: 34410.00, pct: 504.5, realized: 14880.00, priceUnchangedDays: 0 },
-    { symbol: "INTC", name: "INTC 09/18/26 110 Call", type: "option", shares: 200, avgCost: 1.00, price: 0.97, underlyingPrice: 95.80, invested: 6200, value: 6014, pl: -186.00, pct: -3.0, realized: null, priceUnchangedDays: 0 }
+    { symbol: "GLD", name: "GLD 10/16/26 395 Call", type: "option", shares: 100, avgCost: 31.00, price: 20.75, underlyingPrice: 406.77, invested: 96100, value: 64325, pl: -31775.00, pct: -33.1, realized: null, priceUnchangedDays: 1 },
+    { symbol: "XOM", name: "XOM 09/18/26 145 Call", type: "option", shares: 100, avgCost: 12.70, price: 14.9032, underlyingPrice: 159.47, invested: 39370, value: 46190, pl: 6820.00, pct: 17.3, realized: null, priceUnchangedDays: 1 },
+    { symbol: "HAL", name: "HAL 10/16/26 32 Call", type: "option", shares: 300, avgCost: 3.4567, price: 5.45, underlyingPrice: 37.07, invested: 32147, value: 50685, pl: 18538.00, pct: 57.7, realized: null, priceUnchangedDays: 1 },
+    { symbol: "GSK", name: "GSK 11/20/26 45 Call", type: "option", shares: 100, avgCost: 7.70, price: 5.80, underlyingPrice: 49.89, invested: 23870, value: 17980, pl: -5890.00, pct: -24.7, realized: null, priceUnchangedDays: 1 },
+    { symbol: "ONDS", name: "ONDS 09/18/26 13 Call", type: "option", shares: 1500, avgCost: 0.45, price: 0.01, underlyingPrice: 7.62, invested: 20925, value: 465, pl: -20460.00, pct: -97.8, realized: null, priceUnchangedDays: 2 },
+    { symbol: "SLV", name: "SLV 09/18/26 58 Call", type: "option", shares: 200, avgCost: 2.63, price: 2.85, underlyingPrice: 59.82, invested: 16306, value: 17670, pl: 1364.00, pct: 8.4, realized: null, priceUnchangedDays: 1 },
+    { symbol: "NVO", name: "NVO 11/20/26 42.5 Call", type: "option", shares: 100, avgCost: 5.40, price: 5.80, underlyingPrice: 46.60, invested: 16740, value: 17980, pl: 1240.00, pct: 7.4, realized: null, priceUnchangedDays: 1 },
+    { symbol: "CPRT", name: "CPRT 11/20/26 30 Call", type: "option", shares: 100, avgCost: 4.10, price: 4.90, underlyingPrice: 33.72, invested: 12710, value: 15190, pl: 2480.00, pct: 19.5, realized: null, priceUnchangedDays: 1 },
+    { symbol: "CLF", name: "CLF 11/20/26 10 Call", type: "option", shares: 200, avgCost: 2.00, price: 3.10, underlyingPrice: 12.50, invested: 12400, value: 19220, pl: 6820.00, pct: 55.0, realized: null, priceUnchangedDays: 2 },
+    { symbol: "AEO", name: "AEO 11/20/26 15 Call", type: "option", shares: 100, avgCost: 3.00, price: 3.20, underlyingPrice: 17.39, invested: 9300, value: 9920, pl: 620.00, pct: 6.7, realized: null, priceUnchangedDays: 1 },
+    { symbol: "HIVE", name: "HIVE 09/18/26 4 Call", type: "option", shares: 3000, avgCost: 0.09, price: 0.00, underlyingPrice: 3.11, invested: 8370, value: 0, pl: -8370.00, pct: -100.0, realized: null, priceUnchangedDays: 1 },
+    { symbol: "SOUN", name: "SOUN 10/16/26 9 Call", type: "option", shares: 1000, avgCost: 0.24, price: 0.12, underlyingPrice: 6.74, invested: 7440, value: 3720, pl: -3720.00, pct: -50.0, realized: null, priceUnchangedDays: 1 },
+    { symbol: "PBR", name: "PBR 09/18/26 19 Call", type: "option", shares: 1000, avgCost: 0.22, price: 1.33, underlyingPrice: 20.12, invested: 6820, value: 41230, pl: 34410.00, pct: 504.5, realized: 14880.00, priceUnchangedDays: 1 },
+    { symbol: "INTC", name: "INTC 09/18/26 110 Call", type: "option", shares: 200, avgCost: 1.00, price: 0.97, underlyingPrice: 95.80, invested: 6200, value: 6014, pl: -186.00, pct: -3.0, realized: null, priceUnchangedDays: 1 }
   ],
   // 已經全部賣光/到期的舊部位（只保留股票名稱、賣出記錄跟已實現損益，沒有現值/報酬率這些「還在追蹤」的欄位）。
   // 這裡的 realized 加總 + 上面 positions 裡各筆的 realized 加總 = totals.realizedPL。
