@@ -947,6 +947,7 @@ const THEME_MAP = {
   NVO: "醫療保健",
   AEO: "民生消費",
   CRDO: "AI基建/半導體",
+  STM: "AI基建/半導體",
   CLSK: "加密貨幣",
   FLYW: "金融科技",
   SRPT: "醫療保健"
