@@ -4,13 +4,13 @@
 window.HOLDINGS = {
   asOf: "2026-09-08",
   totals: {
-    invested: 1201602,
-    value: 1101023,
-    unrealizedPL: -100579,
-    unrealizedPct: -8.37,
+    invested: 1217722,
+    value: 1117134,
+    unrealizedPL: -100589,
+    unrealizedPct: -8.26,
     realizedPL: 487024,
     cash: 75480,
-    totalAssets: 1176503
+    totalAssets: 1192613
   },
   positions: [
     { symbol: "ASTS", name: "AST Spacemobile", shares: 53, avgCost: 74.17, price: 66.12, invested: 121861, value: 108635, pl: -13225.84, pct: -10.9, realized: null },
@@ -29,6 +29,7 @@ window.HOLDINGS = {
     { symbol: "CAG", name: "ConAgra Brands", shares: 50, avgCost: 15.50, price: 15.26, invested: 24025, value: 23653, pl: -372.00, pct: -1.5, realized: null },
     { symbol: "MRCY", name: "Mercury Systems", shares: 7, avgCost: 94.43, price: 83.46, invested: 20491, value: 18111, pl: -2380.18, pct: -11.6, realized: null },
     { symbol: "AESI", name: "Atlas Energy Solutions", shares: 50, avgCost: 11.85, price: 13.99, invested: 18368, value: 21685, pl: 3317.00, pct: 18.1, realized: null },
+    { symbol: "STM", name: "STMicroelectronics", shares: 10, avgCost: 52.00, price: 51.97, invested: 16120, value: 16111, pl: -9.30, pct: -0.1, realized: null },
     { symbol: "AGX", name: "Argan Inc.", shares: 1, avgCost: 410.00, price: 436.78, invested: 12710, value: 13540, pl: 830.18, pct: 6.5, realized: null },
     { symbol: "CRDO", name: "Credo Technology", shares: 2, avgCost: 170.00, price: 167.75, invested: 10540, value: 10401, pl: -139.50, pct: -1.3, realized: 14167.00 },
     { symbol: "MBOT", name: "Microbot Medical", shares: 200, avgCost: 1.50, price: 1.50, invested: 9300, value: 9300, pl: 0.00, pct: 0.0, realized: null },
@@ -54,7 +55,6 @@ window.HOLDINGS = {
   // 已經全部賣光/到期的舊部位（只保留股票名稱、賣出記錄跟已實現損益，沒有現值/報酬率這些「還在追蹤」的欄位）。
   // 這裡的 realized 加總 + 上面 positions 裡各筆的 realized 加總 = totals.realizedPL。
   closedPositions: [
-    { symbol: "STM", name: "STMicroelectronics", note: null, realized: null },
     { symbol: "HOOD", name: "HOOD 10/16/26 79 Call", note: null, realized: 34720.00 },
     { symbol: "HOOD", name: "HOOD 09/18/26 75 Call", note: null, realized: 49910.00 },
     { symbol: "VRT", name: "Vertiv Holding", note: "240賣出5股 264賣出5股 255賣出5股 265賣出5股 268賣出5股 261.3賣出7股", realized: 77922.22 },

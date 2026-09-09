@@ -291,6 +291,7 @@ window.POSITIONS_HISTORY = {
       { symbol: "CAG", name: "ConAgra Brands", pl: -372.00, realized: null },
       { symbol: "MRCY", name: "Mercury Systems", pl: -2380.18, realized: null },
       { symbol: "AESI", name: "Atlas Energy Solutions", pl: 3317.00, realized: null },
+      { symbol: "STM", name: "STMicroelectronics", pl: -9.30, realized: null },
       { symbol: "AGX", name: "Argan Inc.", pl: 830.18, realized: null },
       { symbol: "CRDO", name: "Credo Technology", pl: -139.50, realized: 14167.00 },
       { symbol: "MBOT", name: "Microbot Medical", pl: 0.00, realized: null },
@@ -313,6 +314,6 @@ window.POSITIONS_HISTORY = {
       { symbol: "SRPT", name: "SRPT 10/16/26 25 Call", pl: 620.00, realized: null },
       { symbol: "INTC", name: "INTC 09/18/26 110 Call", pl: 5239.00, realized: 6975.00 }
     ],
-    totals: { cash: 75480, invested: 1201602, realizedPL: 487024 }
+    totals: { cash: 75480, invested: 1217722, realizedPL: 487024 }
   }
 };
