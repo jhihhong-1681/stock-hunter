@@ -129,8 +129,14 @@ function computeDayContribution(dateStr) {
       const prevP = prevMap.get(`${p.symbol}|${p.name}`);
       const plToday = p.pl || 0;
       const realizedToday = p.realized || 0;
+      // 前一天找不到這個部位時：pl 的基準用 0（等於直接拿當天未實現損益，也就是「買進成本 vs 現價」，
+      // 跟什麼時候建倉無關，這對真正新買的部位是對的）。但 realized 不能也用 0 當基準──
+      // 如果這個部位是「很久以前就平倉過、後來重新買回」（例如 CRDO），它的 realized 欄位
+      // 帶的是很久以前那筆已實現損益，不是今天發生的，用 0 當基準會把那筆舊損益整包算成「今天賺的」。
+      // 所以找不到前一天時，realized 基準用「今天的值」（差額算 0），只有真的今天發生的已實現損益
+      // 變動（前一天就有紀錄、只是數字不同）才會被算進來。
       const plPrev = prevP ? prevP.pl || 0 : 0;
-      const realizedPrev = prevP ? prevP.realized || 0 : 0;
+      const realizedPrev = prevP ? prevP.realized || 0 : realizedToday;
       const contribution = plToday - plPrev + (realizedToday - realizedPrev);
       return { symbol: p.symbol, name: p.name, contribution };
     })
