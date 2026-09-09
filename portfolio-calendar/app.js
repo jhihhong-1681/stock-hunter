@@ -939,7 +939,11 @@ const THEME_MAP = {
   AGX: "能源/石油",
   GLD: "貴金屬避險",
   NVO: "醫療保健",
-  AEO: "民生消費"
+  AEO: "民生消費",
+  CRDO: "AI基建/半導體",
+  CLSK: "加密貨幣",
+  FLYW: "金融科技",
+  SRPT: "醫療保健"
 };
 
 const THEME_COLORS = [
