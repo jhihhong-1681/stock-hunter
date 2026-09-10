@@ -1,5 +1,5 @@
 {
-  "date": "2026-09-09",
+  "date": "2026-09-10",
   "holdings": {
     "XLK": [
       {
@@ -826,6 +826,11 @@
         "代號": "UAL",
         "名稱": "United Airlines Holdings Inc",
         "權重": 2.83
+      },
+      {
+        "代號": "UHAL.B",
+        "名稱": "U-Haul Holding Co Ordinary Shares - Series N",
+        "權重": 2.82
       }
     ],
     "XLY": [
@@ -1128,6 +1133,11 @@
         "代號": "ALB",
         "名稱": "Albemarle Corp",
         "權重": 3.33
+      },
+      {
+        "代號": "BVN",
+        "名稱": "Compania De Minas Buenaventura SAA ADR",
+        "權重": 3.09
       },
       {
         "代號": "SQM",
