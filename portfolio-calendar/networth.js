@@ -26,9 +26,18 @@ function fmtPct(n) {
   return Number(n).toFixed(2) + "%";
 }
 
+// 淨增減金額要看得出方向，正數額外加「+」；fmtMoney 的 toLocaleString 已經會幫負數加「-」。
+function fmtSignedMoney(n) {
+  if (n === null || n === undefined || n === "") return "";
+  const v = Number(n);
+  const sign = v > 0 ? "+" : "";
+  return sign + fmtMoney(v);
+}
+
 // 美股總資產/報酬率/MOM/期貨+台幣+加密/總資產都是公式：照日期排序後逐月往前抓上一筆算 MOM。
 function recompute(sorted) {
   let prevUsTotal = null;
+  let prevGrandTotal = null;
   for (const r of sorted) {
     const usTotal = (r.usStockValue || 0) + (r.usStockCash || 0);
     r.usStockTotal = usTotal;
@@ -37,7 +46,10 @@ function recompute(sorted) {
     const otherTotal = (r.cathay || 0) + (r.ctbc || 0) + (r.esun || 0) + (r.esunFutures || 0) + (r.crypto || 0);
     r.otherTotal = otherTotal;
     r.grandTotal = usTotal + otherTotal;
+    r.grandTotalChange = prevGrandTotal !== null ? r.grandTotal - prevGrandTotal : null;
+    r.grandTotalMom = prevGrandTotal !== null && prevGrandTotal !== 0 ? ((r.grandTotal - prevGrandTotal) / prevGrandTotal) * 100 : null;
     prevUsTotal = usTotal;
+    prevGrandTotal = r.grandTotal;
   }
 }
 
@@ -165,7 +177,7 @@ function render() {
   const sorted = [...rows].sort((a, b) => new Date(a.date) - new Date(b.date));
 
   if (!sorted.length) {
-    nwBody.innerHTML = `<tr><td colspan="16" style="text-align:center;color:#6b7078;padding:24px;">尚無資料</td></tr>`;
+    nwBody.innerHTML = `<tr><td colspan="18" style="text-align:center;color:#6b7078;padding:24px;">尚無資料</td></tr>`;
     sheetFooterEl.textContent = "";
     nwChartEl.innerHTML = "";
     nwLegendEl.innerHTML = "";
@@ -183,6 +195,8 @@ function render() {
     .map((r) => {
       const returnCls = r.returnPct > 0 ? "gain-text" : r.returnPct < 0 ? "loss-text" : "";
       const momCls = r.mom > 0 ? "gain-text" : r.mom < 0 ? "loss-text" : "";
+      const changeCls = r.grandTotalChange > 0 ? "gain-text" : r.grandTotalChange < 0 ? "loss-text" : "";
+      const grandMomCls = r.grandTotalMom > 0 ? "gain-text" : r.grandTotalMom < 0 ? "loss-text" : "";
       // cell-readonly 是 display:block，只能包在 <td> 裡的 <span> 上，
       // 直接放在 <td> 上會把儲存格擠出表格版面，跟後一欄疊在同一格裡（一行內看起來像上下兩格）。
       return `
@@ -203,6 +217,8 @@ function render() {
           <td>${fmtMoney(r.crypto)}</td>
           <td><span class="cell-readonly">${fmtMoney(r.otherTotal)}</span></td>
           <td><span class="cell-readonly">${fmtMoney(r.grandTotal)}</span></td>
+          <td><span class="cell-readonly ${changeCls}">${fmtSignedMoney(r.grandTotalChange)}</span></td>
+          <td><span class="cell-readonly ${grandMomCls}">${fmtPct(r.grandTotalMom)}</span></td>
         </tr>
       `;
     })
