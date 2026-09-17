@@ -939,6 +939,7 @@ const THEME_MAP = {
   MBOT: "機器人",
   PRZO: "國防太空",
   HIVE: "加密貨幣",
+  IBIT: "加密貨幣",
   SOUN: "資安/軟體",
   CPRT: "消費網路",
   INTC: "AI基建/半導體",
