@@ -951,7 +951,9 @@ const THEME_MAP = {
   STM: "AI基建/半導體",
   CLSK: "加密貨幣",
   FLYW: "金融科技",
-  SRPT: "醫療保健"
+  SRPT: "醫療保健",
+  CCL: "民生消費",
+  BP: "能源/石油"
 };
 
 const THEME_COLORS = [
