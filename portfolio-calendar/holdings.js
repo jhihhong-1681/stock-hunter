@@ -135,6 +135,13 @@ window.HOLDINGS = {
     { symbol: "UNH", name: "United Health", note: "240.76賣出4股 308.12賣出4股", realized: -2222.08 },
     { symbol: "BKTI", name: "BK Technologies", note: "60賣出", realized: 22127.80 },
     { symbol: "ASML", name: "ASML Holding", note: "725賣出", realized: -182.90 },
-    { symbol: "OSCR", name: "Oscar Health", note: "13.85賣出100股", realized: 775.00 }
+    { symbol: "OSCR", name: "Oscar Health", note: "13.85賣出100股", realized: 775.00 },
+    { symbol: "APP", name: "AppLovin", note: "384.44賣出", realized: 2550.68 },
+    { symbol: "RGTI", name: "Rigetti Computing", note: "13.16賣出", realized: 3193.00 },
+    { symbol: "VNET", name: "VNET Group", note: "5.9賣出", realized: -310.00 },
+    { symbol: "KC", name: "Kingsoft Cloud", note: "13.2賣出", realized: -496.00 },
+    { symbol: "INTC", name: "Intel", note: "20.55賣出", realized: -793.29 },
+    { symbol: "DOCS", name: "Doximity", note: "59.35賣出", realized: 2247.50 },
+    { symbol: "TEM", name: "Tempus AI", note: "51.8賣出2股 64.3賣出8股", realized: 6683.60 }
   ]
 };
