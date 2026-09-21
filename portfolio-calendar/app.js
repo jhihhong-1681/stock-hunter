@@ -478,8 +478,10 @@ const compareChartEl = document.getElementById("compareChart");
 const compareChartWrapEl = document.getElementById("compareChartWrap");
 const compareTooltipEl = document.getElementById("compareTooltip");
 const compareLegendEl = document.getElementById("compareLegend");
+const compareMonthLabelEl = document.getElementById("compareMonthLabel");
 
 function renderCompareChart(year, month) {
+  compareMonthLabelEl.textContent = `${year}/${pad2(month)}`;
   const daysInMonth = new Date(year, month, 0).getDate();
   const dateStrs = [];
   for (let d = 1; d <= daysInMonth; d++) dateStrs.push(`${year}-${pad2(month)}-${pad2(d)}`);
