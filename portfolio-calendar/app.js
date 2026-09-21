@@ -325,7 +325,7 @@ function render() {
     ? `最後更新：${lastRecord.date}　總資產：${fmtAmount(lastRecord.total).replace(/^[+-]/, "")}`
     : "尚無任何紀錄";
 
-  renderCompareChart(viewYear, viewMonth);
+  renderCompareChart();
   renderAssetChart();
 }
 
@@ -479,22 +479,61 @@ const compareChartWrapEl = document.getElementById("compareChartWrap");
 const compareTooltipEl = document.getElementById("compareTooltip");
 const compareLegendEl = document.getElementById("compareLegend");
 const compareMonthLabelEl = document.getElementById("compareMonthLabel");
+const compareRangeTabsEl = document.getElementById("compareRangeTabs");
 
-function renderCompareChart(year, month) {
-  compareMonthLabelEl.textContent = `${year}/${pad2(month)}`;
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const dateStrs = [];
-  for (let d = 1; d <= daysInMonth; d++) dateStrs.push(`${year}-${pad2(month)}-${pad2(d)}`);
+// "month" 沿用報酬日曆目前檢視的月份（單月，每個月從0%重新算）；
+// "3m"/"ytd"/"all" 是連續跨月的累積報酬曲線，錨定在「最新一筆有資料的日期」，跟日曆目前瀏覽到哪個月無關。
+let compareRangeMode = "month";
 
-  // 只保留這個月裡「有任一資料」的日期，依序建立每個序列的累積報酬曲線
-  const relevantDates = dateStrs.filter(
-    (ds) => (dailyMap.get(ds) && dailyMap.get(ds).pct !== null) || indexMap.has(ds)
-  );
+// 所有「至少有一個序列(我的資產或任一指數)有資料」的日期，由小到大排序。
+// 跟原本單月邏輯的篩選條件一致：portfolio的pct不是null，或該日期在indexMap裡有紀錄。
+function getAllComparableDates() {
+  const set = new Set();
+  for (const [d, info] of dailyMap.entries()) {
+    if (info.pct !== null && info.pct !== undefined) set.add(d);
+  }
+  for (const d of indexMap.keys()) set.add(d);
+  return [...set].sort();
+}
+
+// 依目前選擇的範圍模式，算出這次圖表要畫的日期清單跟標題文字。
+function getCompareRangeDates(mode, year, month) {
+  const allDates = getAllComparableDates();
+  if (allDates.length === 0) return { dateStrs: [], label: "" };
+  const latest = allDates[allDates.length - 1];
+  const [latestY, latestM] = latest.split("-").map(Number);
+
+  if (mode === "3m") {
+    let y = latestY;
+    let m = latestM - 2;
+    while (m < 1) {
+      m += 12;
+      y -= 1;
+    }
+    const from = `${y}-${pad2(m)}-01`;
+    return { dateStrs: allDates.filter((d) => d >= from && d <= latest), label: "近3個月" };
+  }
+  if (mode === "ytd") {
+    const from = `${latestY}-01-01`;
+    return { dateStrs: allDates.filter((d) => d >= from && d <= latest), label: `${latestY}年至今` };
+  }
+  if (mode === "all") {
+    return { dateStrs: allDates, label: "全部" };
+  }
+  // "month"：單月，維持原本每個月獨立算、從0%重新起算的行為
+  const from = `${year}-${pad2(month)}-01`;
+  const to = `${year}-${pad2(month)}-31`;
+  return { dateStrs: allDates.filter((d) => d >= from && d <= to), label: `${year}/${pad2(month)}` };
+}
+
+function renderCompareChart() {
+  const { dateStrs: relevantDates, label } = getCompareRangeDates(compareRangeMode, viewYear, viewMonth);
+  compareMonthLabelEl.textContent = label;
 
   const allSeries = [PORTFOLIO_SERIES, ...INDEX_SERIES];
 
   if (relevantDates.length === 0) {
-    compareChartEl.innerHTML = '<div class="flat" style="font-size:12px;padding:10px 0;">本月尚無可比較的資料</div>';
+    compareChartEl.innerHTML = '<div class="flat" style="font-size:12px;padding:10px 0;">這個範圍尚無可比較的資料</div>';
     compareLegendEl.innerHTML = "";
     return;
   }
@@ -1377,6 +1416,14 @@ document.getElementById("nextBtn").addEventListener("click", () => {
     viewYear += 1;
   }
   render();
+});
+
+compareRangeTabsEl.addEventListener("click", (e) => {
+  const btn = e.target.closest(".range-tab");
+  if (!btn || btn.classList.contains("active")) return;
+  compareRangeMode = btn.dataset.range;
+  compareRangeTabsEl.querySelectorAll(".range-tab").forEach((b) => b.classList.toggle("active", b === btn));
+  renderCompareChart();
 });
 
 render();

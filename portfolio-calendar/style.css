@@ -268,6 +268,28 @@ body {
   margin-bottom: 10px;
 }
 
+.range-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.range-tab {
+  background: #1b2029;
+  border: 1px solid #232833;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 11.5px;
+  color: #9aa0a8;
+  cursor: pointer;
+}
+.range-tab:hover { background: #232833; color: #cfd3d8; }
+.range-tab.active {
+  background: #2e3542;
+  border-color: #4da3ff;
+  color: #e6e6e6;
+}
+
 #compareChart svg {
   width: 100%;
   height: auto;
