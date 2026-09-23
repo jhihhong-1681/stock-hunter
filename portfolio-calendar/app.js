@@ -995,7 +995,9 @@ const THEME_MAP = {
   SRPT: "醫療保健",
   CCL: "民生消費",
   BP: "能源/石油",
-  QUBT: "量子電腦"
+  QUBT: "量子電腦",
+  HPQ: "AI基建/半導體",
+  BULL: "金融科技"
 };
 
 const THEME_COLORS = [
