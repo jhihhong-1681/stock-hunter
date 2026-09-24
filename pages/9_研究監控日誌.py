@@ -27,7 +27,16 @@ WEEKDAY = ["週一", "週二", "週三", "週四", "週五", "週六", "週日"]
 
 # ── 密碼鎖 ──────────────────────────────────────────────
 if not (PASSWORD and API_URL and API_KEY):
-    st.warning("尚未設定 RESEARCH_PASSWORD / RESEARCH_API_URL / RESEARCH_API_KEY（Streamlit Cloud → Settings → Secrets）。")
+    missing = [k for k, v in (("RESEARCH_PASSWORD", PASSWORD), ("RESEARCH_API_URL", API_URL), ("RESEARCH_API_KEY", API_KEY)) if not v]
+    try:
+        seen = list(st.secrets.keys())
+    except Exception:
+        seen = []
+    # 只列設定「名稱」方便排查（例如被寫到某個 [區段] 底下），不顯示任何值。
+    st.warning(
+        f"尚未設定：{'、'.join(missing)}（Streamlit Cloud → Settings → Secrets）。\n\n"
+        f"目前讀得到的最上層設定名稱：{'、'.join(seen) or '（無）'}"
+    )
     st.stop()
 
 if not st.session_state.get("research_unlocked"):
