@@ -887,6 +887,11 @@ body {
 .po-desc { margin-top: 3px; color: #cfd3d8; }
 .po-meta { margin-top: 3px; color: #7d8590; font-size: 10.5px; }
 
+.po-row.po-done { border-left-color: #3a3f4a; opacity: 0.7; }
+.po-row.po-done .po-price { text-decoration: line-through; color: #7d8590; }
+.po-filled { margin-top: 3px; color: #cfd3d8; font-size: 10.5px; font-weight: 700; }
+.po-match { margin-top: 2px; color: #f5c518; font-size: 10.5px; }
+
 /* ---- Hero 摘要卡 ---- */
 
 .hero-header {

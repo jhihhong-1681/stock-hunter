@@ -16,5 +16,8 @@
 //   validity    有效期（當日有效 / 取消前有效 ...）
 //   conditions  其他條件（沒有就 null）
 //   status      Firstrade 顯示的現況（例如 已過期、已取消、部分成交 20/50）
+//   filled      （選填）之後同方向、同標的的訂單成交時，排程會把這筆追蹤單結案，補上
+//               { date, time, price, qty, description, match }；match 是 "exact"（同一個期權合約/同一檔股票）
+//               或 "underlying"（期權同標的但履約價/到期日不同）。沒有這個欄位代表還在追蹤中。
 window.PENDING_ORDERS = [
 ];

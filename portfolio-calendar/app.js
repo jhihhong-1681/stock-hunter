@@ -1364,11 +1364,26 @@ function renderPendingRows(orders) {
     const term = pendingSearchTerm.trim().toUpperCase();
     list = list.filter((o) => o.symbol.toUpperCase().includes(term) || (o.description || "").toUpperCase().includes(term));
   }
-  const sorted = [...list].sort((a, b) => (b.date + (b.time || "")).localeCompare(a.date + (a.time || "")));
+  // 還在追蹤的排前面，已經用別的價位成交結案的排後面（變暗），兩組內各自依日期由新到舊。
+  const byTimeDesc = (a, b) => (b.date + (b.time || "")).localeCompare(a.date + (a.time || ""));
+  const sorted = [
+    ...list.filter((o) => !o.filled).sort(byTimeDesc),
+    ...list.filter((o) => o.filled).sort(byTimeDesc)
+  ];
 
   pendingRowsEl.innerHTML = sorted.length
     ? sorted
         .map((o) => {
+          const f = o.filled;
+          let filledHtml = "";
+          if (f) {
+            const diff = o.limitPrice && f.price ? ((f.price - o.limitPrice) / o.limitPrice) * 100 : null;
+            const diffTxt = diff !== null ? `，比原掛價 ${fmtPct(diff)}` : "";
+            const matchTxt = f.match === "underlying" && f.description
+              ? `<div class="po-match">⚠ 同標的不同合約：${f.description}</div>`
+              : "";
+            filledHtml = `<div class="po-filled">✓ ${f.date.slice(5).replace("-", "/")} 以 ${fmtUsd2(f.price)} 成交${f.qty ? ` ${f.qty} ${o.type === "option" ? "口" : "股"}` : ""}${diffTxt}</div>${matchTxt}`;
+          }
           const isOption = o.type === "option";
           const qtyTxt = o.qty !== null && o.qty !== undefined ? `${o.qty} ${isOption ? "口" : "股"}` : "";
           const priceTxt = o.limitPrice !== null && o.limitPrice !== undefined ? fmtUsd2(o.limitPrice) : o.priceType || "市價";
@@ -1376,7 +1391,7 @@ function renderPendingRows(orders) {
           const descTxt = isOption && o.description ? `<div class="po-desc">${o.description}</div>` : "";
           const meta = [o.priceType, o.validity, o.conditions, o.status].filter(Boolean).join(" · ");
           return `
-            <div class="po-row">
+            <div class="po-row${f ? " po-done" : ""}">
               <div class="po-line1">
                 <span class="po-date">${o.date.slice(5).replace("-", "/")}${o.time ? " " + o.time.slice(0, 5) : ""}</span>
                 <span class="po-symbol">${o.symbol}</span>
@@ -1387,6 +1402,7 @@ function renderPendingRows(orders) {
               </div>
               ${descTxt}
               <div class="po-meta">${qtyTxt}${meta ? " · " + meta : ""}</div>
+              ${filledHtml}
             </div>
           `;
         })
@@ -1400,9 +1416,11 @@ function renderPendingOrders() {
     pendingSectionEl.style.display = "none";
     return;
   }
-  const symbols = new Set(orders.map((o) => o.symbol)).size;
+  const tracking = orders.filter((o) => !o.filled);
+  const symbols = new Set(tracking.map((o) => o.symbol)).size;
+  const doneCount = orders.length - tracking.length;
   pendingHeaderTitleEl.textContent = orders.length
-    ? `未成交訂單追蹤（${orders.length} 筆 · ${symbols} 檔）`
+    ? `未成交訂單追蹤（追蹤中 ${tracking.length} 筆 · ${symbols} 檔${doneCount ? ` · 已成交 ${doneCount} 筆` : ""}）`
     : "未成交訂單追蹤";
   if (!orders.length) {
     pendingSearchEl.style.display = "none";
