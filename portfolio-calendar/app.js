@@ -997,7 +997,9 @@ const THEME_MAP = {
   BP: "能源/石油",
   QUBT: "量子電腦",
   HPQ: "AI基建/半導體",
-  BULL: "金融科技"
+  BULL: "金融科技",
+  SPCX: "國防太空",
+  MAGS: "大型科技"
 };
 
 const THEME_COLORS = [
