@@ -839,6 +839,54 @@ body {
   margin-left: auto;
 }
 
+/* ---- 未成交訂單追蹤 ---- */
+
+.po-row {
+  padding: 7px 9px;
+  border-radius: 6px;
+  border-left: 3px solid #4da3ff;
+  background: #1b2029;
+  font-size: 11.5px;
+}
+
+.po-line1 {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.po-date { color: #7d8590; font-variant-numeric: tabular-nums; }
+.po-symbol { font-weight: 700; color: #e6e6e6; }
+
+.po-side {
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.po-side.po-buy { color: #ff8a8a; background: rgba(255, 92, 92, 0.15); }
+.po-side.po-sell { color: #7ee787; background: rgba(47, 191, 106, 0.15); }
+.po-row .po-opt { margin-left: 0; }
+
+.po-repeat {
+  font-size: 10px;
+  color: #f5c518;
+  background: rgba(245, 197, 24, 0.12);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.po-price {
+  margin-left: auto;
+  font-weight: 700;
+  color: #e6e6e6;
+  font-variant-numeric: tabular-nums;
+}
+
+.po-desc { margin-top: 3px; color: #cfd3d8; }
+.po-meta { margin-top: 3px; color: #7d8590; font-size: 10.5px; }
+
 /* ---- Hero 摘要卡 ---- */
 
 .hero-header {

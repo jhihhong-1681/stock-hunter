@@ -170,6 +170,17 @@
       <div class="holdings-list" id="holdingsList"></div>
       <button class="expand-btn" id="holdingsExpandBtn"></button>
 
+      <div class="closed-section pending-section" id="pendingSection">
+        <div class="closed-header open" id="pendingHeader">
+          <span class="compare-title closed-header-title" id="pendingHeaderTitle">未成交訂單追蹤</span>
+          <span class="closed-chevron">▾</span>
+        </div>
+        <div class="closed-list open" id="pendingList">
+          <input type="text" id="pendingSearch" class="closed-search" placeholder="搜尋代號...">
+          <div class="closed-rows" id="pendingRows"></div>
+        </div>
+      </div>
+
       <div class="closed-section">
         <div class="closed-header" id="closedHeader">
           <span class="compare-title closed-header-title" id="closedHeaderTitle">已平倉紀錄</span>
@@ -192,6 +203,7 @@
     document.write('<script src="indices.js?v=' + __v + '"><\/script>');
     document.write('<script src="holdings.js?v=' + __v + '"><\/script>');
     document.write('<script src="positions_history.js?v=' + __v + '"><\/script>');
+    document.write('<script src="pending_orders.js?v=' + __v + '"><\/script>');
     document.write('<script src="app.js?v=' + __v + '"><\/script>');
   </script>
 </body>

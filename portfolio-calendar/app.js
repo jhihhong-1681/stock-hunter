@@ -1340,6 +1340,87 @@ function renderClosedPositions(closedPositions) {
   };
 }
 
+// 未成交訂單追蹤：Firstrade 當日有效單沒成交隔天就會從訂單現況消失，排程每天把前一個交易日沒成交的
+// 訂單抄進 pending_orders.js 累積下來（代表想買、只是價位沒到），這裡依日期由新到舊列出。
+// 同一個代號被掛過好幾天的，標出「掛單 N 次」，看得出哪幾檔是一直在等價位的。
+const pendingSectionEl = document.getElementById("pendingSection");
+const pendingHeaderEl = document.getElementById("pendingHeader");
+const pendingHeaderTitleEl = document.getElementById("pendingHeaderTitle");
+const pendingListEl = document.getElementById("pendingList");
+const pendingRowsEl = document.getElementById("pendingRows");
+const pendingSearchEl = document.getElementById("pendingSearch");
+let pendingSearchTerm = "";
+
+function pendingSideCls(side) {
+  return /buy|買/i.test(side || "") ? "po-buy" : "po-sell";
+}
+
+function renderPendingRows(orders) {
+  const countBySymbol = {};
+  orders.forEach((o) => { countBySymbol[o.symbol] = (countBySymbol[o.symbol] || 0) + 1; });
+
+  let list = orders;
+  if (pendingSearchTerm.trim()) {
+    const term = pendingSearchTerm.trim().toUpperCase();
+    list = list.filter((o) => o.symbol.toUpperCase().includes(term) || (o.description || "").toUpperCase().includes(term));
+  }
+  const sorted = [...list].sort((a, b) => (b.date + (b.time || "")).localeCompare(a.date + (a.time || "")));
+
+  pendingRowsEl.innerHTML = sorted.length
+    ? sorted
+        .map((o) => {
+          const isOption = o.type === "option";
+          const qtyTxt = o.qty !== null && o.qty !== undefined ? `${o.qty} ${isOption ? "口" : "股"}` : "";
+          const priceTxt = o.limitPrice !== null && o.limitPrice !== undefined ? fmtUsd2(o.limitPrice) : o.priceType || "市價";
+          const repeat = countBySymbol[o.symbol] > 1 ? `<span class="po-repeat">掛單 ${countBySymbol[o.symbol]} 次</span>` : "";
+          const descTxt = isOption && o.description ? `<div class="po-desc">${o.description}</div>` : "";
+          const meta = [o.priceType, o.validity, o.conditions, o.status].filter(Boolean).join(" · ");
+          return `
+            <div class="po-row">
+              <div class="po-line1">
+                <span class="po-date">${o.date.slice(5).replace("-", "/")}${o.time ? " " + o.time.slice(0, 5) : ""}</span>
+                <span class="po-symbol">${o.symbol}</span>
+                <span class="po-side ${pendingSideCls(o.side)}">${o.side}</span>
+                ${isOption ? '<span class="h-tag po-opt">期權</span>' : ""}
+                ${repeat}
+                <span class="po-price">${priceTxt}</span>
+              </div>
+              ${descTxt}
+              <div class="po-meta">${qtyTxt}${meta ? " · " + meta : ""}</div>
+            </div>
+          `;
+        })
+        .join("")
+    : '<div class="flat" style="font-size:11.5px;padding:8px 0;text-align:center;">沒有符合的紀錄</div>';
+}
+
+function renderPendingOrders() {
+  const orders = window.PENDING_ORDERS;
+  if (!Array.isArray(orders)) {
+    pendingSectionEl.style.display = "none";
+    return;
+  }
+  const symbols = new Set(orders.map((o) => o.symbol)).size;
+  pendingHeaderTitleEl.textContent = orders.length
+    ? `未成交訂單追蹤（${orders.length} 筆 · ${symbols} 檔）`
+    : "未成交訂單追蹤";
+  if (!orders.length) {
+    pendingSearchEl.style.display = "none";
+    pendingRowsEl.innerHTML = '<div class="flat" style="font-size:11.5px;padding:8px 0;">目前還沒有未成交的訂單紀錄（每個交易日排程會自動從 Firstrade 抄錄前一天沒成交的訂單）</div>';
+  } else {
+    pendingSearchEl.style.display = "";
+    renderPendingRows(orders);
+  }
+  pendingHeaderEl.onclick = () => {
+    const isOpen = pendingListEl.classList.toggle("open");
+    pendingHeaderEl.classList.toggle("open", isOpen);
+  };
+  pendingSearchEl.oninput = (e) => {
+    pendingSearchTerm = e.target.value;
+    renderPendingRows(orders);
+  };
+}
+
 function renderHoldings() {
   const h = window.HOLDINGS;
   if (!h) {
@@ -1401,6 +1482,7 @@ function renderHoldings() {
 }
 
 renderHoldings();
+renderPendingOrders();
 renderYtdChart();
 
 document.getElementById("prevBtn").addEventListener("click", () => {
