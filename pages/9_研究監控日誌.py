@@ -53,8 +53,17 @@ if not st.session_state.get("research_unlocked"):
 
 # ── 透過 Apps Script 中繼讀 Drive 資料夾 ─────────────────
 def _call(params: dict) -> dict:
-    r = requests.get(API_URL, params={"key": API_KEY, **params}, timeout=60)
-    r.raise_for_status()
+    # Apps Script 先回 302 轉到 script.googleusercontent.com 的一次性結果網址，偶爾那一步會回 404
+    # （同一個請求直接重打就好），所以自己處理轉址並重試幾次。
+    last = None
+    for _ in range(3):
+        first = requests.get(API_URL, params={"key": API_KEY, **params}, timeout=90, allow_redirects=False)
+        r = requests.get(first.headers["Location"], timeout=60) if first.is_redirect else first
+        if r.status_code == 200:
+            break
+        last = r
+    else:
+        last.raise_for_status()
     data = r.json()
     if data.get("error"):
         raise RuntimeError(data["error"])
