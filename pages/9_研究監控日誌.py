@@ -1,7 +1,5 @@
-import base64
 import hmac
 import html
-import json
 from datetime import datetime, timedelta, timezone
 
 import requests
@@ -12,13 +10,14 @@ from utils.styles import load_css
 load_css()
 st.title("📰 研究監控日誌")
 
-# 付費電子報內容只存在私人 repo，這個 app 的 repo 是公開的，所以：
-#   1. 資料由伺服器用 token 讀，不會出現在公開 repo 或網頁原始碼裡。
+# 付費電子報內容只存在阿紘的私人 Google Drive 資料夾，這個 app 的 repo 是公開的，所以：
+#   1. 資料由伺服器透過 Apps Script 中繼 API（scripts/research_log_relay.gs）帶金鑰讀取，
+#      網址跟金鑰都只放在 Streamlit secrets，不會出現在公開 repo 或網頁原始碼裡。
 #   2. 沒輸入密碼前完全不讀資料，瀏覽器拿不到任何內容。
-# Cowork 的每小時監控排程（台北 21:30～03:30）會把每天一份 days/YYYY-MM-DD.json 寫進私人 repo。
-PRIVATE_REPO = "jhihhong-1681/research-log"
-DAYS_DIR = "days"
-GH_TOKEN = st.secrets.get("RESEARCH_GH_TOKEN", "") or st.secrets.get("GH_PAT", "")
+# Cowork 的每小時監控排程（台北 21:30～03:30）每跑一次就在 Drive 資料夾新增一個小檔案
+# （這次的執行紀錄＋這次新抓到的文章），同一天的多個檔案在這裡合併。
+API_URL = st.secrets.get("RESEARCH_API_URL", "")
+API_KEY = st.secrets.get("RESEARCH_API_KEY", "")
 PASSWORD = st.secrets.get("RESEARCH_PASSWORD", "")
 TAIPEI = timezone(timedelta(hours=8))
 
@@ -27,8 +26,8 @@ WEEKDAY = ["週一", "週二", "週三", "週四", "週五", "週六", "週日"]
 
 
 # ── 密碼鎖 ──────────────────────────────────────────────
-if not PASSWORD or not GH_TOKEN:
-    st.warning("尚未設定 RESEARCH_PASSWORD 或讀取私人 repo 的 token（Streamlit Cloud → Settings → Secrets）。")
+if not (PASSWORD and API_URL and API_KEY):
+    st.warning("尚未設定 RESEARCH_PASSWORD / RESEARCH_API_URL / RESEARCH_API_KEY（Streamlit Cloud → Settings → Secrets）。")
     st.stop()
 
 if not st.session_state.get("research_unlocked"):
@@ -43,26 +42,37 @@ if not st.session_state.get("research_unlocked"):
     st.stop()
 
 
-# ── 讀私人 repo ─────────────────────────────────────────
-HEADERS = {"Authorization": f"token {GH_TOKEN}", "Accept": "application/vnd.github.v3+json"}
-API = f"https://api.github.com/repos/{PRIVATE_REPO}/contents/{DAYS_DIR}"
+# ── 透過 Apps Script 中繼讀 Drive 資料夾 ─────────────────
+def _call(params: dict) -> dict:
+    r = requests.get(API_URL, params={"key": API_KEY, **params}, timeout=60)
+    r.raise_for_status()
+    data = r.json()
+    if data.get("error"):
+        raise RuntimeError(data["error"])
+    return data
 
 
 @st.cache_data(ttl=120, show_spinner=False)
 def list_dates() -> list[str]:
-    r = requests.get(API, headers=HEADERS, timeout=10)
-    r.raise_for_status()
-    names = [f["name"] for f in r.json() if f["name"].endswith(".json")]
-    return sorted((n[:-5] for n in names), reverse=True)
+    return _call({"action": "list"})["dates"]
+
+
+def merge_parts(date_str: str, parts: list[dict]) -> dict:
+    """同一天可能有好幾個檔案（每次執行一個＋補舊資料的一個）：runs 依時間合併去重，
+    articles 用 網址/標題＋發布時間 去重（75 分鐘的掃描窗口會讓同一篇在相鄰兩次執行都被抓到），保留最後寫入的版本。"""
+    runs, articles = {}, {}
+    for part in parts:
+        for r in part.get("runs") or []:
+            runs[r.get("ranAtUtc")] = r
+        for a in part.get("articles") or []:
+            articles[(a.get("url") or a.get("title"), a.get("publishedAtUtc"))] = a
+    return {"date": date_str, "runs": list(runs.values()), "articles": list(articles.values())}
 
 
 @st.cache_data(ttl=120, show_spinner=False)
-def load_day(date_str: str) -> dict | None:
-    r = requests.get(f"{API}/{date_str}.json", headers=HEADERS, timeout=10)
-    if r.status_code == 404:
-        return None
-    r.raise_for_status()
-    return json.loads(base64.b64decode(r.json()["content"]).decode("utf-8"))
+def load_days(date_strs: tuple[str, ...]) -> dict[str, dict]:
+    raw = _call({"action": "get", "dates": ",".join(date_strs)})["days"]
+    return {d: merge_parts(d, parts) for d, parts in raw.items() if parts}
 
 
 # ── 畫面 ────────────────────────────────────────────────
@@ -177,7 +187,7 @@ st.markdown("Paradigm Press／The Oxford Club／Banyan Hill，交易日台北 21
 try:
     dates = list_dates()
 except Exception as e:
-    st.error(f"讀取私人 repo 失敗：{e}")
+    st.error(f"讀取監控資料失敗：{e}")
     st.stop()
 
 if not dates:
@@ -196,10 +206,13 @@ if mode == "最近幾天":
 else:
     show = [c2.selectbox("日期", dates, format_func=day_title, label_visibility="collapsed")]
 
+try:
+    loaded = load_days(tuple(show))
+except Exception as e:
+    st.error(f"讀取監控資料失敗：{e}")
+    st.stop()
 for d in show:
-    day = load_day(d)
-    if day:
-        day.setdefault("date", d)
-        render_day(day)
+    if d in loaded:
+        render_day(loaded[d])
 
 st.caption(f"資料每 2 分鐘快取一次 · 讀取時間 {datetime.now(TAIPEI):%H:%M} 台北")
