@@ -999,7 +999,10 @@ const THEME_MAP = {
   HPQ: "AI基建/半導體",
   BULL: "金融科技",
   SPCX: "國防太空",
-  MAGS: "大型科技"
+  MAGS: "大型科技",
+  CAT: "工業",
+  XLI: "工業",
+  LPG: "能源/石油"
 };
 
 const THEME_COLORS = [
