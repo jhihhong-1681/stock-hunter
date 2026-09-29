@@ -21,4 +21,5 @@
 //               或 "underlying"（期權同標的但履約價/到期日不同）。沒有這個欄位代表還在追蹤中；
 //               有這個欄位的網站就不再顯示（資料保留備查，拿掉 filled 就會恢復追蹤）。
 window.PENDING_ORDERS = [
+  { date: "2026-09-28", time: "16:05:02", side: "Buy Open", symbol: "GRAB", type: "option", description: "GRAB 01/15/2027 3.00 Call", qty: 3, priceType: "限價", limitPrice: 0.4, validity: "當日有效", conditions: null, status: "已取消" }
 ];
