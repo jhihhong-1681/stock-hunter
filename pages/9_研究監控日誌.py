@@ -109,8 +109,8 @@ def load_statuses() -> dict:
 
 def save_status(entry_id: str, status: str) -> bool:
     try:
-        first = requests.post(API_URL, params={"key": API_KEY}, json={"action": "setStatus", "id": entry_id, "status": status},
-                              timeout=60, allow_redirects=False)
+        payload = {"action": "setStatus", "id": entry_id, "status": status}
+        first = requests.post(API_URL, params={"key": API_KEY, **payload}, json=payload, timeout=60, allow_redirects=False)
         r = requests.get(first.headers["Location"], timeout=60) if first.is_redirect else first
         ok = r.status_code == 200 and r.json().get("ok")
     except Exception:

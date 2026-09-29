@@ -50,14 +50,18 @@ function readStatuses_() {
   try { return JSON.parse(statusFile_().getBlob().getDataAsString('UTF-8')) || {}; } catch (err) { return {}; }
 }
 
-// POST ?key=...  body: { action: "setStatus", id: "<紀錄id>", status: "已進場" } → { ok: true }
+// POST ?key=...&action=setStatus&id=<紀錄id>&status=已進場 → { ok: true }
+// （參數放網址或 JSON body 都可以；網址參數比較穩，body 當備援）
 function doPost(e) {
   const p = e.parameter || {};
   if (!authorized_(p.key)) return json_({ error: 'unauthorized' });
-  const body = JSON.parse((e.postData && e.postData.contents) || '{}');
-  if (body.action !== 'setStatus' || !/^[\w-]{1,64}$/.test(body.id || '') || STATUS_VALUES.indexOf(body.status) < 0) {
-    return json_({ error: 'bad request' });
-  }
+  let body = {};
+  try { body = JSON.parse((e.postData && e.postData.contents) || '{}') || {}; } catch (err) { body = {}; }
+  const action = p.action || body.action, id = p.id || body.id, status = p.status || body.status;
+  if (action !== 'setStatus') return json_({ error: 'bad action', got: String(action) });
+  if (!/^[\w-]{1,64}$/.test(id || '')) return json_({ error: 'bad id', got: String(id) });
+  if (STATUS_VALUES.indexOf(status) < 0) return json_({ error: 'bad status', got: String(status) });
+  body = { id: id, status: status };
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
