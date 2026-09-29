@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 import requests
 import streamlit as st
+import yfinance as yf
 
 st.set_page_config(page_title="研究監控日誌 - 阿紘的股票儀表板", page_icon="📰", layout="wide")
 from utils.styles import load_css
@@ -265,9 +266,20 @@ def rec_price_for(text: str | None, ticker: str, multi: bool) -> float | None:
 
 
 def price_in(text: str | None) -> float | None:
-    """從「65.50美元或更低」「限價不高於$3.20／股」這類文字抓出價格（只認 $ 或 美元 旁邊的數字）。"""
-    m = re.search(r"\$\s*([\d,]+(?:\.\d+)?)|([\d,]+(?:\.\d+)?)\s*美元", text or "")
-    return float((m.group(1) or m.group(2)).replace(",", "")) if m else None
+    """從「65.50美元或更低」「限價不高於$3.20／股」這類文字抓出進場價（只認 $ 或 美元 旁邊的數字）。
+    轉倉這種「賣出舊倉限價7.70；買進新倉限價20.00」只看買進那段；停損價、履約價不算進場價；有「限價」就優先取限價。"""
+    if not text:
+        return None
+    segs = re.split(r"[；;]", text)
+    buys = [s for s in segs if "買進" in s]
+    text = "；".join(buys) if buys and len(segs) > 1 else text
+    text = re.sub(r"停損[^，,；;。]*", "", text)
+    text = re.sub(r"履約價\s*\$?\s*[\d,.]+\s*(?:美元)?", "", text)
+    num = r"([\d,]+(?:\.\d+)?)"
+    m = re.search(rf"限價[^\d$，,；;]{{0,6}}\$?\s*{num}", text) or re.search(rf"\$\s*{num}|{num}\s*美元", text)
+    if not m:
+        return None
+    return float(next(g for g in m.groups() if g).replace(",", ""))
 
 
 def company_name(a: dict, ticker: str) -> str:
@@ -301,6 +313,26 @@ def is_exit(action: str) -> bool:
     return any(k in action for k in ("賣出", "停損", "出場", "了結"))
 
 
+OCC_RE = re.compile(r"\b([A-Z]{1,6})(\d{6})([CP])(\d{8})\b")
+EXPIRY_RE = re.compile(r"(\d{4})/(\d{1,2})/(\d{1,2})\s*到期")
+
+
+def option_symbol(ticker: str, contract: str | None) -> str | None:
+    """期權合約的 Yahoo 代碼（OCC 格式，例如 RKLB261016C00072000）。原文有寫就直接用，
+    沒寫就從「2026/10/16到期・履約價72美元 Call」拼出來；缺到期日（例如只寫「1月到期」）就放棄。"""
+    if not contract:
+        return None
+    m = OCC_RE.search(contract)
+    if m and m.group(1) == ticker:
+        return m.group(0)
+    exp = EXPIRY_RE.search(contract)
+    strike = re.search(r"履約價\s*\$?\s*([\d.]+)", contract)
+    if not exp or not strike:
+        return None
+    cp = "P" if re.search(r"Put|賣權", contract, re.I) else "C"
+    return f"{ticker}{exp.group(1)[2:]}{int(exp.group(2)):02d}{int(exp.group(3)):02d}{cp}{round(float(strike.group(1)) * 1000):08d}"
+
+
 def build_rows(days: dict[str, dict]) -> list[dict]:
     # 接近午夜發布的文章可能同時出現在相鄰兩天的紀錄裡，用 網址＋時間＋代號 去重。
     rows = {}
@@ -311,41 +343,83 @@ def build_rows(days: dict[str, dict]) -> list[dict]:
             multi = len(tickers) > 1
             for t in tickers:
                 contract = pick_segment(e.get("contract"), t, multi)
+                entry = pick_segment(e.get("entry"), t, multi)
+                kind = kind_of(e, contract)
+                occ = option_symbol(t, contract) if kind == "期權" else None
                 key = (a.get("url") or a.get("title"), a.get("publishedAtUtc"), t)
                 rows[key] = {
                     "ticker": t, "name": company_name(a, t), "published": a.get("publishedAtUtc") or "",
-                    "kind": kind_of(e, contract), "action": e.get("action") or "",
-                    "entry": pick_segment(e.get("entry"), t, multi), "contract": contract,
+                    "kind": kind, "action": e.get("action") or "", "entry": entry, "contract": contract,
                     "site": a.get("site"), "analyst": detect_analyst(a), "url": a.get("url"),
                     "rec_price": rec_price_for(e.get("currentPrice"), t, multi),
+                    # 計價標的：期權用合約本身（比權利金），股票（含「股票＋期權」）用正股。
+                    "symbol": occ or t, "entry_px": price_in(entry),
                 }
     return sorted(rows.values(), key=lambda r: r["published"])
 
 
-def attach_exit_returns(rows: list[dict]) -> None:
-    """賣出／停損警報：往前找同一檔最近一次的買進推薦（優先同網站），算出這段期間的漲跌幅。
-    股票用買進時的進場價（抓不到就用當時正股價）對賣出價（沒寫就用賣出當下正股價）；
-    期權的權利金出場價通常沒寫，改用買進與賣出當下的正股價格計算。"""
+@st.cache_data(ttl=600, show_spinner=False)
+def daily_closes(symbols: tuple[str, ...]) -> pd.DataFrame:
+    """股票與期權合約近 6 個月的日收盤（yfinance；期權用 OCC 代碼，已到期的合約會抓不到）。"""
+    valid = [s for s in symbols if re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,20}", s)]
+    if not valid:
+        return pd.DataFrame()
+    try:
+        df = yf.download(valid, period="6mo", interval="1d", progress=False, auto_adjust=False, threads=True)["Close"]
+    except Exception:
+        return pd.DataFrame()
+    if isinstance(df, pd.Series):
+        df = df.to_frame(valid[0])
+    df.index = pd.to_datetime(df.index).tz_localize(None)
+    return df
+
+
+def close_on(closes: pd.DataFrame, symbol: str, iso: str | None = None) -> float | None:
+    """某標的在某個時間點（美東日期）當天或之前最後一筆收盤；iso 為空就是最新收盤。"""
+    if symbol not in closes.columns:
+        return None
+    s = closes[symbol].dropna()
+    if iso:
+        et_day = (datetime.fromisoformat(iso.replace("Z", "+00:00")) - timedelta(hours=4)).date()
+        s = s[s.index.date <= et_day]
+    return float(s.iloc[-1]) if not s.empty else None
+
+
+def attach_returns(rows: list[dict], closes: pd.DataFrame) -> None:
+    """漲跌幅：
+    - 買進推薦：推薦時的進場價 → 最新收盤（期權比權利金，股票比股價）。
+    - 賣出／停損警報：往前找同一檔最近一次買進推薦（同合約優先，再來同網站），買進進場價 → 出場價
+      （原文有寫出場價就用，沒寫就用出場當天的收盤）。
+    期權合約抓不到報價（例如已到期或原文沒寫完整到期日）時，改用推薦當下與現在的正股價格，並標明「正股」。"""
     for i, r in enumerate(rows):
-        r["change"], r["basis"] = None, ""
+        r["change"], r["basis"] = float("nan"), ""
+        unit = "權利金" if r["symbol"] != r["ticker"] else "股價"
+        if is_buy(r["action"]):
+            buy_px = r["entry_px"] or (r["rec_price"] if unit == "股價" else None)
+            now_px = close_on(closes, r["symbol"])
+            if not (buy_px and now_px) and r["rec_price"]:
+                buy_px, now_px, unit = r["rec_price"], close_on(closes, r["ticker"]), "正股"
+            if buy_px and now_px:
+                r["change"] = (now_px - buy_px) / buy_px * 100
+                r["basis"] = f"進場 ${buy_px:,.2f} → 最新收盤 ${now_px:,.2f}（{unit}）"
+            continue
         if not is_exit(r["action"]):
             continue
         earlier = [b for b in rows[:i] if b["ticker"] == r["ticker"] and is_buy(b["action"]) and b["published"] < r["published"]]
         if not earlier:
             r["basis"] = "查無先前買進紀錄"
             continue
-        same_site = [b for b in earlier if b["site"] == r["site"]]
-        b = (same_site or earlier)[-1]
-        if r["kind"] == "股票" and b["kind"] == "股票":
-            buy_px = price_in(b["entry"]) or b["rec_price"]
-            sell_px = price_in(r["entry"]) or r["rec_price"]
-            label = "股價"
-        else:
-            buy_px, sell_px, label = b["rec_price"], r["rec_price"], "正股"
+        b = ([x for x in earlier if x["symbol"] == r["symbol"]] or [x for x in earlier if x["site"] == r["site"]] or earlier)[-1]
+        sym = b["symbol"]
+        unit = "權利金" if sym != b["ticker"] else "股價"
+        buy_px = b["entry_px"] or (b["rec_price"] if unit == "股價" else None)
+        exit_px = r["entry_px"] or close_on(closes, sym, r["published"])
+        if not (buy_px and exit_px) and b["rec_price"] and r["rec_price"]:
+            buy_px, exit_px, unit = b["rec_price"], r["rec_price"], "正股"
         when = fmt_dt_taipei(b["published"])
-        if buy_px and sell_px:
-            r["change"] = (sell_px - buy_px) / buy_px * 100
-            r["basis"] = f"{when} 買進 ${buy_px:,.2f} → ${sell_px:,.2f}（{label}）"
+        if buy_px and exit_px:
+            r["change"] = (exit_px - buy_px) / buy_px * 100
+            r["basis"] = f"{when} 買進 ${buy_px:,.2f} → 出場 ${exit_px:,.2f}（{unit}）"
         else:
             r["basis"] = f"{when} 買進，但缺少價格無法計算"
 
@@ -378,7 +452,9 @@ def render_positions(dates: list[str]) -> None:
     if not rows:
         st.info("還沒有帶具體標的的推薦。")
         return
-    attach_exit_returns(rows)
+    with st.spinner("抓取最新收盤價中…"):
+        closes = daily_closes(tuple(sorted({r["symbol"] for r in rows} | {r["ticker"] for r in rows})))
+    attach_returns(rows, closes)
 
     f1, f2, f3 = st.columns(3)
     sites = f1.multiselect("網站", list(SITE_LABEL), format_func=SITE_LABEL.get, placeholder="全部網站")
@@ -408,8 +484,9 @@ def render_positions(dates: list[str]) -> None:
         "原文": r["url"],
     } for r in reversed(shown)])
 
-    st.caption(f"共 {len(df)} 則推薦（最近 {len(span)} 個交易日）· 漲跌幅只算賣出／停損警報：往前找同一檔最近的買進推薦 · 🟩 上漲　🟥 下跌")
-    styled = df.style.map(color_change, subset=["漲跌幅"]).format({"漲跌幅": lambda v: "" if pd.isna(v) else f"{v:+.1f}%"})
+    st.caption(f"共 {len(df)} 則推薦（最近 {len(span)} 個交易日）· 買進：進場價 → 最新收盤；賣出／停損：往前找買進進場價 → 出場價 · "
+               "期權比權利金，股票比股價 · 🟩 上漲　🟥 下跌")
+    styled = df.style.map(color_change, subset=["漲跌幅"]).format({"漲跌幅": "{:+.1f}%"}, na_rep="")
     st.dataframe(
         styled, hide_index=True, use_container_width=True, height=min(38 * len(df) + 40, 720),
         column_config={
