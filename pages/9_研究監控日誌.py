@@ -432,7 +432,7 @@ def fmt_dt_taipei(iso: str) -> str:
 
 
 def color_change(v) -> str:
-    if pd.isna(v) or v == 0:
+    if pd.isna(v) or round(v, 1) == 0:  # 顯示成 0.0% 的就不上色（避免「-0.0%」變紅）
         return ""
     return "color: #2fbf6a; font-weight: 700" if v > 0 else "color: #ff5c5c; font-weight: 700"
 
@@ -486,6 +486,7 @@ def render_positions(dates: list[str]) -> None:
 
     st.caption(f"共 {len(df)} 則推薦（最近 {len(span)} 個交易日）· 買進：進場價 → 最新收盤；賣出／停損：往前找買進進場價 → 出場價 · "
                "期權比權利金，股票比股價 · 🟩 上漲　🟥 下跌")
+    df["漲跌幅"] = df["漲跌幅"].round(1) + 0.0  # +0.0 把 -0.0 變成 0.0
     styled = df.style.map(color_change, subset=["漲跌幅"]).format({"漲跌幅": "{:+.1f}%"}, na_rep="")
     st.dataframe(
         styled, hide_index=True, use_container_width=True, height=min(38 * len(df) + 40, 720),
