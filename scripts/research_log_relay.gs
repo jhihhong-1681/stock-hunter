@@ -44,11 +44,35 @@ function doGet(e) {
   if (p.action === 'list') {
     return json_({ dates: Object.keys(byDate).sort().reverse() });
   }
+  const wanted = (p.dates || '').split(',').filter(Boolean).slice(0, 31);
+  const files = [];
+  wanted.forEach(function (d) { (byDate[d] || []).forEach(function (f) { files.push(f); }); });
+  const texts = readCached_(files);
   const days = {};
-  (p.dates || '').split(',').filter(Boolean).slice(0, 31).forEach(function (d) {
+  wanted.forEach(function (d) {
     days[d] = (byDate[d] || []).map(function (f) {
-      try { return JSON.parse(f.getBlob().getDataAsString('UTF-8')); } catch (err) { return null; }
+      try { return JSON.parse(texts[f.getId()]); } catch (err) { return null; }
     }).filter(Boolean);
   });
   return json_({ days: days });
+}
+
+// 每個檔案寫入後就不會再改，所以把內容放進 CacheService（最多 6 小時）。
+// 逐一 getBlob() 每個檔案要好幾百毫秒，一週約 50 個檔就要十幾二十秒，快取後只剩新檔案要讀。
+function readCached_(files) {
+  const cache = CacheService.getScriptCache();
+  const keyOf = function (f) { return 'f_' + f.getId() + '_' + f.getLastUpdated().getTime(); };
+  const hit = files.length ? cache.getAll(files.map(keyOf)) : {};
+  const out = {}, fresh = {};
+  files.forEach(function (f) {
+    const k = keyOf(f);
+    let text = hit[k];
+    if (text == null) {
+      text = f.getBlob().getDataAsString('UTF-8');
+      if (text.length < 90000) fresh[k] = text;  // 單筆快取上限 100KB
+    }
+    out[f.getId()] = text;
+  });
+  if (Object.keys(fresh).length) cache.putAll(fresh, 21600);
+  return out;
 }

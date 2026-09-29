@@ -70,7 +70,7 @@ def _call(params: dict) -> dict:
     return data
 
 
-@st.cache_data(ttl=120, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def list_dates() -> list[str]:
     return _call({"action": "list"})["dates"]
 
@@ -87,7 +87,7 @@ def merge_parts(date_str: str, parts: list[dict]) -> dict:
     return {"date": date_str, "runs": list(runs.values()), "articles": list(articles.values())}
 
 
-@st.cache_data(ttl=120, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def load_days(date_strs: tuple[str, ...]) -> dict[str, dict]:
     raw = _call({"action": "get", "dates": ",".join(date_strs)})["days"]
     return {d: merge_parts(d, parts) for d, parts in raw.items() if parts}
@@ -203,7 +203,8 @@ def render_day(day: dict) -> None:
 st.markdown("Paradigm Press／The Oxford Club／Banyan Hill，交易日台北 21:30～03:30 每小時自動掃描。🟩 成功　🟥 失敗　🟨 部分失敗")
 
 try:
-    dates = list_dates()
+    with st.spinner("讀取監控資料中…"):
+        dates = list_dates()
 except Exception as e:
     st.error(f"讀取監控資料失敗：{e}")
     st.stop()
@@ -225,7 +226,8 @@ else:
     show = [c2.selectbox("日期", dates, format_func=day_title, label_visibility="collapsed")]
 
 try:
-    loaded = load_days(tuple(show))
+    with st.spinner(f"讀取 {len(show)} 天的監控紀錄中…（第一次開啟約需 10～30 秒）"):
+        loaded = load_days(tuple(show))
 except Exception as e:
     st.error(f"讀取監控資料失敗：{e}")
     st.stop()
@@ -233,4 +235,4 @@ for d in show:
     if d in loaded:
         render_day(loaded[d])
 
-st.caption(f"資料每 2 分鐘快取一次 · 讀取時間 {datetime.now(TAIPEI):%H:%M} 台北")
+st.caption(f"資料每 10 分鐘快取一次，要看最新請按「重新整理」 · 讀取時間 {datetime.now(TAIPEI):%H:%M} 台北")
