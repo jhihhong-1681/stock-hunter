@@ -35,11 +35,49 @@ function filesByDate_() {
   return byDate;
 }
 
+// 標的總表的「狀態」（未處理／已進場／已出場／忽略）存在同一個資料夾的 _status.json，
+// 檔名不是日期開頭，所以不會被當成監控紀錄讀進來。內容：{ "<紀錄id>": { status, updatedAtUtc }, ... }
+const STATUS_FILE = '_status.json';
+const STATUS_VALUES = ['未處理', '已進場', '已出場', '忽略'];
+
+function statusFile_() {
+  const folder = DriveApp.getFolderById(FOLDER_ID);
+  const it = folder.getFilesByName(STATUS_FILE);
+  return it.hasNext() ? it.next() : folder.createFile(STATUS_FILE, '{}', 'application/json');
+}
+
+function readStatuses_() {
+  try { return JSON.parse(statusFile_().getBlob().getDataAsString('UTF-8')) || {}; } catch (err) { return {}; }
+}
+
+// POST ?key=...  body: { action: "setStatus", id: "<紀錄id>", status: "已進場" } → { ok: true }
+function doPost(e) {
+  const p = e.parameter || {};
+  if (!authorized_(p.key)) return json_({ error: 'unauthorized' });
+  const body = JSON.parse((e.postData && e.postData.contents) || '{}');
+  if (body.action !== 'setStatus' || !/^[\w-]{1,64}$/.test(body.id || '') || STATUS_VALUES.indexOf(body.status) < 0) {
+    return json_({ error: 'bad request' });
+  }
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const file = statusFile_();
+    const all = readStatuses_();
+    all[body.id] = { status: body.status, updatedAtUtc: new Date().toISOString() };
+    file.setContent(JSON.stringify(all));
+  } finally {
+    lock.releaseLock();
+  }
+  return json_({ ok: true });
+}
+
 // GET ?key=...&action=list          → { dates: ["2026-09-24", ...] }（新到舊）
 // GET ?key=...&action=get&dates=a,b → { days: { "2026-09-24": [檔案內容, ...], ... } }
+// GET ?key=...&action=status        → { statuses: { "<紀錄id>": { status, updatedAtUtc }, ... } }
 function doGet(e) {
   const p = e.parameter || {};
   if (!authorized_(p.key)) return json_({ error: 'unauthorized' });
+  if (p.action === 'status') return json_({ statuses: readStatuses_() });
   const byDate = filesByDate_();
   if (p.action === 'list') {
     return json_({ dates: Object.keys(byDate).sort().reverse() });
