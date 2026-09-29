@@ -443,7 +443,9 @@ v1, v2 = st.columns([4, 1])
 view = v1.radio("檢視", ["📋 監控日誌", "🎯 標的總表"], horizontal=True, label_visibility="collapsed")
 if v2.button("🔄 重新整理"):
     st.cache_data.clear()
-    st.session_state.pop("rl_statuses", None)
+    # 狀態重新從 Drive 讀，選單的暫存值也一起清掉，不然會停在這個 session 舊的選擇上。
+    for k in [k for k in st.session_state if k == "rl_statuses" or k.startswith("rl_st_")]:
+        del st.session_state[k]
     st.rerun()
 
 if view == "🎯 標的總表":
