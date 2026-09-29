@@ -46,6 +46,11 @@ function statusFile_() {
   return it.hasNext() ? it.next() : folder.createFile(STATUS_FILE, '{}', 'application/json');
 }
 
+// 在編輯器手動執行一次，觸發「編輯 Drive 檔案」的授權（底線結尾的函式不會出現在執行選單裡）。
+function authorize() {
+  statusFile_();
+}
+
 function readStatuses_() {
   try { return JSON.parse(statusFile_().getBlob().getDataAsString('UTF-8')) || {}; } catch (err) { return {}; }
 }
