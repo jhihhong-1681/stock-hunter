@@ -374,6 +374,35 @@ def daily_closes(symbols: tuple[str, ...]) -> pd.DataFrame:
     return df
 
 
+@st.cache_data(ttl=600, show_spinner=False)
+def option_quotes(occ_symbols: tuple[str, ...]) -> dict[str, tuple[float, str]]:
+    """期權現在的報價：Yahoo 期權鏈的「買價、賣價中間值」（冷門合約的最後成交價常是好幾天前的，中間價比較接近券商畫面）。
+    沒有買賣報價才用最後成交價。回傳 {OCC代碼: (價格, "中間價"|"成交價")}；抓不到（已到期等）就不放。"""
+    groups: dict[tuple[str, str], list[str]] = {}
+    for s in occ_symbols:
+        m = OCC_RE.fullmatch(s)
+        if m:
+            d = m.group(2)
+            groups.setdefault((m.group(1), f"20{d[:2]}-{d[2:4]}-{d[4:]}"), []).append(s)
+    out = {}
+    for (under, exp), syms in groups.items():
+        try:
+            chain = yf.Ticker(under).option_chain(exp)
+        except Exception:
+            continue
+        table = pd.concat([chain.calls, chain.puts]).set_index("contractSymbol")
+        for s in syms:
+            if s not in table.index:
+                continue
+            q = table.loc[s]
+            bid, ask, last = (float(q.get(k) or 0) for k in ("bid", "ask", "lastPrice"))
+            if bid > 0 and ask > 0:
+                out[s] = ((bid + ask) / 2, "中間價")
+            elif last > 0:
+                out[s] = (last, "成交價")
+    return out
+
+
 def close_on(closes: pd.DataFrame, symbol: str, iso: str | None = None) -> float | None:
     """某標的在某個時間點（美東日期）當天或之前最後一筆收盤；iso 為空就是最新收盤。"""
     if symbol not in closes.columns:
@@ -385,9 +414,9 @@ def close_on(closes: pd.DataFrame, symbol: str, iso: str | None = None) -> float
     return float(s.iloc[-1]) if not s.empty else None
 
 
-def attach_returns(rows: list[dict], closes: pd.DataFrame) -> None:
+def attach_returns(rows: list[dict], closes: pd.DataFrame, quotes: dict[str, tuple[float, str]] | None = None) -> None:
     """漲跌幅：
-    - 買進推薦：推薦時的進場價 → 最新收盤（期權比權利金，股票比股價）。
+    - 買進推薦：推薦時的進場價 → 現在價格（股票用最新收盤；期權用 Yahoo 期權鏈的買賣中間價，沒有才用收盤）。
     - 賣出／停損警報：往前找同一檔最近一次買進推薦（同合約優先，再來同網站），買進進場價 → 出場價
       （原文有寫出場價就用，沒寫就用出場當天的收盤）。
     期權合約抓不到報價（例如已到期或原文沒寫完整到期日）時，改用推薦當下與現在的正股價格，並標明「正股」。"""
@@ -396,12 +425,17 @@ def attach_returns(rows: list[dict], closes: pd.DataFrame) -> None:
         unit = "權利金" if r["symbol"] != r["ticker"] else "股價"
         if is_buy(r["action"]):
             buy_px = r["entry_px"] or (r["rec_price"] if unit == "股價" else None)
-            now_px = close_on(closes, r["symbol"])
+            now_label = "最新收盤"
+            quote = (quotes or {}).get(r["symbol"])
+            if quote:
+                now_px, now_label = quote[0], f"現在{quote[1]}"
+            else:
+                now_px = close_on(closes, r["symbol"])
             if not (buy_px and now_px) and r["rec_price"]:
-                buy_px, now_px, unit = r["rec_price"], close_on(closes, r["ticker"]), "正股"
+                buy_px, now_px, unit, now_label = r["rec_price"], close_on(closes, r["ticker"]), "正股", "最新收盤"
             if buy_px and now_px:
                 r["change"] = (now_px - buy_px) / buy_px * 100
-                r["basis"] = f"進場 ${buy_px:,.2f} → 最新收盤 ${now_px:,.2f}（{unit}）"
+                r["basis"] = f"進場 ${buy_px:,.2f} → {now_label} ${now_px:,.2f}（{unit}）"
             continue
         if not is_exit(r["action"]):
             continue
@@ -454,7 +488,8 @@ def render_positions(dates: list[str]) -> None:
         return
     with st.spinner("抓取最新收盤價中…"):
         closes = daily_closes(tuple(sorted({r["symbol"] for r in rows} | {r["ticker"] for r in rows})))
-    attach_returns(rows, closes)
+        quotes = option_quotes(tuple(sorted({r["symbol"] for r in rows if is_buy(r["action"]) and r["symbol"] != r["ticker"]})))
+    attach_returns(rows, closes, quotes)
 
     f1, f2, f3 = st.columns(3)
     sites = f1.multiselect("網站", list(SITE_LABEL), format_func=SITE_LABEL.get, placeholder="全部網站")
@@ -484,8 +519,8 @@ def render_positions(dates: list[str]) -> None:
         "原文": r["url"],
     } for r in reversed(shown)])
 
-    st.caption(f"共 {len(df)} 則推薦（最近 {len(span)} 個交易日）· 買進：進場價 → 最新收盤；賣出／停損：往前找買進進場價 → 出場價 · "
-               "期權比權利金，股票比股價 · 🟩 上漲　🟥 下跌")
+    st.caption(f"共 {len(df)} 則推薦（最近 {len(span)} 個交易日）· 買進：進場價 → 現在價格（股票最新收盤、期權 Yahoo 買賣中間價）；"
+               "賣出／停損：往前找買進進場價 → 出場價 · 🟩 上漲　🟥 下跌")
     df["漲跌幅"] = df["漲跌幅"].round(1) + 0.0  # +0.0 把 -0.0 變成 0.0
     styled = df.style.map(color_change, subset=["漲跌幅"]).format({"漲跌幅": "{:+.1f}%"}, na_rep="")
     st.dataframe(
