@@ -333,6 +333,14 @@ def option_symbol(ticker: str, contract: str | None) -> str | None:
     return f"{ticker}{exp.group(1)[2:]}{int(exp.group(2)):02d}{int(exp.group(3)):02d}{cp}{round(float(strike.group(1)) * 1000):08d}"
 
 
+def is_listed(r: dict) -> bool:
+    """總表只列「有明確進場價位的建倉推薦」和「賣出／停損警報」。市價買進、調整停損、純評論都不列
+    （但仍保留在 rows 裡，讓賣出警報往前找買進紀錄時用得到）。"""
+    if is_exit(r["action"]):
+        return True
+    return bool(r["entry_px"]) and "調整" not in r["action"]
+
+
 def build_rows(days: dict[str, dict]) -> list[dict]:
     # 接近午夜發布的文章可能同時出現在相鄰兩天的紀錄裡，用 網址＋時間＋代號 去重。
     rows = {}
@@ -493,12 +501,13 @@ def render_positions(dates: list[str]) -> None:
 
     f1, f2, f3 = st.columns(3)
     sites = f1.multiselect("網站", list(SITE_LABEL), format_func=SITE_LABEL.get, placeholder="全部網站")
-    analysts = sorted({n for r in rows for n in r["analyst"].split("、")})
+    analysts = sorted({n for r in rows if is_listed(r) for n in r["analyst"].split("、")})
     picked = f2.multiselect("分析師", analysts, placeholder="全部分析師")
     term = f3.text_input("搜尋代號", placeholder="例如 RKLB").strip().upper()
 
     shown = [r for r in rows
-             if (not sites or r["site"] in sites)
+             if is_listed(r)
+             and (not sites or r["site"] in sites)
              and (not picked or any(n in picked for n in r["analyst"].split("、")))
              and (not term or term in r["ticker"].upper())]
     if not shown:
@@ -526,7 +535,8 @@ def render_positions(dates: list[str]) -> None:
     df["漲跌幅"] = df["漲跌幅"].round(1) + 0.0  # +0.0 把 -0.0 變成 0.0
     styled = df.style.map(color_change, subset=["漲跌幅"])
     st.dataframe(
-        styled, hide_index=True, use_container_width=True, height=min(38 * len(df) + 40, 720),
+        # 表格高度固定在一個螢幕內（超過就在表格裡上下捲），橫向捲軸在表格底部，不用捲整頁到最下面才拉得到。
+        styled, hide_index=True, use_container_width=True, height=min(35 * len(df) + 38, 460),
         column_config={
             "日期": st.column_config.TextColumn(width="small", pinned=True),
             "標的": st.column_config.TextColumn(width="small", pinned=True),
