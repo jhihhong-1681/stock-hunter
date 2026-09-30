@@ -282,19 +282,6 @@ def price_in(text: str | None) -> float | None:
     return float(next(g for g in m.groups() if g).replace(",", ""))
 
 
-def company_name(a: dict, ticker: str) -> str:
-    """摘要裡常寫「Magnite（MGNI）」「Rocket Lab（RKLB）」，抓括號前的名稱。"""
-    text = f'{a.get("title") or ""} {a.get("summary") or ""}'
-    tail = rf"\s*[（(]\s*(?:[A-Za-z]+\s*[:：]\s*)?{re.escape(ticker)}\s*[）)，,]"
-    for m in re.finditer(rf"([A-Za-z][A-Za-z0-9 .&'\-]{{2,40}}){tail}", text):
-        name = m.group(1).strip()
-        if not re.fullmatch(r"[A-Z]{1,4}", name):  # 排除「ETF」這種不是名稱的縮寫
-            return name
-    # 中文名稱前面要是標點或開頭，才不會把「調整艾克森美孚」「賣出火箭實驗室」的動詞一起抓進來。
-    m = re.search(rf"(?:^|[\s，。、：；「『（(])([一-鿿]{{2,8}}){tail}", text)
-    return re.sub(r"^(調整|賣出|買進|放空|出清|停損)", "", m.group(1)) if m else ""
-
-
 def kind_of(e: dict, contract: str | None) -> str:
     inst = e.get("instrument") or ""
     opt = bool(contract) or bool(re.search(r"Call|Put|買權|賣權|選擇權", inst, re.I))
@@ -334,10 +321,11 @@ def option_symbol(ticker: str, contract: str | None) -> str | None:
 
 
 def is_listed(r: dict) -> bool:
-    """總表只列「有明確進場價位的建倉推薦」和「賣出／停損警報」。市價買進、調整停損、純評論都不列
-    （但仍保留在 rows 裡，讓賣出警報往前找買進紀錄時用得到）。"""
+    """總表只列「有明確進場價位的建倉推薦」和「找得到對應買進、算得出漲跌幅的賣出／停損警報」。
+    市價買進、調整停損、純評論、對應的買進早在監控開始前的賣出警報都不列
+    （市價買進仍保留在 rows 裡，讓賣出警報往前找買進紀錄時用得到）。要先跑過 attach_returns。"""
     if is_exit(r["action"]):
-        return True
+        return not pd.isna(r.get("change", float("nan")))
     return bool(r["entry_px"]) and "調整" not in r["action"]
 
 
@@ -356,7 +344,7 @@ def build_rows(days: dict[str, dict]) -> list[dict]:
                 occ = option_symbol(t, contract) if kind == "期權" else None
                 key = (a.get("url") or a.get("title"), a.get("publishedAtUtc"), t)
                 rows[key] = {
-                    "ticker": t, "name": company_name(a, t), "published": a.get("publishedAtUtc") or "",
+                    "ticker": t, "published": a.get("publishedAtUtc") or "",
                     "kind": kind, "action": e.get("action") or "", "entry": entry, "contract": contract,
                     "site": a.get("site"), "analyst": detect_analyst(a), "url": a.get("url"),
                     "rec_price": rec_price_for(e.get("currentPrice"), t, multi),
@@ -523,7 +511,6 @@ def render_positions(dates: list[str]) -> None:
         "動作": r["action"],
         "類型": r["kind"],
         "進場點位": " ｜ ".join(x for x in (r["entry"], r["contract"]) if x),
-        "名稱": r["name"],
         "網站": site_short.get(r["site"], r["site"]),
         "分析師": r["analyst"],
         "計算依據": r["basis"],
