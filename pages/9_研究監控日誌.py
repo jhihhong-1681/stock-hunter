@@ -2,6 +2,7 @@ import hmac
 import html
 import re
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pandas as pd
 import requests
@@ -417,7 +418,7 @@ def attach_returns(rows: list[dict], closes: pd.DataFrame, quotes: dict[str, tup
       （原文有寫出場價就用，沒寫就用出場當天的收盤）。
     期權合約抓不到報價（例如已到期或原文沒寫完整到期日）時，改用推薦當下與現在的正股價格，並標明「正股」。"""
     for i, r in enumerate(rows):
-        r["change"], r["basis"] = float("nan"), ""
+        r["change"], r["basis"], r["px"] = float("nan"), "", None
         unit = "權利金" if r["symbol"] != r["ticker"] else "股價"
         if is_buy(r["action"]):
             buy_px = r["entry_px"] or (r["rec_price"] if unit == "股價" else None)
@@ -432,6 +433,7 @@ def attach_returns(rows: list[dict], closes: pd.DataFrame, quotes: dict[str, tup
             if buy_px and now_px:
                 r["change"] = (now_px - buy_px) / buy_px * 100
                 r["basis"] = f"進場 ${buy_px:,.2f} → {now_label} ${now_px:,.2f}（{unit}）"
+                r["px"] = (buy_px, now_px, unit, None)
             continue
         if not is_exit(r["action"]):
             continue
@@ -450,15 +452,99 @@ def attach_returns(rows: list[dict], closes: pd.DataFrame, quotes: dict[str, tup
         if buy_px and exit_px:
             r["change"] = (exit_px - buy_px) / buy_px * 100
             r["basis"] = f"{when} 買進 ${buy_px:,.2f} → 出場 ${exit_px:,.2f}（{unit}）"
+            r["px"] = (buy_px, exit_px, unit, b["published"])
         else:
             r["basis"] = f"{when} 買進，但缺少價格無法計算"
 
 
-def fmt_dt_taipei(iso: str) -> str:
+def fmt_dt_taipei(iso: str, fmt: str = "%m/%d %H:%M") -> str:
     try:
-        return datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(TAIPEI).strftime("%m/%d %H:%M")
+        return datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(TAIPEI).strftime(fmt)
     except ValueError:
         return iso
+
+
+# ── 總表顯示用的精簡格式 ──────────────────────────────────
+MY_DATA_DIR = Path(__file__).resolve().parent.parent / "portfolio-calendar"
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def my_symbols() -> tuple[set[str], set[str]]:
+    """報酬日曆每天快照的持股（holdings.js 的 positions）與還在追蹤的 Firstrade 未成交訂單（pending_orders.js），
+    回傳（持有的代號, 掛單中的代號）。檔案讀不到就回空集合。"""
+    held, pending = set(), set()
+    try:
+        text = (MY_DATA_DIR / "holdings.js").read_text(encoding="utf-8")
+        held = set(re.findall(r'symbol:\s*"([A-Z.\-]+)"', text.split("closedPositions")[0]))
+    except OSError:
+        pass
+    try:
+        for line in (MY_DATA_DIR / "pending_orders.js").read_text(encoding="utf-8").splitlines():
+            m = re.search(r'symbol:\s*"([A-Z.\-]+)"', line)
+            if m and "filled:" not in line:
+                pending.add(m.group(1))
+    except OSError:
+        pass
+    return held, pending
+
+
+def short_action(action: str) -> str:
+    if "停損" in action and is_exit(action):
+        return "停損"
+    if is_exit(action):
+        return "賣出"
+    if "放空" in action:
+        return "放空"
+    if "開倉" in action:
+        return "賣出開倉"
+    return "買進" if is_buy(action) else action[:4]
+
+
+def contract_info(r: dict) -> tuple[str, int | None]:
+    """合約欄的短寫法（股票／10/16 72C）和離到期還剩幾天；「股票＋期權」兩個都寫。"""
+    occ = option_symbol(r["ticker"], r["contract"]) if "期權" in r["kind"] else None
+    m = OCC_RE.fullmatch(occ) if occ else None
+    if not m:
+        return ("股票" if r["kind"] != "期權" else "期權"), None
+    d, strike = m.group(2), int(m.group(4)) / 1000
+    opt = f"{d[2:4]}/{d[4:]} {strike:g}{m.group(3)}"
+    left = (datetime(2000 + int(d[:2]), int(d[2:4]), int(d[4:])).date() - (datetime.now(timezone.utc) - timedelta(hours=4)).date()).days
+    return (f"股票＋{opt}" if r["kind"] == "股票＋期權" else opt), left
+
+
+def short_analyst(name: str) -> str:
+    """只留姓：Marc Lichtenfeld → Lichtenfeld；Jon Najarian、Ian Dyer → Najarian/Dyer。"""
+    if not name or name == "未標示":
+        return "—"
+    return "/".join(n.strip().split()[-1] for n in name.split("、"))
+
+
+def fmt_px(r: dict) -> str:
+    if not r.get("px"):
+        return ""
+    a, b, unit, ref = r["px"]
+    s = f"${a:,.2f} → ${b:,.2f}"
+    if ref:  # 賣出警報：標出對應的買進日期
+        s = f"{fmt_dt_taipei(ref, '%m/%d')}買 {s}"
+    return s + ("（正股）" if unit == "正股" else "")
+
+
+def entry_state(r: dict) -> str:
+    """買進推薦：分析師後來已經發了賣出／停損就標「已出場」；否則看現價還在不在建議價以內
+    （改用正股估算的看不出權利金，不判斷）。"""
+    if not is_buy(r["action"]):
+        return ""
+    if r.get("closed"):
+        return "⛔ 已出場"
+    if not r.get("px") or r["px"][2] == "正股":
+        return ""
+    return "🟢 可進場" if r["px"][1] <= r["px"][0] else "🟠 已超過"
+
+
+def color_days(v) -> str:
+    if pd.isna(v):
+        return ""
+    return "color: #ff5c5c; font-weight: 700" if v <= 7 else "color: #f5a524; font-weight: 700" if v <= 14 else ""
 
 
 def color_change(v) -> str:
@@ -487,40 +573,62 @@ def render_positions(dates: list[str]) -> None:
         quotes = option_quotes(tuple(sorted({r["symbol"] for r in rows if is_buy(r["action"]) and r["symbol"] != r["ticker"]})))
     attach_returns(rows, closes, quotes)
 
-    f1, f2, f3 = st.columns(3)
-    sites = f1.multiselect("網站", list(SITE_LABEL), format_func=SITE_LABEL.get, placeholder="全部網站")
-    analysts = sorted({n for r in rows if is_listed(r) for n in r["analyst"].split("、")})
-    picked = f2.multiselect("分析師", analysts, placeholder="全部分析師")
-    term = f3.text_input("搜尋代號", placeholder="例如 RKLB").strip().upper()
+    held, pending = my_symbols()
+    for i, r in enumerate(rows):
+        r["opt"], r["days"] = contract_info(r)
+        r["mine"] = ("📌" if r["ticker"] in held else "") + ("⏳" if r["ticker"] in pending else "")
+        # 之後同一檔出現賣出／停損警報，這筆買進就算已出場，不再顯示「可進場」。
+        r["closed"] = is_buy(r["action"]) and any(x["ticker"] == r["ticker"] and is_exit(x["action"]) for x in rows[i + 1:])
+    # 不列：已到期的期權買進（不能再進場）、算不出漲跌幅的（放空、賣出開倉、缺價格）。
+    listed = [r for r in rows if is_listed(r) and not pd.isna(r["change"])
+              and not (is_buy(r["action"]) and r["days"] is not None and r["days"] < 0)]
+    # 同一筆建議常發兩次（快訊＋後續說明），同標的、同動作、同合約、同進場價只留最新一則。
+    seen, deduped = set(), []
+    for r in reversed(listed):
+        key = (r["ticker"], short_action(r["action"]), r["opt"], r["px"][0] if r["px"] else None)
+        if key not in seen:
+            seen.add(key)
+            deduped.append(r)
+    listed = deduped[::-1]
 
-    shown = [r for r in rows
-             if is_listed(r)
-             and (not sites or r["site"] in sites)
-             and (not picked or any(n in picked for n in r["analyst"].split("、")))
-             and (not term or term in r["ticker"].upper())]
+    f1, f2, f3, f4, f5 = st.columns([2, 2, 1.4, 1.3, 1.5])
+    sites = f1.multiselect("網站", list(SITE_LABEL), format_func=SITE_LABEL.get, placeholder="全部網站", label_visibility="collapsed")
+    analysts = sorted({short_analyst(n) for r in listed for n in r["analyst"].split("、")} - {"—"})
+    picked = f2.multiselect("分析師", analysts, placeholder="全部分析師", label_visibility="collapsed")
+    term = f3.text_input("代號", placeholder="搜尋代號", label_visibility="collapsed").strip().upper()
+    only_entry = f4.checkbox("只看可進場")
+    only_mine = f5.checkbox("只看我有部位／掛單")
+
+    shown = [r for r in listed
+             if (not sites or r["site"] in sites)
+             and (not picked or any(short_analyst(n) in picked for n in r["analyst"].split("、")))
+             and (not term or term in r["ticker"].upper())
+             and (not only_entry or entry_state(r).startswith("🟢"))
+             and (not only_mine or r["mine"])]
     if not shown:
         st.info("沒有符合條件的推薦。")
         return
 
-    # 漲跌幅放在標的旁邊並固定在左側，橫向捲動看後面的欄位時也一直看得到；網站用短名省寬度。
+    # 只留判斷用得到的資訊：代號（不放公司名）、短動作、合約短寫、到期天數、兩個價格、網站＋分析師姓。
+    # 漲跌幅固定在左側，橫向捲動時也一直看得到。
     site_short = {"paradigm": "Paradigm", "oxford": "Oxford", "banyan": "Banyan"}
     df = pd.DataFrame([{
-        "日期": fmt_dt_taipei(r["published"]),
-        "標的": r["ticker"],
+        "日期": fmt_dt_taipei(r["published"], "%m/%d"),
+        "標的": f'{r["ticker"]} {r["mine"]}'.strip(),
         "漲跌幅": r["change"],
-        "動作": r["action"],
-        "類型": r["kind"],
-        "進場點位": " ｜ ".join(x for x in (r["entry"], r["contract"]) if x),
-        "網站": site_short.get(r["site"], r["site"]),
-        "分析師": r["analyst"],
-        "計算依據": r["basis"],
+        "進場": entry_state(r),
+        "動作": short_action(r["action"]),
+        "合約": r["opt"],
+        "到期": r["days"] if r["days"] is not None and r["days"] >= 0 else None,
+        "價格": fmt_px(r),
+        "來源": f'{site_short.get(r["site"], r["site"])}·{short_analyst(r["analyst"])}',
         "原文": r["url"],
     } for r in reversed(shown)])
 
-    st.caption(f"共 {len(df)} 則推薦（最近 {len(span)} 個交易日）· 買進：進場價 → 現在價格（股票最新收盤、期權 Yahoo 買賣中間價）；"
-               "賣出／停損：往前找買進進場價 → 出場價 · 🟩 上漲　🟥 下跌")
+    st.caption(f"{len(df)} 則 · 📌 我有持倉　⏳ 我有掛單　🟢 現價仍在建議價內　🟠 已超過建議價 · "
+               "漲跌幅：買進＝建議價→現價，賣出＝買進價→出場價（期權比權利金）")
     df["漲跌幅"] = df["漲跌幅"].round(1) + 0.0  # +0.0 把 -0.0 變成 0.0
-    styled = df.style.map(color_change, subset=["漲跌幅"])
+    styled = df.style.map(color_change, subset=["漲跌幅"]).map(color_days, subset=["到期"])
     st.dataframe(
         # 表格高度固定在一個螢幕內（超過就在表格裡上下捲），橫向捲軸在表格底部，不用捲整頁到最下面才拉得到。
         styled, hide_index=True, use_container_width=True, height=min(35 * len(df) + 38, 460),
@@ -528,11 +636,12 @@ def render_positions(dates: list[str]) -> None:
             "日期": st.column_config.TextColumn(width="small", pinned=True),
             "標的": st.column_config.TextColumn(width="small", pinned=True),
             "漲跌幅": st.column_config.NumberColumn(width="small", pinned=True, format="%+.1f%%"),
+            "進場": st.column_config.TextColumn(width="small"),
             "動作": st.column_config.TextColumn(width="small"),
-            "類型": st.column_config.TextColumn(width="small"),
-            "進場點位": st.column_config.TextColumn(width="medium"),
-            "網站": st.column_config.TextColumn(width="small"),
-            "計算依據": st.column_config.TextColumn(width="medium"),
+            "合約": st.column_config.TextColumn(width="small"),
+            "到期": st.column_config.NumberColumn(width="small", format="%d 天"),
+            "價格": st.column_config.TextColumn(width="medium"),
+            "來源": st.column_config.TextColumn(width="medium"),
             "原文": st.column_config.LinkColumn(display_text="開啟", width="small"),
         },
     )
