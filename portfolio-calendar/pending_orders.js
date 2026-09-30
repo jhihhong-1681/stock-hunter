@@ -21,5 +21,7 @@
 //               或 "underlying"（期權同標的但履約價/到期日不同）。沒有這個欄位代表還在追蹤中；
 //               有這個欄位的網站就不再顯示（資料保留備查，拿掉 filled 就會恢復追蹤）。
 window.PENDING_ORDERS = [
-  { date: "2026-09-28", time: "16:05:02", side: "Buy Open", symbol: "GRAB", type: "option", description: "GRAB 01/15/2027 3.00 Call", qty: 3, priceType: "限價", limitPrice: 0.4, validity: "當日有效", conditions: null, status: "已取消" }
+  { date: "2026-09-28", time: "16:05:02", side: "Buy Open", symbol: "GRAB", type: "option", description: "GRAB 01/15/2027 3.00 Call", qty: 3, priceType: "限價", limitPrice: 0.4, validity: "當日有效", conditions: null, status: "已取消" },
+  { date: "2026-09-29", time: "16:05:02", side: "Buy Open", symbol: "SMCI", type: "option", description: "SMCI 10/16/2026 45.00 Call", qty: 1, priceType: "限價", limitPrice: 1, validity: "當日有效", conditions: null, status: "已取消" },
+  { date: "2026-09-29", time: "11:57:46", side: "Sell Close", symbol: "CCL", type: "option", description: "CCL 11/20/2026 20.00 Call", qty: 1, priceType: "限價", limitPrice: 5.3, validity: "當日有效", conditions: null, status: "原訂單已取消，變更為新訂單", filled: { date: "2026-09-29", time: "12:21:16", price: 5.2, qty: 1, description: "CCL 11/20/2026 20.00 Call", match: "exact" } }
 ];
