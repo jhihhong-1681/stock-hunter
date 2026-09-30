@@ -505,16 +505,18 @@ def render_positions(dates: list[str]) -> None:
         st.info("沒有符合條件的推薦。")
         return
 
+    # 漲跌幅放在標的旁邊並固定在左側，橫向捲動看後面的欄位時也一直看得到；網站用短名省寬度。
+    site_short = {"paradigm": "Paradigm", "oxford": "Oxford", "banyan": "Banyan"}
     df = pd.DataFrame([{
         "日期": fmt_dt_taipei(r["published"]),
         "標的": r["ticker"],
-        "名稱": r["name"],
-        "類型": r["kind"],
-        "動作": r["action"],
-        "進場點位": " ｜ ".join(x for x in (r["entry"], r["contract"]) if x),
-        "網站": SITE_LABEL.get(r["site"], r["site"]),
-        "分析師": r["analyst"],
         "漲跌幅": r["change"],
+        "動作": r["action"],
+        "類型": r["kind"],
+        "進場點位": " ｜ ".join(x for x in (r["entry"], r["contract"]) if x),
+        "名稱": r["name"],
+        "網站": site_short.get(r["site"], r["site"]),
+        "分析師": r["analyst"],
         "計算依據": r["basis"],
         "原文": r["url"],
     } for r in reversed(shown)])
@@ -522,13 +524,19 @@ def render_positions(dates: list[str]) -> None:
     st.caption(f"共 {len(df)} 則推薦（最近 {len(span)} 個交易日）· 買進：進場價 → 現在價格（股票最新收盤、期權 Yahoo 買賣中間價）；"
                "賣出／停損：往前找買進進場價 → 出場價 · 🟩 上漲　🟥 下跌")
     df["漲跌幅"] = df["漲跌幅"].round(1) + 0.0  # +0.0 把 -0.0 變成 0.0
-    styled = df.style.map(color_change, subset=["漲跌幅"]).format({"漲跌幅": "{:+.1f}%"}, na_rep="")
+    styled = df.style.map(color_change, subset=["漲跌幅"])
     st.dataframe(
         styled, hide_index=True, use_container_width=True, height=min(38 * len(df) + 40, 720),
         column_config={
-            "進場點位": st.column_config.TextColumn(width="large"),
+            "日期": st.column_config.TextColumn(width="small", pinned=True),
+            "標的": st.column_config.TextColumn(width="small", pinned=True),
+            "漲跌幅": st.column_config.NumberColumn(width="small", pinned=True, format="%+.1f%%"),
+            "動作": st.column_config.TextColumn(width="small"),
+            "類型": st.column_config.TextColumn(width="small"),
+            "進場點位": st.column_config.TextColumn(width="medium"),
+            "網站": st.column_config.TextColumn(width="small"),
             "計算依據": st.column_config.TextColumn(width="medium"),
-            "原文": st.column_config.LinkColumn(display_text="開啟"),
+            "原文": st.column_config.LinkColumn(display_text="開啟", width="small"),
         },
     )
 
