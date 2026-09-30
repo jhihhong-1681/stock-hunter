@@ -129,6 +129,12 @@ st.markdown("""
 .rl-chips { display:flex; gap:6px; flex-wrap:wrap; }
 .rl-chip { font-family:monospace; font-size:0.74rem; padding:3px 8px; border-radius:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); }
 .rl-chip b { color:#f0c37e; }
+.rl-more { margin-top:6px; }
+.rl-more summary { cursor:pointer; font-size:0.78rem; color:rgba(250,250,250,0.5); list-style:none; }
+.rl-more summary::-webkit-details-marker { display:none; }
+.rl-more summary::before { content:"▸ "; }
+.rl-more[open] summary::before { content:"▾ "; }
+.rl-more .rl-summary { margin:6px 0 0; }
 .rl-fail { font-size:0.78rem; color:#ff8a8a; background:rgba(255,92,92,0.1); border-radius:6px; padding:5px 10px; display:inline-block; }
 </style>
 """, unsafe_allow_html=True)
@@ -171,21 +177,23 @@ def trade_box(e: dict | None) -> str:
 
 
 def chips(e: dict | None) -> str:
+    """卡片上只留目標價、停損這種數字；長的補充說明（note）收進「摘要」裡。"""
     if not e:
         return ""
     out = [f'<span class="rl-chip">{label} <b>{esc(e[k])}</b></span>' for k, label in (("exit", "出場"), ("target", "目標價"), ("stop", "停損")) if e.get(k)]
-    if e.get("note"):
-        out.append(f'<span class="rl-chip">{esc(e["note"])}</span>')
     return f'<div class="rl-chips">{"".join(out)}</div>' if out else ""
 
 
 def article_card(a: dict) -> str:
+    """一眼看：網站、時間、交易重點框、標題、目標價／停損。完整摘要和補充說明預設收起，點「摘要」才展開。"""
     title = f'<a href="{esc(a["url"])}" target="_blank" rel="noopener">{esc(a.get("title"))}</a>' if a.get("url") else esc(a.get("title"))
-    summary = f'<p class="rl-summary">{esc(a["summary"])}</p>' if a.get("summary") else ""
+    note = (a.get("entryExit") or {}).get("note")
+    more = "".join(f'<p class="rl-summary">{esc(x)}</p>' for x in (a.get("summary"), note and f"補充：{note}") if x)
+    details = f'<details class="rl-more"><summary>摘要</summary>{more}</details>' if more else ""
     return (
         f'<div class="rl-card"><div class="rl-top"><span class="rl-site">{esc(SITE_LABEL.get(a.get("site"), a.get("site")))}</span>'
         f'<span class="rl-time">{esc(fmt_taipei(a.get("publishedAtUtc")))}</span></div>'
-        f'{trade_box(a.get("entryExit"))}<h4>{title}</h4>{summary}{chips(a.get("entryExit"))}</div>'
+        f'{trade_box(a.get("entryExit"))}<h4>{title}</h4>{chips(a.get("entryExit"))}{details}</div>'
     )
 
 
