@@ -1002,7 +1002,8 @@ const THEME_MAP = {
   MAGS: "大型科技",
   CAT: "工業",
   XLI: "工業",
-  LPG: "能源/石油"
+  LPG: "能源/石油",
+  BB: "資安/軟體"
 };
 
 const THEME_COLORS = [
