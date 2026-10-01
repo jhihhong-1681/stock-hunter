@@ -813,5 +813,48 @@ window.POSITIONS_HISTORY = {
       { symbol: "QUBT", name: "QUBT 10/16/26 10 Call", pl: -620, realized: null }
     ],
     totals: { cash: 69446, invested: 1269930, realizedPL: 533035 }
+  },
+  "2026-09-30": {
+    positions: [
+      { symbol: "ASTS", name: "AST Spacemobile", pl: -25154.02, realized: null },
+      { symbol: "VOYG", name: "Voyager Technologies", pl: -1627.5, realized: null },
+      { symbol: "SMR", name: "NuScale Power", pl: -58679.06, realized: -106338.51 },
+      { symbol: "MP", name: "MP Materials", pl: -8966.6, realized: -9693.7 },
+      { symbol: "RKLB", name: "Rocket Lab Corporation", pl: -12338, realized: 28585.1 },
+      { symbol: "UGL", name: "2x Long Gold", pl: -19475.03, realized: -35510.19 },
+      { symbol: "FVRR", name: "Fiverr International", pl: -4687.2, realized: null },
+      { symbol: "VPG", name: "Vishay Precision Group", pl: -7908.72, realized: -8410.92 },
+      { symbol: "UUUU", name: "Energy Fuels", pl: -15839.45, realized: -12827.8 },
+      { symbol: "VIAV", name: "Viavi Solutions", pl: -62, realized: null },
+      { symbol: "MU", name: "Micron", pl: 4188.41, realized: null },
+      { symbol: "CAT", name: "Caterpillar", pl: -316.51, realized: null },
+      { symbol: "CAG", name: "ConAgra Brands", pl: -3193, realized: null },
+      { symbol: "MRCY", name: "Mercury Systems", pl: -2480, realized: null },
+      { symbol: "LPG", name: "Dorian LPG Ltd.", pl: 173.6, realized: null },
+      { symbol: "GLD", name: "GLD 10/16/26 395 Call", pl: -89838, realized: null },
+      { symbol: "VRT", name: "VRT 10/16/26 260 Call", pl: -57660, realized: null },
+      { symbol: "XOM", name: "XOM 10/16/26 155 Call", pl: -1240, realized: null },
+      { symbol: "HAL", name: "HAL 10/16/26 32 Call", pl: -24614, realized: null },
+      { symbol: "CLSK", name: "CLSK 12/18/26 10 Call", pl: -5270, realized: null },
+      { symbol: "HAL", name: "HAL 11/20/26 32 Call", pl: -14880, realized: null },
+      { symbol: "SPCX", name: "SPCX 01/15/27 180 Call", pl: -4650, realized: null },
+      { symbol: "GSK", name: "GSK 11/20/26 45 Call", pl: -9920, realized: null },
+      { symbol: "NVO", name: "NVO 11/20/26 42.5 Call", pl: -14384, realized: null },
+      { symbol: "HPQ", name: "HPQ 12/18/26 30 Call", pl: -1705, realized: null },
+      { symbol: "CPRT", name: "CPRT 11/20/26 30 Call", pl: -11005, realized: null },
+      { symbol: "CLF", name: "CLF 11/20/26 10 Call", pl: -1736, realized: null },
+      { symbol: "FLYW", name: "FLYW 12/18/26 15 Call", pl: -2480, realized: null },
+      { symbol: "SRPT", name: "SRPT 12/18/26 17.5 Call", pl: -1860, realized: null },
+      { symbol: "AEO", name: "AEO 11/20/26 15 Call", pl: -155, realized: null },
+      { symbol: "ALGM", name: "ALGM 10/16/26 35 Call", pl: -155, realized: null },
+      { symbol: "XLI", name: "XLI 01/15/2027 185 Call", pl: -2573, realized: null },
+      { symbol: "SOUN", name: "SOUN 10/16/26 9 Call", pl: -6820, realized: null },
+      { symbol: "MAGS", name: "MAGS 11/20/26 74 Call", pl: -1085, realized: null },
+      { symbol: "SRPT", name: "SRPT 10/16/26 25 Call", pl: -5580, realized: null },
+      { symbol: "BB", name: "BB 11/20/26 10 C", pl: -124, realized: null },
+      { symbol: "BULL", name: "BULL 10/16/26 10 Call", pl: -1674, realized: null },
+      { symbol: "QUBT", name: "QUBT 10/16/26 10 Call", pl: -620, realized: null }
+    ],
+    totals: { cash: 65973, invested: 1273402, realizedPL: 533035 }
   }
 };
