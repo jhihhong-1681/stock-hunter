@@ -18,5 +18,6 @@ window.NETWORTH_HISTORY = [
   { date: "2026/05/30", usStockValue: 930789, usStockCash: 217086, principal: 807698, yoy: null, cashRatio: 18.97, cathay: 55287, ctbc: 22786, esun: 46850, esunFutures: 86425, crypto: 21549 },
   { date: "2026/06/30", usStockValue: 855998, usStockCash: 206673, principal: 807698, yoy: null, cashRatio: 16.06, cathay: 8350, ctbc: 46095, esun: 49776, esunFutures: 86425, crypto: 29756 },
   { date: "2026/07/31", usStockValue: 840410, usStockCash: 109564, principal: 807698, yoy: null, cashRatio: 9.30, cathay: 3998, ctbc: 41941, esun: 81635, esunFutures: 84197, crypto: 43438 },
-  { date: "2026/08/30", usStockValue: 1037449, usStockCash: 46009, principal: 807698, yoy: null, cashRatio: 4.43, cathay: 1682, ctbc: 41014, esun: 99819, esunFutures: 88553, crypto: 117651 }
+  { date: "2026/08/30", usStockValue: 1037449, usStockCash: 46009, principal: 807698, yoy: null, cashRatio: 4.43, cathay: 1682, ctbc: 41014, esun: 99819, esunFutures: 88553, crypto: 117651 },
+  { date: "2026/09/30", usStockValue: 857009, usStockCash: 65973, principal: 807698, yoy: null, cashRatio: 7.70, cathay: 17109, ctbc: 41481, esun: 44845, esunFutures: 83335, crypto: 142462 }
 ];
