@@ -227,6 +227,7 @@ ANALYSTS = [
     ("Ray Blanco", r"Ray Blanco"),
     ("Enrique Abeyta", r"Abeyta"),
     ("Alan Knuckman", r"Knuckman|Project Prophecy"),
+    ("Chris Cimorelli", r"Cimorelli|10X Trade Club"),
     ("Mason Sexton", r"Mason Sexton|梅森[·・]?塞克斯頓|The Map"),
     ("Ronan McMahon", r"McMahon|Real Estate Trend Alert"),
     ("Tim Sykes", r"Tim Sykes|XGPT"),
