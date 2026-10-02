@@ -1003,7 +1003,9 @@ const THEME_MAP = {
   CAT: "工業",
   XLI: "工業",
   LPG: "能源/石油",
-  BB: "資安/軟體"
+  BB: "資安/軟體",
+  ET: "能源/石油",
+  SDGR: "醫療保健"
 };
 
 const THEME_COLORS = [
