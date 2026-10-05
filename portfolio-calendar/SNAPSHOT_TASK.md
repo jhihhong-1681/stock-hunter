@@ -66,6 +66,8 @@ Firstrade 未成交訂單（`portfolio-calendar/pending_orders.js`）**不歸這
 - **那斯達克綜合指數**：來源A https://finance.yahoo.com/quote/%5EIXIC/ ；來源B「Nasdaq Composite close today percent change」
 - **費城半導體 SOX**：來源A https://finance.yahoo.com/quote/%5ESOX/ ；來源B「Philadelphia Semiconductor Index SOX close today percent change」
 
+**雲端網路擋 Yahoo 時的替代做法**：雲端環境的網路代理目前會擋 finance.yahoo.com（WebFetch 回 `EGRESS_BLOCKED`）。遇到這種情況不要放棄交叉比對，改用 WebSearch 從**兩個不同網站**取得同一天的收盤價與漲跌幅當作來源A、來源B。例如美股用 CNBC／TheStreet／Investing.com 的收盤報導，台股用 Goodinfo／財報狗／鉅亨網。最好也拿「當日收盤 ÷ 前一交易日收盤」自己驗算一次。只有真的只找到一個來源時才採用單一來源，並在結果摘要註明。
+
 確認來源A的收盤日期就是快照對應日期。比對規則：正負號一致且差距 ≤ 0.3 個百分點才算成功，用來源A數字。不一致時以來源A為準寫入（不要留 null），並記錄哪個指數、兩邊數字、採用值（給第 14 步）。只有來源A抓不到時才留 null。
 
 ### 6. （保留編號，不用動作）
