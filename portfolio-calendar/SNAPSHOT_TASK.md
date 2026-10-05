@@ -5,7 +5,7 @@
 
 背景：幫用戶（阿紘）更新「報酬日曆」網站的每日快照資料，推上 GitHub 讓網站（GitHub Pages：https://jhihhong-1681.github.io/stock-hunter/portfolio-calendar/ ，阿紘平常從 https://jhihhong-stock-hunter-v2.streamlit.app/報酬日曆 看）自動同步。
 
-執行環境：雲端，排程在台北時間平日 13:30 觸發。工作目錄就是 `stock-hunter` repo 根目錄（已經 clone 好），下面的路徑都相對於 repo 根目錄。**雲端系統時間是 UTC，日期一律換算成 Asia/Taipei 再判斷。** 這是無人值守的排程，阿紘不在線上，不要問問題，遇到不確定的狀況照下面的規則處理並在通知信裡說明。
+執行環境：雲端，排程在台北時間平日 13:30 觸發。工作目錄就是 `stock-hunter` repo 根目錄（已經 clone 好），下面的路徑都相對於 repo 根目錄。**雲端系統時間是 UTC，日期一律換算成 Asia/Taipei 再判斷。** 這是無人值守的排程，阿紘不在線上，不要問問題，遇到不確定的狀況照下面的規則處理並在結果摘要裡說明。
 
 Firstrade 未成交訂單（`portfolio-calendar/pending_orders.js`）**不歸這個排程管**——它需要阿紘本機已登入的 Chrome，由本機排程照 `portfolio-calendar/FIRSTRADE_TASK.md` 另外處理。這個排程不要讀也不要改 `pending_orders.js`。
 
@@ -39,7 +39,7 @@ Firstrade 未成交訂單（`portfolio-calendar/pending_orders.js`）**不歸這
 - **總計（totals）**：invested=Total總投入、value=Total總現值、unrealizedPL/unrealizedPct=未實現損益金額/%、realizedPL=已實現損益（這格是 Sheet 公式 `=SUM(N…)` 的結果，直接照抄，不要自己重新加總去「修正」它）、cash=現金金額（= 總資產 − 總現值，可用來核對）、totalAssets=總資產。
 - **已平倉紀錄（closedPositions）**：總投入和現值都空白、但有已實現損益的列，整理成 `{ symbol, name, note: 平倉欄文字或 null, realized }`，name 是亂碼/純數字時換成正確名稱（例如 ALAB → "Astera Labs"）。保持表格順序。
   - **⚠ 截斷防呆（重要）**：`read_file_content` 會在 Sheet 變大時**靜默截斷已平倉區塊的尾端**（沒有任何警告，已發生多次）。所以：先讀上一份 `portfolio-calendar/holdings.js` 的 closedPositions；這次讀到的清單只要比上一份少，或上一份裡有 symbol+name 這次沒讀到，**一律視為截斷，不是阿紘刪除**——把這次讀到的放前面（新平倉的部位通常出現在已平倉區塊最上方），後面接上一份裡這次沒讀到的項目（沿用上一份的 realized 值）。
-  - 核對：positions 的 realized 加總 + closedPositions 的 realized 加總，應該等於 totals.realizedPL（差 1 元以內是四捨五入）。對不上就在通知信裡說明差額，但 realizedPL 仍然照抄 Sheet。
+  - 核對：positions 的 realized 加總 + closedPositions 的 realized 加總，應該等於 totals.realizedPL（差 1 元以內是四捨五入）。對不上就在結果摘要裡說明差額，但 realizedPL 仍然照抄 Sheet。
 - **新代號檢查**：positions 裡每個 symbol 對照 `portfolio-calendar/app.js` 的 `THEME_MAP` key，不在裡面的記下來（給第 14 步）。不要自己改 app.js。
 
 ### 3. 期權價格
@@ -55,7 +55,7 @@ Firstrade 未成交訂單（`portfolio-calendar/pending_orders.js`）**不歸這
 
 寫進這次的期權物件。任何一筆 ≥ 1（現值連續 2 個交易日沒變）就記下來（給第 14 步）。
 排程只在平日跑，比的是「連續幾次排程」，週末自然跳過。
-如果最近 git log 顯示上一份 holdings.js 是排程漏跑後補跑、或被手動修正過的，比對基準可能被污染，在通知信裡註明。
+如果最近 git log 顯示上一份 holdings.js 是排程漏跑後補跑、或被手動修正過的，比對基準可能被污染，在結果摘要裡註明。
 
 ### 5. 大盤指數（每個都要兩個來源交叉比對）
 
@@ -114,15 +114,18 @@ git push origin HEAD:main
 ```
 如果 git 還沒設定身分，用 `git -c user.name="jhihhong-1681" -c user.email="jhihhong0810@gmail.com" commit ...`。
 
-push 被拒（remote 有新 commit，例如 ETF 持股、法人資料、本機 Firstrade 排程的自動 commit）：`git fetch origin`，確認遠端新 commit 沒動到這四個檔案，就 `git pull --rebase origin main` 再 push，不要用 --force。rebase 真的衝突到這四個檔案就 `git rebase --abort`，放棄這次 push 並在通知信說明。驗證/權限類錯誤不要嘗試繞過，直接在通知信說明。
+push 被拒（remote 有新 commit，例如 ETF 持股、法人資料、本機 Firstrade 排程的自動 commit）：`git fetch origin`，確認遠端新 commit 沒動到這四個檔案，就 `git pull --rebase origin main` 再 push，不要用 --force。rebase 真的衝突到這四個檔案就 `git rebase --abort`，放棄這次 push 並在結果摘要說明。驗證/權限類錯誤不要嘗試繞過，直接在結果摘要說明。
 
 ### 13. 讀不到資料就放棄
 
-第 2 步讀不到總資產/持股就不要寫入任何猜測數字，直接結束（下一個交易日會再試），但要寄通知信說明讀取失敗。指數只是改用來源A、或少數期權 underlyingPrice 留 null，都不影響照常寫入。
+第 2 步讀不到總資產/持股就不要寫入任何猜測數字，直接結束（下一個交易日會再試），但最後的結果摘要要說明讀取失敗。指數只是改用來源A、或少數期權 underlyingPrice 留 null，都不影響照常寫入。
 
-### 14. 通知（寄 Email）
+### 14. 結果摘要（會推播到阿紘的 Claude App）
 
-預設安靜結束、不寄信。只有符合下列任一情況，才用 Gmail 連接器的 `send_message` **寄一封信給 jhihhong0810@gmail.com（只能寄給這個地址，不能寄給任何其他人、不能回信或轉寄）**，主旨「[報酬日曆] <快照對應日期> 快照提醒」，內文繁體中文、純文字、簡短條列：
+這個排程設定成「執行完成就推播到 Claude App」（跟 Cowork 的研究監控一樣），**你最後一則回覆就是推播內容**，阿紘會在手機/電腦的 Claude App 收到。不要寄信、不要用其他通知管道。最後一則回覆用繁體中文、精簡條列，第一行是重點：
+
+- 沒狀況：一行就好，例如「✅ 10/02 快照完成｜總資產 NT$918,856（較前日 −0.4%）｜已推上 GitHub」。
+- 有狀況：第一行寫「⚠️ 10/02 快照完成，有 N 件事要看」（失敗就寫「❌ 10/02 快照失敗：原因」），下面逐項列出：
 - (a) 有指數因來源B不可靠改採 Yahoo Finance（指數、兩來源數字、採用值）
 - (b) git push 失敗（原因）
 - (c) 有新代號不在 THEME_MAP（列出 symbol 跟名稱，請阿紘決定主題，或請 Claude 研究後分類）
@@ -131,4 +134,5 @@ push 被拒（remote 有新 commit，例如 ETF 持股、法人資料、本機 F
 - (f) positions + closedPositions 的 realized 加總跟 Sheet 已實現損益對不上（差額多少；截斷本身已經是常態，補回後對得上就不用通知）
 - (g) 第 2 步整個讀取失敗、這次沒有寫入
 
-信尾附上網站連結 https://jhihhong-stock-hunter-v2.streamlit.app/報酬日曆 。
+- 有新平倉或新開倉的部位，用一行帶過（例如「新平倉：MU、LPG；新部位：ET、SDGR 11/20 35C」）。
+- 最後一行附網站連結 https://jhihhong-stock-hunter-v2.streamlit.app/報酬日曆 。
