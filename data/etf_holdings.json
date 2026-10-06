@@ -1,5 +1,5 @@
 {
-  "date": "2026-10-05",
+  "date": "2026-10-06",
   "holdings": {
     "XLK": [
       {
@@ -55,54 +55,54 @@
     ],
     "SOXX": [
       {
-        "代號": "NVDA",
-        "名稱": "NVIDIA Corp",
-        "權重": 9.43
-      },
-      {
-        "代號": "MU",
-        "名稱": "Micron Technology Inc",
-        "權重": 8.91
+        "代號": "INTC",
+        "名稱": "Intel Corp",
+        "權重": 9.59
       },
       {
         "代號": "AMD",
         "名稱": "Advanced Micro Devices Inc",
-        "權重": 8.23
+        "權重": 9.28
+      },
+      {
+        "代號": "MU",
+        "名稱": "Micron Technology Inc",
+        "權重": 7.93
+      },
+      {
+        "代號": "NVDA",
+        "名稱": "NVIDIA Corp",
+        "權重": 7.39
       },
       {
         "代號": "AVGO",
         "名稱": "Broadcom Inc",
-        "權重": 7.48
-      },
-      {
-        "代號": "INTC",
-        "名稱": "Intel Corp",
-        "權重": 5.09
+        "權重": 6.77
       },
       {
         "代號": "MRVL",
         "名稱": "Marvell Technology Inc",
-        "權重": 4.66
-      },
-      {
-        "代號": "TSM",
-        "名稱": "Taiwan Semiconductor Manufacturing Co Ltd ADR",
-        "權重": 4.65
+        "權重": 4.46
       },
       {
         "代號": "AMAT",
         "名稱": "Applied Materials Inc",
-        "權重": 4.59
-      },
-      {
-        "代號": "LRCX",
-        "名稱": "Lam Research Corp",
-        "權重": 4.27
+        "權重": 3.98
       },
       {
         "代號": "KLAC",
         "名稱": "KLA Corp",
-        "權重": 4.12
+        "權重": 3.97
+      },
+      {
+        "代號": "ADI",
+        "名稱": "Analog Devices Inc",
+        "權重": 3.91
+      },
+      {
+        "代號": "LRCX",
+        "名稱": "Lam Research Corp",
+        "權重": 3.89
       }
     ],
     "IGV": [
@@ -211,158 +211,158 @@
     ],
     "KBE": [
       {
-        "代號": "JXN",
-        "名稱": "Jackson Financial Inc",
-        "權重": 1.19
+        "代號": "SYBT",
+        "名稱": "Stock Yards Bancorp Inc",
+        "權重": 0.99
       },
       {
-        "代號": "NMIH",
-        "名稱": "NMI Holdings Inc",
-        "權重": 1.14
+        "代號": "TRMK",
+        "名稱": "Trustmark Corp",
+        "權重": 0.98
       },
       {
-        "代號": "CRBG",
-        "名稱": "Corebridge Financial Inc",
-        "權重": 1.14
+        "代號": "SFNC",
+        "名稱": "Simmons First National Corp Class A",
+        "權重": 0.98
       },
       {
         "代號": "EQH",
         "名稱": "Equitable Holdings Inc",
-        "權重": 1.14
+        "權重": 0.98
       },
       {
-        "代號": "MTG",
-        "名稱": "MGIC Investment Corp",
-        "權重": 1.13
+        "代號": "NBTB",
+        "名稱": "NBT Bancorp Inc",
+        "權重": 0.98
       },
       {
-        "代號": "TBBK",
-        "名稱": "The Bancorp Inc",
-        "權重": 1.13
+        "代號": "UBSI",
+        "名稱": "United Bankshares Inc",
+        "權重": 0.97
       },
       {
-        "代號": "NIC",
-        "名稱": "Nicolet Bankshares Inc",
-        "權重": 1.11
+        "代號": "CRBG",
+        "名稱": "Corebridge Financial Inc",
+        "權重": 0.97
       },
       {
-        "代號": "BNY",
-        "名稱": "Bank of New York Mellon Corp",
-        "權重": 1.1
+        "代號": "CVBF",
+        "名稱": "CVB Financial Corp",
+        "權重": 0.97
       },
       {
-        "代號": "JPM",
-        "名稱": "JPMorgan Chase & Co",
-        "權重": 1.1
+        "代號": "FRME",
+        "名稱": "First Merchants Corp",
+        "權重": 0.97
       },
       {
-        "代號": "ESNT",
-        "名稱": "Essent Group Ltd",
-        "權重": 1.09
+        "代號": "CBC",
+        "名稱": "Central Bancompany Inc Class A",
+        "權重": 0.97
       }
     ],
     "FINX": [
       {
         "代號": "HOOD",
         "名稱": "Robinhood Markets Inc Class A",
-        "權重": 7.38
-      },
-      {
-        "代號": "XYZ",
-        "名稱": "Block Inc Class A",
-        "權重": 6.92
+        "權重": 8.56
       },
       {
         "代號": "PYPL",
         "名稱": "PayPal Holdings Inc",
-        "權重": 6.28
+        "權重": 6.74
+      },
+      {
+        "代號": "XYZ",
+        "名稱": "Block Inc Class A",
+        "權重": 6.67
       },
       {
         "代號": "COIN",
         "名稱": "Coinbase Global Inc Ordinary Shares - Class A",
-        "權重": 5.19
-      },
-      {
-        "代號": "ADYEN.AS",
-        "名稱": "Adyen NV",
-        "權重": 4.78
+        "權重": 5.55
       },
       {
         "代號": "FISV",
         "名稱": "Fiserv Inc",
-        "權重": 4.74
+        "權重": 4.33
       },
       {
         "代號": "GPN",
         "名稱": "Global Payments Inc",
-        "權重": 4.39
+        "權重": 4.25
       },
       {
-        "代號": "INTU",
-        "名稱": "Intuit Inc",
-        "權重": 4.35
-      },
-      {
-        "代號": "SOFI",
-        "名稱": "SoFi Technologies Inc Ordinary Shares",
-        "權重": 3.93
+        "代號": "ADYEN.AS",
+        "名稱": "Adyen NV",
+        "權重": 4.24
       },
       {
         "代號": "AFRM",
         "名稱": "Affirm Holdings Inc Ordinary Shares - Class A",
-        "權重": 3.75
+        "權重": 3.76
+      },
+      {
+        "代號": "SOFI",
+        "名稱": "SoFi Technologies Inc Ordinary Shares",
+        "權重": 3.72
+      },
+      {
+        "代號": "INTU",
+        "名稱": "Intuit Inc",
+        "權重": 3.61
       }
     ],
     "XLE": [
       {
         "代號": "XOM",
         "名稱": "ExxonMobil Holdings Corp",
-        "權重": 19.86
+        "權重": 24.03
       },
       {
         "代號": "CVX",
         "名稱": "Chevron Corp",
-        "權重": 14.89
+        "權重": 18.05
       },
       {
         "代號": "COP",
         "名稱": "ConocoPhillips",
-        "權重": 6.23
-      },
-      {
-        "代號": "MPC",
-        "名稱": "Marathon Petroleum Corp",
-        "權重": 5.42
-      },
-      {
-        "代號": "PSX",
-        "名稱": "Phillips 66",
-        "權重": 5.33
+        "權重": 6.73
       },
       {
         "代號": "VLO",
         "名稱": "Valero Energy Corp",
-        "權重": 5.07
+        "權重": 4.73
       },
       {
-        "代號": "SLB",
-        "名稱": "SLB Ltd",
-        "權重": 4.88
+        "代號": "MPC",
+        "名稱": "Marathon Petroleum Corp",
+        "權重": 4.7
       },
       {
-        "代號": "EOG",
-        "名稱": "EOG Resources Inc",
-        "權重": 4.13
+        "代號": "PSX",
+        "名稱": "Phillips 66",
+        "權重": 4.64
       },
       {
         "代號": "WMB",
         "名稱": "Williams Companies Inc",
-        "權重": 3.78
+        "權重": 4.29
+      },
+      {
+        "代號": "SLB",
+        "名稱": "SLB Ltd",
+        "權重": 3.86
+      },
+      {
+        "代號": "EOG",
+        "名稱": "EOG Resources Inc",
+        "權重": 3.85
       },
       {
         "代號": "KMI",
         "名稱": "Kinder Morgan Inc Class P",
-        "權重": 3.65
+        "權重": 3.15
       }
     ],
     "XOP": [
@@ -733,52 +733,52 @@
       {
         "代號": "GE",
         "名稱": "GE Aerospace",
-        "權重": 21.59
+        "權重": 20.97
       },
       {
         "代號": "RTX",
         "名稱": "RTX Corp",
-        "權重": 17.24
+        "權重": 16.19
       },
       {
         "代號": "BA",
         "名稱": "Boeing Co",
-        "權重": 9.08
-      },
-      {
-        "代號": "GD",
-        "名稱": "General Dynamics Corp",
-        "權重": 4.83
-      },
-      {
-        "代號": "LMT",
-        "名稱": "Lockheed Martin Corp",
-        "權重": 4.71
-      },
-      {
-        "代號": "NOC",
-        "名稱": "Northrop Grumman Corp",
-        "權重": 4.42
+        "權重": 7.49
       },
       {
         "代號": "HWM",
         "名稱": "Howmet Aerospace Inc",
-        "權重": 4.35
+        "權重": 4.61
+      },
+      {
+        "代號": "LMT",
+        "名稱": "Lockheed Martin Corp",
+        "權重": 4.6
       },
       {
         "代號": "TDG",
         "名稱": "TransDigm Group Inc",
-        "權重": 4.29
+        "權重": 4.56
+      },
+      {
+        "代號": "GD",
+        "名稱": "General Dynamics Corp",
+        "權重": 4.46
+      },
+      {
+        "代號": "NOC",
+        "名稱": "Northrop Grumman Corp",
+        "權重": 4.45
+      },
+      {
+        "代號": "HONA",
+        "名稱": "Honeywell Aerospace Inc",
+        "權重": 3.82
       },
       {
         "代號": "LHX",
         "名稱": "L3Harris Technologies Inc",
-        "權重": 3.7
-      },
-      {
-        "代號": "AXON",
-        "名稱": "Axon Enterprise Inc",
-        "權重": 3.4
+        "權重": 3.43
       }
     ],
     "XTN": [
@@ -837,52 +837,52 @@
       {
         "代號": "AMZN",
         "名稱": "Amazon.com Inc",
-        "權重": 24.37
+        "權重": 23.39
       },
       {
         "代號": "TSLA",
         "名稱": "Tesla Inc",
-        "權重": 17.29
+        "權重": 17.67
       },
       {
         "代號": "HD",
         "名稱": "The Home Depot Inc",
-        "權重": 5.45
+        "權重": 5.01
       },
       {
         "代號": "MCD",
         "名稱": "McDonald's Corp",
+        "權重": 4.22
+      },
+      {
+        "代號": "TJX",
+        "名稱": "TJX Companies Inc",
         "權重": 4.07
       },
       {
         "代號": "BKNG",
         "名稱": "Booking Holdings Inc",
-        "權重": 3.86
-      },
-      {
-        "代號": "TJX",
-        "名稱": "TJX Companies Inc",
-        "權重": 3.49
+        "權重": 3.41
       },
       {
         "代號": "SBUX",
         "名稱": "Starbucks Corp",
-        "權重": 3.03
+        "權重": 2.98
       },
       {
         "代號": "LOW",
         "名稱": "Lowe's Companies Inc",
-        "權重": 2.87
+        "權重": 2.88
       },
       {
-        "代號": "DASH",
-        "名稱": "DoorDash Inc Ordinary Shares - Class A",
-        "權重": 2.2
+        "代號": "MAR",
+        "名稱": "Marriott International Inc Class A",
+        "權重": 2.12
       },
       {
-        "代號": "GM",
-        "名稱": "General Motors Co",
-        "權重": 1.95
+        "代號": "ROST",
+        "名稱": "Ross Stores Inc",
+        "權重": 2.09
       }
     ],
     "XRT": [
@@ -1097,104 +1097,104 @@
       {
         "代號": "FCX",
         "名稱": "Freeport-McMoRan Inc",
-        "權重": 5.83
-      },
-      {
-        "代號": "KAP",
-        "名稱": "National Atomic Co Kazatomprom JSC GDR - Regulation S",
-        "權重": 5.21
+        "權重": 5.15
       },
       {
         "代號": "CCO.TO",
         "名稱": "Cameco Corp",
-        "權重": 4.43
-      },
-      {
-        "代號": "PLS.AX",
-        "名稱": "PLS Group Ltd",
-        "權重": 4.21
+        "權重": 4.89
       },
       {
         "代號": "LYC.AX",
         "名稱": "Lynas Rare Earths Ltd",
-        "權重": 4.19
+        "權重": 4.69
       },
       {
-        "代號": "UEC",
-        "名稱": "Uranium Energy Corp",
-        "權重": 3.45
+        "代號": "PLS.AX",
+        "名稱": "PLS Group Ltd",
+        "權重": 3.86
+      },
+      {
+        "代號": "KAP",
+        "名稱": "National Atomic Co Kazatomprom JSC GDR - Regulation S",
+        "權重": 3.72
       },
       {
         "代號": "TECK-B.TO",
         "名稱": "Teck Resources Ltd Class B (Sub Voting)",
-        "權重": 3.37
+        "權重": 3.39
       },
       {
         "代號": "ALB",
         "名稱": "Albemarle Corp",
-        "權重": 3.33
-      },
-      {
-        "代號": "BVN",
-        "名稱": "Compania De Minas Buenaventura SAA ADR",
-        "權重": 3.09
-      },
-      {
-        "代號": "SQM",
-        "名稱": "Sociedad Quimica Y Minera De Chile SA ADR",
-        "權重": 3.03
-      }
-    ],
-    "XME": [
-      {
-        "代號": "HL",
-        "名稱": "Hecla Mining Co",
-        "權重": 5.39
-      },
-      {
-        "代號": "NEM",
-        "名稱": "Newmont Corp",
-        "權重": 5.17
-      },
-      {
-        "代號": "CDE",
-        "名稱": "Coeur Mining Inc",
-        "權重": 5.14
-      },
-      {
-        "代號": "RGLD",
-        "名稱": "Royal Gold Inc",
-        "權重": 5.05
+        "權重": 3.39
       },
       {
         "代號": "UEC",
         "名稱": "Uranium Energy Corp",
-        "權重": 4.95
+        "權重": 3.33
+      },
+      {
+        "代號": "HL",
+        "名稱": "Hecla Mining Co",
+        "權重": 3.29
+      },
+      {
+        "代號": "SQM",
+        "名稱": "Sociedad Quimica Y Minera De Chile SA ADR",
+        "權重": 3.22
+      }
+    ],
+    "XME": [
+      {
+        "代號": "RS",
+        "名稱": "Reliance Inc",
+        "權重": 5.31
+      },
+      {
+        "代號": "MTRN",
+        "名稱": "Materion Corp",
+        "權重": 5.08
+      },
+      {
+        "代號": "STLD",
+        "名稱": "Steel Dynamics Inc",
+        "權重": 5.02
       },
       {
         "代號": "FCX",
         "名稱": "Freeport-McMoRan Inc",
-        "權重": 4.65
+        "權重": 5.01
       },
       {
-        "代號": "HCC",
-        "名稱": "Warrior Met Coal Inc",
-        "權重": 4.33
+        "代號": "CLF",
+        "名稱": "Cleveland-Cliffs Inc",
+        "權重": 4.96
       },
       {
-        "代號": "CNR",
-        "名稱": "Core Natural Resources Inc Ordinary Shares",
-        "權重": 4.27
+        "代號": "NUE",
+        "名稱": "Nucor Corp",
+        "權重": 4.94
       },
       {
-        "代號": "LEU",
-        "名稱": "Centrus Energy Corp Class A",
-        "權重": 4.25
+        "代號": "CMC",
+        "名稱": "Commercial Metals Co",
+        "權重": 4.91
       },
       {
-        "代號": "BTU",
-        "名稱": "Peabody Energy Corp",
-        "權重": 3.91
+        "代號": "RGLD",
+        "名稱": "Royal Gold Inc",
+        "權重": 4.9
+      },
+      {
+        "代號": "NEM",
+        "名稱": "Newmont Corp",
+        "權重": 4.88
+      },
+      {
+        "代號": "MP",
+        "名稱": "MP Materials Corp Ordinary Shares - Class A",
+        "權重": 4.75
       }
     ],
     "XLRE": [
@@ -1253,104 +1253,104 @@
       {
         "代號": "META",
         "名稱": "Meta Platforms Inc Class A",
-        "權重": 16.77
+        "權重": 22.16
       },
       {
         "代號": "GOOGL",
         "名稱": "Alphabet Inc Class A",
-        "權重": 10.3
+        "權重": 11.63
       },
       {
         "代號": "GOOG",
         "名稱": "Alphabet Inc Class C",
-        "權重": 8.2
-      },
-      {
-        "代號": "T",
-        "名稱": "AT&T Inc",
-        "權重": 5.25
-      },
-      {
-        "代號": "VZ",
-        "名稱": "Verizon Communications Inc",
-        "權重": 5.02
-      },
-      {
-        "代號": "CMCSA",
-        "名稱": "Comcast Corp Class A",
-        "權重": 4.86
-      },
-      {
-        "代號": "NFLX",
-        "名稱": "Netflix Inc",
-        "權重": 4.86
-      },
-      {
-        "代號": "DIS",
-        "名稱": "The Walt Disney Co",
-        "權重": 4.82
+        "權重": 9.33
       },
       {
         "代號": "WBD",
         "名稱": "Warner Bros. Discovery Inc Ordinary Shares - Class A",
-        "權重": 4.65
+        "權重": 4.94
+      },
+      {
+        "代號": "DIS",
+        "名稱": "The Walt Disney Co",
+        "權重": 4.48
+      },
+      {
+        "代號": "TTWO",
+        "名稱": "Take-Two Interactive Software Inc",
+        "權重": 4.38
+      },
+      {
+        "代號": "T",
+        "名稱": "AT&T Inc",
+        "權重": 4.32
+      },
+      {
+        "代號": "APP",
+        "名稱": "AppLovin Corp Ordinary Shares - Class A",
+        "權重": 4.24
+      },
+      {
+        "代號": "VZ",
+        "名稱": "Verizon Communications Inc",
+        "權重": 4.11
       },
       {
         "代號": "TMUS",
         "名稱": "T-Mobile US Inc",
-        "權重": 4.59
+        "權重": 4.1
       }
     ],
     "CIBR": [
       {
-        "代號": "PANW",
-        "名稱": "Palo Alto Networks Inc",
-        "權重": 9.68
-      },
-      {
         "代號": "CRWD",
         "名稱": "CrowdStrike Holdings Inc Class A",
-        "權重": 9.02
+        "權重": 8.89
       },
       {
         "代號": "FTNT",
         "名稱": "Fortinet Inc",
-        "權重": 8.84
+        "權重": 8.11
+      },
+      {
+        "代號": "PANW",
+        "名稱": "Palo Alto Networks Inc",
+        "權重": 8.07
       },
       {
         "代號": "CSCO",
         "名稱": "Cisco Systems Inc",
-        "權重": 6.55
+        "權重": 7.56
       },
       {
         "代號": "AVGO",
         "名稱": "Broadcom Inc",
-        "權重": 5.91
-      },
-      {
-        "代號": "NET",
-        "名稱": "Cloudflare Inc",
-        "權重": 4.5
+        "權重": 7.36
       },
       {
         "代號": "OKTA",
         "名稱": "Okta Inc Class A",
-        "權重": 4.01
+        "權重": 4.42
       },
       {
-        "代號": "ZS",
-        "名稱": "Zscaler Inc",
-        "權重": 3.65
+        "代號": "NET",
+        "名稱": "Cloudflare Inc",
+        "權重": 4.42
       },
       {
         "代號": "FFIV",
         "名稱": "F5 Inc",
-        "權重": 3.0
+        "權重": 3.61
+      },
+      {
+        "代號": "ZS",
+        "名稱": "Zscaler Inc",
+        "權重": 3.59
       },
       {
         "代號": "RBRK",
         "名稱": "Rubrik Inc Class A Shares",
-        "權重": 2.78
+        "權重": 2.68
       }
     ]
   }
