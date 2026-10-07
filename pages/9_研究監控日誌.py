@@ -420,6 +420,19 @@ def close_on(closes: pd.DataFrame, symbol: str, iso: str | None = None) -> float
     return float(s.iloc[-1]) if not s.empty else None
 
 
+def base_price(r: dict) -> tuple[float | None, str]:
+    """這則推薦拿來算漲跌幅的「起算價」和它的計價單位，之後的現價／出場價必須是同一種單位：
+    - 有完整期權合約代碼（可查 Yahoo 報價）：進場權利金（權利金）。
+    - 純股票：進場價，沒寫就用推薦當下正股價（股價）。
+    - 「股票＋期權」或抓不到合約代碼的期權：原文的進場價常是權利金，不能跟正股價相比，
+      只能用推薦當下的正股價（正股）；沒有就算不出來。"""
+    if r["symbol"] != r["ticker"]:
+        return r["entry_px"], "權利金"
+    if r["kind"] == "股票":
+        return r["entry_px"] or r["rec_price"], "股價"
+    return r["rec_price"], "正股"
+
+
 def attach_returns(rows: list[dict], closes: pd.DataFrame, quotes: dict[str, tuple[float, str]] | None = None) -> None:
     """漲跌幅：
     - 買進推薦：推薦時的進場價 → 現在價格（股票用最新收盤；期權用 Yahoo 期權鏈的買賣中間價，沒有才用收盤）。
@@ -428,16 +441,16 @@ def attach_returns(rows: list[dict], closes: pd.DataFrame, quotes: dict[str, tup
     期權合約抓不到報價（例如已到期或原文沒寫完整到期日）時，改用推薦當下與現在的正股價格，並標明「正股」。"""
     for i, r in enumerate(rows):
         r["change"], r["basis"], r["px"] = float("nan"), "", None
-        unit = "權利金" if r["symbol"] != r["ticker"] else "股價"
+        buy_px, unit = base_price(r)
         if is_buy(r["action"]):
-            buy_px = r["entry_px"] or (r["rec_price"] if unit == "股價" else None)
             now_label = "最新收盤"
-            quote = (quotes or {}).get(r["symbol"])
+            quote = (quotes or {}).get(r["symbol"]) if unit == "權利金" else None
             if quote:
                 now_px, now_label = quote[0], f"現在{quote[1]}"
             else:
-                now_px = close_on(closes, r["symbol"])
-            if not (buy_px and now_px) and r["rec_price"]:
+                now_px = close_on(closes, r["symbol"] if unit != "正股" else r["ticker"])
+            if not (buy_px and now_px) and unit == "權利金" and r["rec_price"]:
+                # 期權抓不到報價：改用推薦當下與現在的正股價格（兩邊都是正股，才能相比）
                 buy_px, now_px, unit, now_label = r["rec_price"], close_on(closes, r["ticker"]), "正股", "最新收盤"
             if buy_px and now_px:
                 r["change"] = (now_px - buy_px) / buy_px * 100
@@ -452,10 +465,12 @@ def attach_returns(rows: list[dict], closes: pd.DataFrame, quotes: dict[str, tup
             continue
         b = ([x for x in earlier if x["symbol"] == r["symbol"]] or [x for x in earlier if x["site"] == r["site"]] or earlier)[-1]
         sym = b["symbol"]
-        unit = "權利金" if sym != b["ticker"] else "股價"
-        buy_px = b["entry_px"] or (b["rec_price"] if unit == "股價" else None)
-        exit_px = r["entry_px"] or close_on(closes, sym, r["published"])
-        if not (buy_px and exit_px) and b["rec_price"] and r["rec_price"]:
+        buy_px, unit = base_price(b)
+        if unit == "正股":  # 買進價是正股價，出場價也得是正股價（不能拿權利金限價來比）
+            exit_px = r["rec_price"] or close_on(closes, b["ticker"], r["published"])
+        else:
+            exit_px = r["entry_px"] or close_on(closes, sym, r["published"])
+        if not (buy_px and exit_px) and unit == "權利金" and b["rec_price"] and r["rec_price"]:
             buy_px, exit_px, unit = b["rec_price"], r["rec_price"], "正股"
         when = fmt_dt_taipei(b["published"])
         if buy_px and exit_px:
