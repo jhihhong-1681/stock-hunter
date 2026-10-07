@@ -1,6 +1,6 @@
 # Firstrade 未成交訂單追蹤（本機排程指令）
 
-這份檔案是**阿紘桌機上的本機排程**（Claude 桌面 app 的 scheduled task `firstrade-pending-orders`，平日台北 13:45）照做的指令。
+這份檔案是**阿紘桌機上的本機排程**（Claude 桌面 app 的 scheduled task `firstrade-pending-orders`，平日台北 09:30）照做的指令。
 只有這一段留在本機，因為它要用阿紘本機 Chrome 裡已登入的 Firstrade；其他每日快照資料由雲端排程照 `SNAPSHOT_TASK.md` 處理，電腦沒開也會跑。
 電腦沒開、或 Firstrade 登入逾時，這一段就跳過，不影響快照。要改規則就改這個檔案、push 到 main（本機排程每次執行會先 `git pull`）。
 
