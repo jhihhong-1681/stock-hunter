@@ -76,6 +76,8 @@ Firstrade 未成交訂單（`portfolio-calendar/pending_orders.js`）**不歸這
 
 `window.PORTFOLIO_HISTORY = [ { date, total, basis: "total_assets" }, ... ]`。該日期已存在就更新 total（= totals.totalAssets），否則依日期順序新增。
 
+**入金偵測**：日曆算報酬時要扣掉入金/出金。推算當天淨入金 = (本次總資產 − 上一份 holdings.js 總資產) − (本次未實現損益 − 上一份未實現損益) − (本次已實現損益 − 上一份已實現損益)。絕對值 ≥ 30,000 就在該日的 data.js 項目加 `deposit: <推算金額>`（出金為負、取整數），並在第 14 步結果摘要列出請阿紘確認實際金額；小於門檻不寫。已有人工填過 `deposit` 的日期，重跑時保留原值。
+
 ### 8. 寫入 `portfolio-calendar/indices.js`
 
 `window.INDEX_HISTORY = [ { date, taiex, sp500, nasdaq, sox }, ... ]`。該日期已存在就更新，否則依日期順序新增。照檔案裡既有格式，每個欄位後面用註解寫兩個來源的數字與比對結果。
@@ -135,6 +137,7 @@ push 被拒（remote 有新 commit，例如 ETF 持股、法人資料、本機 F
 - (e) 有期權的 Sheet 現價欄空白、underlyingPrice 留 null（列出 symbol）
 - (f) positions + closedPositions 的 realized 加總跟 Sheet 已實現損益對不上（差額多少；截斷本身已經是常態，補回後對得上就不用通知）
 - (g) 第 2 步整個讀取失敗、這次沒有寫入
+- (h) 偵測到入金/出金並寫入 deposit（金額、請阿紘確認）
 
 - 有新平倉或新開倉的部位，用一行帶過（例如「新平倉：MU、LPG；新部位：ET、SDGR 11/20 35C」）。
 - 最後一行附網站連結 https://jhihhong-stock-hunter-v2.streamlit.app/報酬日曆 。

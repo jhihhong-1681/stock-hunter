@@ -14,7 +14,7 @@ function expectedPrevBusinessDate(dateStr) {
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 }
 
-// dateStr(YYYY-MM-DD) -> { total, delta, pct, basisChange, gap }
+// dateStr(YYYY-MM-DD) -> { total, delta, pct, basisChange, gap, deposit, prevTotal }
 // basis 不同代表統計口徑換了（例如從「只算美股」換成「總資產」），沒辦法拿來算漲跌，
 // 跟資料的第一天一樣當作沒有前一天可比較。
 // 中間漏了交易日快照（gap=true）不會再留白：直接拿「最近一筆有資料的前一天」當基準算漲跌，
@@ -22,17 +22,18 @@ function expectedPrevBusinessDate(dateStr) {
 // 不是單一交易日報酬，畫月曆時要額外標記提醒，不能讓它看起來跟一般單日報酬一樣。
 const dailyMap = new Map();
 for (let i = 0; i < rawHistory.length; i++) {
-  const { date, total, basis } = rawHistory[i];
+  const { date, total, basis, deposit = 0 } = rawHistory[i];
   const prev = i > 0 ? rawHistory[i - 1] : null;
   const basisChanged = !!prev && !!prev.basis && !!basis && prev.basis !== basis;
   const hasGap = !!prev && !basisChanged && prev.date !== expectedPrevBusinessDate(date);
   if (!prev || basisChanged) {
-    dailyMap.set(date, { total, delta: null, pct: null, basisChange: basisChanged, gap: hasGap });
+    dailyMap.set(date, { total, delta: null, pct: null, basisChange: basisChanged, gap: hasGap, deposit });
   } else {
     const prevTotal = prev.total;
-    const delta = total - prevTotal;
+    // deposit = 當天淨入金(NT$，出金為負)，要從資產變化裡扣掉，才是真正的投資損益
+    const delta = total - prevTotal - deposit;
     const pct = prevTotal !== 0 ? (delta / prevTotal) * 100 : null;
-    dailyMap.set(date, { total, delta, pct, basisChange: false, gap: hasGap });
+    dailyMap.set(date, { total, delta, pct, basisChange: false, gap: hasGap, deposit, prevTotal });
   }
 }
 
@@ -282,15 +283,19 @@ function render() {
       hasAnyData = true;
       monthDelta += info.delta;
       if (monthStartTotal === null) {
-        monthStartTotal = info.total - info.delta;
+        monthStartTotal = info.prevTotal;
       }
       amountEl.textContent = fmtAmountShort(info.delta);
-      pctEl.textContent = fmtPct(info.pct) + (info.gap ? " ⚠" : "");
+      pctEl.textContent = fmtPct(info.pct) + (info.gap ? " ⚠" : "") + (info.deposit ? (info.deposit > 0 ? " 💰" : " 🏧") : "");
       totalEl.textContent = Math.round(info.total).toLocaleString("en-US");
       const cls = levelClass(info.pct);
       if (cls) cell.classList.add(cls);
       if (info.gap) {
         cell.title = "中間有排程漏跑的交易日缺資料，這個報酬率是橋接多天的累積報酬，不是單一交易日報酬";
+      }
+      if (info.deposit) {
+        const dep = (info.deposit > 0 ? "入金 " : "出金 ") + "NT$" + Math.abs(Math.round(info.deposit)).toLocaleString("en-US");
+        cell.title = (cell.title ? cell.title + "；" : "") + dep + "（已從當天損益與報酬率扣除）";
       }
       cell.classList.add("clickable");
       cell.addEventListener("click", () => toggleDayDetail(dateStr, cell));
@@ -952,6 +957,7 @@ const THEME_MAP = {
   ASTS: "國防太空",
   RKLB: "國防太空",
   VOYG: "國防太空",
+  RDW: "國防太空",
   MRCY: "國防太空",
   MP: "稀土關鍵金屬",
   NU: "金融科技",

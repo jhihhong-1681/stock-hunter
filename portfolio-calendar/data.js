@@ -2,6 +2,8 @@
 // - 2026-04-30 ~ 2026-07-17：用交易紀錄(CSV)反推持股數 + 歷史收盤價/匯率重建，
 //   basis 是 "us_stock"，只算「美股帳戶」(股票市值+美股現金)，不含台幣現金/期貨/加密貨幣。
 //   已對照月結表(4/30, 5/30, 6/30 美股總資產)校驗，誤差在 ±2.3% 內。
+// - deposit(選填)：當天淨入金 NT$（出金寫負數）。日曆算損益/報酬率時會從資產變化扣掉，月/年累積報酬也不含入金。
+//   2026-10-06 的 146151 是推算值（Δ總資產 − Δ未實現損益 − Δ已實現損益），阿紘知道實際金額可以直接改這個數字。
 // - 2026-07-18 起：basis 是 "total_assets"，是每天排程任務讀到的「總資產」(含全部帳戶)，
 //   跟前面的 us_stock 基準不同，所以日曆算報酬時這個交界不會硬算差額(見 app.js dailyMap)。
 window.PORTFOLIO_HISTORY = [
@@ -111,5 +113,5 @@ window.PORTFOLIO_HISTORY = [
   { date: "2026-10-01", total: 918856, basis: "total_assets" },
   { date: "2026-10-02", total: 958688, basis: "total_assets" },
   { date: "2026-10-05", total: 971998, basis: "total_assets" },
-  { date: "2026-10-06", total: 1128533, basis: "total_assets" }
+  { date: "2026-10-06", total: 1128533, basis: "total_assets", deposit: 146151 }
 ];
