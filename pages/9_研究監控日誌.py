@@ -356,9 +356,10 @@ def option_symbol(ticker: str, contract: str | None, published: str | None = Non
     m = OCC_RE.search(contract)
     if m and m.group(1) == ticker:
         return m.group(0)
-    strike = re.search(r"履約價\s*\$?\s*([\d.]+)", contract)
+    strike = re.search(r"履約價\s*\$?\s*([\d.]+)|(?:strike\s*\$?|\$)\s*([\d.]+)\s*(?:Call|Put)|([\d.]+)\s*(?:美元\s*)?(?:Call|Put|買權|賣權)", contract, re.I)
     if not strike:
         return None
+    strike_px = next(g for g in strike.groups() if g)
     exp = EXPIRY_RE.search(contract)
     if exp:
         y, mo, d = exp.group(1), int(exp.group(2)), int(exp.group(3))
@@ -368,7 +369,7 @@ def option_symbol(ticker: str, contract: str | None, published: str | None = Non
             return None
         y, mo, d = iso[:4], int(iso[5:7]), int(iso[8:])
     cp = "P" if re.search(r"Put|賣權", contract, re.I) else "C"
-    return f"{ticker}{y[2:]}{mo:02d}{d:02d}{cp}{round(float(strike.group(1)) * 1000):08d}"
+    return f"{ticker}{y[2:]}{mo:02d}{d:02d}{cp}{round(float(strike_px) * 1000):08d}"
 
 
 def is_listed(r: dict) -> bool:
@@ -405,6 +406,12 @@ def build_rows(days: dict[str, dict]) -> list[dict]:
                 contract = pick_segment(e.get("contract"), t, multi)
                 entry = pick_segment(e.get("entry"), t, multi)
                 kind = kind_of(e, contract)
+                if "期權" in kind and not multi and not option_symbol(t, contract, a.get("publishedAtUtc")):
+                    # 抓取欄位漏寫合約時，不再花 token 重抓：直接從這篇的備註／摘要／標題用規則補（單一標的才補，避免抓錯檔）。
+                    extra = " ".join(str(x) for x in (e.get("note"), a.get("summary"), a.get("title")) if x)
+                    merged = f"{contract or ''} {extra}".strip()
+                    if option_symbol(t, merged, a.get("publishedAtUtc")):
+                        contract = merged
                 # 「股票＋期權」拆成兩列：股票用正股價算，期權用權利金算，互不混用。
                 legs = [("stock", "股票"), ("option", "期權")] if kind == "股票＋期權" else [(None, kind)]
                 for leg, lkind in legs:
