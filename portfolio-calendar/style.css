@@ -408,6 +408,14 @@ body {
   box-shadow: 0 0 0 1px #ff5c5c inset;
 }
 
+.theme-parent-tag {
+  font-size: 10px;
+  color: #7d8590;
+  border: 1px solid #2a303c;
+  border-radius: 4px;
+  padding: 0 5px;
+}
+
 .theme-row-symbols {
   font-size: 11px;
   color: #7d8590;

@@ -937,86 +937,139 @@ function renderYtdChart() {
 
 const holdingsSummaryEl = document.getElementById("holdingsSummary");
 const themeExposureEl = document.getElementById("themeExposure");
+const themeSubExposureEl = document.getElementById("themeSubExposure");
 const expiryListEl = document.getElementById("expiryList");
 const holdingsListEl = document.getElementById("holdingsList");
 const holdingsFooterEl = document.getElementById("holdingsFooter");
 
-// 股票代號 -> 主題分類，手動維護。新增持股時要記得補上對照，不然會被歸到「未分類」。
+// 股票代號 -> 細分產業（手動維護；依公司主要業務與未來布局判斷）。新增持股時要記得補上對照，不然會被歸到「未分類」。
+// 細分產業再由 THEME_PARENT 歸到大類，主題曝險會同時顯示兩層。
 const THEME_MAP = {
-  MU: "AI基建/半導體",
-  AVGO: "AI基建/半導體",
-  IBM: "AI基建/半導體",
-  NBIL: "AI基建/半導體",
-  VRT: "AI基建/半導體",
-  ALGM: "AI基建/半導體",
-  NET: "資安/軟體",
-  PLTR: "資安/軟體",
-  MSFL: "資安/軟體",
-  SMR: "核能",
-  UUUU: "核能",
-  ASTS: "國防太空",
-  RKLB: "國防太空",
-  VOYG: "國防太空",
-  RDW: "國防太空",
-  MRCY: "國防太空",
-  MP: "稀土關鍵金屬",
-  NU: "金融科技",
-  HOOD: "金融科技",
-  VPG: "機器人",
-  BHE: "機器人",
-  BMNR: "加密貨幣",
-  XOM: "能源/石油",
-  CRGY: "能源/石油",
-  HAL: "能源/石油",
-  GSK: "醫療保健",
-  FVRR: "消費網路",
-  UGL: "貴金屬避險",
-  B: "貴金屬避險",
-  CAG: "民生消費",
-  SMCI: "AI基建/半導體",
-  ONDS: "國防太空",
-  SOFI: "金融科技",
-  SBET: "加密貨幣",
-  AESI: "能源/石油",
-  MSTR: "加密貨幣",
-  PBR: "能源/石油",
-  CLF: "能源/石油",
-  SLV: "貴金屬避險",
-  VIAV: "網通設備",
-  MBOT: "機器人",
-  PRZO: "國防太空",
-  HIVE: "加密貨幣",
-  IBIT: "加密貨幣",
-  SOUN: "資安/軟體",
-  CPRT: "消費網路",
-  INTC: "AI基建/半導體",
-  AGX: "能源/石油",
-  GLD: "貴金屬避險",
-  NVO: "醫療保健",
-  AEO: "民生消費",
-  CRDO: "AI基建/半導體",
-  STM: "AI基建/半導體",
-  CLSK: "加密貨幣",
-  FLYW: "金融科技",
-  SRPT: "醫療保健",
-  CCL: "民生消費",
-  BP: "能源/石油",
-  QUBT: "量子電腦",
-  HPQ: "AI基建/半導體",
-  BULL: "金融科技",
-  SPCX: "國防太空",
+  SPCX: "太空-發射與太空基建",
+  RKLB: "太空-發射與太空基建",
+  RDW: "太空-發射與太空基建",
+  VOYG: "太空-發射與太空基建",
+  ASTS: "太空-衛星通訊",
+  MRCY: "國防-電子系統",
+  ONDS: "國防-無人機",
+  PRZO: "國防-無人機",
+  SMR: "核能-小型反應爐",
+  UUUU: "核能-鈾燃料",
+  MP: "稀土與關鍵金屬",
+  UGL: "黃金",
+  GLD: "黃金",
+  B: "黃金",
+  SLV: "白銀",
+  MU: "AI-記憶體",
+  AVGO: "AI-客製晶片與高速連接",
+  CRDO: "AI-客製晶片與高速連接",
+  ALGM: "類比與功率半導體",
+  STM: "類比與功率半導體",
+  INTC: "晶圓代工與CPU",
+  SMCI: "AI-伺服器",
+  VRT: "AI-資料中心電力散熱",
+  NBIL: "AI-雲端算力",
+  VIAV: "光通訊與網通測試",
+  NET: "資安與網路服務",
+  BB: "資安與網路服務",
+  PLTR: "數據與AI軟體",
+  SOUN: "數據與AI軟體",
+  IBM: "企業IT與混合雲",
+  MSFL: "大型科技",
   MAGS: "大型科技",
-  CAT: "工業",
-  XLI: "工業",
-  LPG: "能源/石油",
-  BB: "資安/軟體",
-  ET: "能源/石油",
-  SDGR: "醫療保健"
+  QUBT: "量子電腦",
+  HIVE: "比特幣挖礦",
+  CLSK: "比特幣挖礦",
+  MSTR: "加密財庫與ETF",
+  IBIT: "加密財庫與ETF",
+  BMNR: "加密財庫與ETF",
+  SBET: "加密財庫與ETF",
+  XOM: "石油-綜合大廠",
+  BP: "石油-綜合大廠",
+  PBR: "石油-綜合大廠",
+  CRGY: "石油-上游開採",
+  HAL: "石油-油服",
+  AESI: "石油-油服",
+  ET: "能源-中游管線",
+  LPG: "能源-LPG運輸",
+  GSK: "大型製藥",
+  NVO: "大型製藥",
+  SRPT: "生技-基因治療",
+  SDGR: "生技-AI藥物研發",
+  MBOT: "醫療器材",
+  NU: "數位銀行",
+  SOFI: "數位銀行",
+  HOOD: "線上券商",
+  BULL: "線上券商",
+  FLYW: "跨境支付",
+  CAG: "消費-食品",
+  AEO: "消費-服飾零售",
+  CCL: "消費-旅遊",
+  HPQ: "消費-PC與硬體",
+  FVRR: "網路平台",
+  CPRT: "網路平台",
+  CAT: "工業-重型機械",
+  XLI: "工業-綜合ETF",
+  VPG: "工業-精密感測",
+  BHE: "工業-電子製造代工",
+  AGX: "工業-電力工程",
+  CLF: "鋼鐵"
+};
+
+const THEME_PARENT = {
+  "太空-發射與太空基建": "太空國防",
+  "太空-衛星通訊": "太空國防",
+  "國防-電子系統": "太空國防",
+  "國防-無人機": "太空國防",
+  "核能-小型反應爐": "核能",
+  "核能-鈾燃料": "核能",
+  "稀土與關鍵金屬": "關鍵金屬",
+  "黃金": "貴金屬",
+  "白銀": "貴金屬",
+  "AI-記憶體": "AI與半導體",
+  "AI-客製晶片與高速連接": "AI與半導體",
+  "類比與功率半導體": "AI與半導體",
+  "晶圓代工與CPU": "AI與半導體",
+  "AI-伺服器": "AI與半導體",
+  "AI-資料中心電力散熱": "AI與半導體",
+  "AI-雲端算力": "AI與半導體",
+  "光通訊與網通測試": "AI與半導體",
+  "資安與網路服務": "軟體與資安",
+  "數據與AI軟體": "軟體與資安",
+  "企業IT與混合雲": "軟體與資安",
+  "大型科技": "大型科技",
+  "量子電腦": "量子電腦",
+  "比特幣挖礦": "加密貨幣",
+  "加密財庫與ETF": "加密貨幣",
+  "石油-綜合大廠": "石油與能源",
+  "石油-上游開採": "石油與能源",
+  "石油-油服": "石油與能源",
+  "能源-中游管線": "石油與能源",
+  "能源-LPG運輸": "石油與能源",
+  "大型製藥": "醫療保健",
+  "生技-基因治療": "醫療保健",
+  "生技-AI藥物研發": "醫療保健",
+  "醫療器材": "醫療保健",
+  "數位銀行": "金融科技",
+  "線上券商": "金融科技",
+  "跨境支付": "金融科技",
+  "消費-食品": "消費與網路平台",
+  "消費-服飾零售": "消費與網路平台",
+  "消費-旅遊": "消費與網路平台",
+  "消費-PC與硬體": "消費與網路平台",
+  "網路平台": "消費與網路平台",
+  "工業-重型機械": "工業與材料",
+  "工業-綜合ETF": "工業與材料",
+  "工業-精密感測": "工業與材料",
+  "工業-電子製造代工": "工業與材料",
+  "工業-電力工程": "工業與材料",
+  "鋼鐵": "工業與材料"
 };
 
 const THEME_COLORS = [
   "#4da3ff", "#2fbf6a", "#ff8a3d", "#b96bff", "#f5c518",
-  "#ff5c5c", "#3ddad7", "#e879b9", "#9aa0a8", "#7ee787", "#ffb454"
+  "#ff5c5c", "#3ddad7", "#e879b9", "#9aa0a8", "#7ee787", "#ffb454",
+  "#6e8bff", "#c9a227", "#5fd1a3", "#d98cff", "#ff9e9e", "#8fd0ff"
 ];
 
 function fmtUsd(n) {
@@ -1030,46 +1083,42 @@ function fmtUsd2(n) {
   return "$" + Number(n).toLocaleString("en-US", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
 }
 
-// 單一主題占持股現值超過這個比例就視為集中度偏高，跟 daily-risk-signal-monitor skill 用的門檻一致。
+// 單一大類占持股現值超過這個比例就視為集中度偏高，跟 daily-risk-signal-monitor skill 用的門檻一致。
 const THEME_CONCENTRATION_THRESHOLD = 20;
+// 細分產業切得比較細，門檻放寬一點抓「單一細項押太重」。
+const SUBTHEME_CONCENTRATION_THRESHOLD = 10;
 
-// 依 THEME_MAP 把持股現值分組加總，畫成橫向比例條，看整體主題曝險集中度。
-function renderThemeExposure(positions) {
-  if (!positions.length) {
-    themeExposureEl.innerHTML = "";
-    return;
-  }
-
+// 把持股現值依 keyFn 分組加總，畫成橫向比例條，看曝險集中度。
+function renderExposureRows(positions, keyFn, threshold, labelFn) {
   const totals = new Map();
-  const symbolsByTheme = new Map();
+  const symbolsByKey = new Map();
   for (const p of positions) {
-    const theme = THEME_MAP[p.symbol] || "未分類";
-    totals.set(theme, (totals.get(theme) || 0) + (p.value || 0));
-    if (!symbolsByTheme.has(theme)) symbolsByTheme.set(theme, []);
-    symbolsByTheme.get(theme).push(p.symbol);
+    const key = keyFn(p.symbol);
+    totals.set(key, (totals.get(key) || 0) + (p.value || 0));
+    if (!symbolsByKey.has(key)) symbolsByKey.set(key, new Map());
+    const m = symbolsByKey.get(key);
+    m.set(p.symbol, (m.get(p.symbol) || 0) + (p.value || 0));
   }
 
   const grandTotal = [...totals.values()].reduce((a, b) => a + b, 0);
-  if (grandTotal <= 0) {
-    themeExposureEl.innerHTML = "";
-    return;
-  }
+  if (grandTotal <= 0) return "";
 
   const rows = [...totals.entries()].sort((a, b) => b[1] - a[1]);
 
-  themeExposureEl.innerHTML = rows
-    .map(([theme, value], i) => {
+  return rows
+    .map(([key, value], i) => {
       const pct = (value / grandTotal) * 100;
       const color = THEME_COLORS[i % THEME_COLORS.length];
-      const symbols = symbolsByTheme.get(theme).join("、");
-      const isOver = pct > THEME_CONCENTRATION_THRESHOLD;
+      const symbols = [...symbolsByKey.get(key).entries()].sort((a, b) => b[1] - a[1]).map(([s]) => s).join("、");
+      const isOver = pct > threshold;
       const warnBadge = isOver
-        ? `<span class="theme-warn-badge" title="單一主題占持股現值超過 ${THEME_CONCENTRATION_THRESHOLD}%">⚠ 集中度偏高</span>`
+        ? `<span class="theme-warn-badge" title="占持股現值超過 ${threshold}%">⚠ 集中度偏高</span>`
         : "";
       return `
         <div class="theme-row ${isOver ? "theme-row-warn" : ""}">
           <div class="theme-row-label">
-            <span class="legend-dot" style="background:${color}"></span>${theme}
+            <span class="legend-dot" style="background:${color}"></span>${key}
+            ${labelFn ? labelFn(key) : ""}
             ${warnBadge}
             <span class="theme-row-value">${fmtAmount(value).replace(/^[+-]/, "")}（${pct.toFixed(1)}%）</span>
           </div>
@@ -1081,6 +1130,24 @@ function renderThemeExposure(positions) {
       `;
     })
     .join("");
+}
+
+// 依 THEME_MAP / THEME_PARENT 把持股現值分成「大類」跟「細分產業」兩層來看曝險。
+function renderThemeExposure(positions) {
+  if (!positions.length) {
+    themeExposureEl.innerHTML = "";
+    themeSubExposureEl.innerHTML = "";
+    return;
+  }
+  const fineOf = (sym) => THEME_MAP[sym] || "未分類";
+  const parentOf = (sym) => THEME_PARENT[fineOf(sym)] || fineOf(sym);
+  themeExposureEl.innerHTML = renderExposureRows(positions, parentOf, THEME_CONCENTRATION_THRESHOLD);
+  themeSubExposureEl.innerHTML = renderExposureRows(
+    positions,
+    fineOf,
+    SUBTHEME_CONCENTRATION_THRESHOLD,
+    (k) => (THEME_PARENT[k] && THEME_PARENT[k] !== k ? `<span class="theme-parent-tag">${THEME_PARENT[k]}</span>` : "")
+  );
 }
 
 // holdings.js 的 name 欄位對選擇權是純文字，例如 "XOM 08/21/26 125 Call"，
