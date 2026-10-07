@@ -314,20 +314,61 @@ OCC_RE = re.compile(r"\b([A-Z]{1,6})(\d{6})([CP])(\d{8})\b")
 EXPIRY_RE = re.compile(r"(\d{4})/(\d{1,2})/(\d{1,2})\s*到期")
 
 
-def option_symbol(ticker: str, contract: str | None) -> str | None:
+MONTH_RE = re.compile(r"(?:(\d{4})\s*[年/\-]\s*)?(\d{1,2})\s*月(?!\s*\d{1,2}\s*日)")
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def listed_expiries(ticker: str) -> list[str]:
+    """Yahoo 期權鏈目前有掛牌的到期日（YYYY-MM-DD）。查不到就回空清單。"""
+    try:
+        return list(yf.Ticker(ticker).options)
+    except Exception:
+        return []
+
+
+def resolve_month_expiry(ticker: str, contract: str, published: str | None) -> str | None:
+    """原文只寫「明年1月的 Call」「2027年1月到期」這種只有月份的推薦，去 Yahoo 期權鏈找那個月實際有的到期日
+    （遠月通常只有一個；有好幾個就取該月第三個週五，也就是標準月選擇權）。沒寫年份就取推薦日之後最近的那個月份。"""
+    m = MONTH_RE.search(contract or "")
+    if not m:
+        return None
+    month = int(m.group(2))
+    try:
+        pub = datetime.fromisoformat((published or "").replace("Z", "+00:00"))
+    except ValueError:
+        pub = datetime.now(timezone.utc)
+    year = int(m.group(1)) if m.group(1) else pub.year + (1 if month < pub.month or (month == pub.month and pub.day > 21) else 0)
+    if "明年" in contract and not m.group(1):
+        year = pub.year + 1
+    cands = [e for e in listed_expiries(ticker) if e.startswith(f"{year}-{month:02d}-")]
+    if len(cands) > 1:
+        monthly = [e for e in cands if datetime.strptime(e, "%Y-%m-%d").weekday() == 4 and 15 <= int(e[-2:]) <= 21]
+        cands = monthly or cands
+    return cands[0] if cands else None
+
+
+def option_symbol(ticker: str, contract: str | None, published: str | None = None) -> str | None:
     """期權合約的 Yahoo 代碼（OCC 格式，例如 RKLB261016C00072000）。原文有寫就直接用，
-    沒寫就從「2026/10/16到期・履約價72美元 Call」拼出來；缺到期日（例如只寫「1月到期」）就放棄。"""
+    沒寫就從「2026/10/16到期・履約價72美元 Call」拼出來；只寫月份（例如「1月到期」）就去 Yahoo 期權鏈
+    查那個月份實際的到期日；查不到才放棄。"""
     if not contract:
         return None
     m = OCC_RE.search(contract)
     if m and m.group(1) == ticker:
         return m.group(0)
-    exp = EXPIRY_RE.search(contract)
     strike = re.search(r"履約價\s*\$?\s*([\d.]+)", contract)
-    if not exp or not strike:
+    if not strike:
         return None
+    exp = EXPIRY_RE.search(contract)
+    if exp:
+        y, mo, d = exp.group(1), int(exp.group(2)), int(exp.group(3))
+    else:
+        iso = resolve_month_expiry(ticker, contract, published)
+        if not iso:
+            return None
+        y, mo, d = iso[:4], int(iso[5:7]), int(iso[8:])
     cp = "P" if re.search(r"Put|賣權", contract, re.I) else "C"
-    return f"{ticker}{exp.group(1)[2:]}{int(exp.group(2)):02d}{int(exp.group(3)):02d}{cp}{round(float(strike.group(1)) * 1000):08d}"
+    return f"{ticker}{y[2:]}{mo:02d}{d:02d}{cp}{round(float(strike.group(1)) * 1000):08d}"
 
 
 def is_listed(r: dict) -> bool:
@@ -336,7 +377,20 @@ def is_listed(r: dict) -> bool:
     （市價買進仍保留在 rows 裡，讓賣出警報往前找買進紀錄時用得到）。要先跑過 attach_returns。"""
     if is_exit(r["action"]):
         return not pd.isna(r.get("change", float("nan")))
-    return bool(r["entry_px"]) and "調整" not in r["action"]
+    return (bool(r["entry_px"]) or (r.get("leg") == "stock" and bool(r["rec_price"]))) and "調整" not in r["action"]
+
+
+def leg_segment(entry: str | None, leg: str | None) -> str | None:
+    """「股票＋期權」的進場文字常是「股票限價X；Call限價Y」，依分段取出屬於這一腳的那段；
+    分不出來時，唯一的一個價格當成權利金（期權腳），股票腳就沒有進場價（改用推薦當下正股價）。"""
+    if not entry or not leg:
+        return entry
+    segs = [x.strip() for x in re.split(r"[；;]", entry) if x.strip()]
+    stock_rx, opt_rx = re.compile(r"股票|正股|股價"), re.compile(r"期權|Call|Put|買權|賣權|權利金|合約", re.I)
+    pick = [x for x in segs if (stock_rx if leg == "stock" else opt_rx).search(x) and not (leg == "stock" and opt_rx.search(x))]
+    if pick:
+        return "；".join(pick)
+    return None if leg == "stock" else entry
 
 
 def build_rows(days: dict[str, dict]) -> list[dict]:
@@ -351,16 +405,21 @@ def build_rows(days: dict[str, dict]) -> list[dict]:
                 contract = pick_segment(e.get("contract"), t, multi)
                 entry = pick_segment(e.get("entry"), t, multi)
                 kind = kind_of(e, contract)
-                occ = option_symbol(t, contract) if kind == "期權" else None
-                key = (a.get("url") or a.get("title"), a.get("publishedAtUtc"), t)
-                rows[key] = {
-                    "ticker": t, "published": a.get("publishedAtUtc") or "",
-                    "kind": kind, "action": e.get("action") or "", "entry": entry, "contract": contract,
-                    "site": a.get("site"), "analyst": detect_analyst(a), "url": a.get("url"),
-                    "rec_price": rec_price_for(e.get("currentPrice"), t, multi),
-                    # 計價標的：期權用合約本身（比權利金），股票（含「股票＋期權」）用正股。
-                    "symbol": occ or t, "entry_px": price_in(entry),
-                }
+                # 「股票＋期權」拆成兩列：股票用正股價算，期權用權利金算，互不混用。
+                legs = [("stock", "股票"), ("option", "期權")] if kind == "股票＋期權" else [(None, kind)]
+                for leg, lkind in legs:
+                    lentry = leg_segment(entry, leg)
+                    lcontract = contract if lkind == "期權" else None
+                    occ = option_symbol(t, contract, a.get("publishedAtUtc")) if lkind == "期權" else None
+                    key = (a.get("url") or a.get("title"), a.get("publishedAtUtc"), t, leg)
+                    rows[key] = {
+                        "ticker": t, "published": a.get("publishedAtUtc") or "", "leg": leg,
+                        "kind": lkind, "action": e.get("action") or "", "entry": lentry, "contract": lcontract,
+                        "site": a.get("site"), "analyst": detect_analyst(a), "url": a.get("url"),
+                        "rec_price": rec_price_for(e.get("currentPrice"), t, multi),
+                        # 計價標的：期權用合約本身（比權利金），股票用正股。
+                        "symbol": occ or t, "entry_px": price_in(lentry),
+                    }
     return sorted(rows.values(), key=lambda r: r["published"])
 
 
@@ -526,7 +585,7 @@ def short_action(action: str) -> str:
 
 def contract_info(r: dict) -> tuple[str, int | None]:
     """合約欄的短寫法（股票／10/16 72C）和離到期還剩幾天；「股票＋期權」兩個都寫。"""
-    occ = option_symbol(r["ticker"], r["contract"]) if "期權" in r["kind"] else None
+    occ = option_symbol(r["ticker"], r["contract"], r["published"]) if "期權" in r["kind"] else None
     m = OCC_RE.fullmatch(occ) if occ else None
     if not m:
         return ("股票" if r["kind"] != "期權" else "期權"), None
