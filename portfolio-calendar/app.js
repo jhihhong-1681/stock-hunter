@@ -1088,19 +1088,24 @@ const THEME_CONCENTRATION_THRESHOLD = 20;
 // 細分產業切得比較細，門檻放寬一點抓「單一細項押太重」。
 const SUBTHEME_CONCENTRATION_THRESHOLD = 10;
 
+// 槓桿 ETF 的曝險倍數（曝險 = 現值 × 倍數）。新增槓桿 ETF 時要補在這裡。
+const EXPOSURE_LEVERAGE = { UGL: 2, NBIL: 2, MSFL: 2 };
+
 // 把持股現值依 keyFn 分組加總，畫成橫向比例條，看曝險集中度。
 function renderExposureRows(positions, keyFn, threshold, labelFn) {
   const totals = new Map();
   const symbolsByKey = new Map();
   for (const p of positions) {
     const key = keyFn(p.symbol);
-    totals.set(key, (totals.get(key) || 0) + (p.value || 0));
+    const exposure = (p.value || 0) * (EXPOSURE_LEVERAGE[p.symbol] || 1);
+    totals.set(key, (totals.get(key) || 0) + exposure);
     if (!symbolsByKey.has(key)) symbolsByKey.set(key, new Map());
     const m = symbolsByKey.get(key);
-    m.set(p.symbol, (m.get(p.symbol) || 0) + (p.value || 0));
+    m.set(p.symbol, (m.get(p.symbol) || 0) + exposure);
   }
 
-  const grandTotal = [...totals.values()].reduce((a, b) => a + b, 0);
+  // 分母用實際持股現值（不含槓桿），所以槓桿 ETF 會讓各項加總超過 100%
+  const grandTotal = positions.reduce((a, p) => a + (p.value || 0), 0);
   if (grandTotal <= 0) return "";
 
   const rows = [...totals.entries()].sort((a, b) => b[1] - a[1]);
@@ -1109,7 +1114,10 @@ function renderExposureRows(positions, keyFn, threshold, labelFn) {
     .map(([key, value], i) => {
       const pct = (value / grandTotal) * 100;
       const color = THEME_COLORS[i % THEME_COLORS.length];
-      const symbols = [...symbolsByKey.get(key).entries()].sort((a, b) => b[1] - a[1]).map(([s]) => s).join("、");
+      const symbols = [...symbolsByKey.get(key).entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([s]) => (EXPOSURE_LEVERAGE[s] ? `${s}(${EXPOSURE_LEVERAGE[s]}x)` : s))
+        .join("、");
       const isOver = pct > threshold;
       const warnBadge = isOver
         ? `<span class="theme-warn-badge" title="占持股現值超過 ${threshold}%">⚠ 集中度偏高</span>`
@@ -1124,7 +1132,7 @@ function renderExposureRows(positions, keyFn, threshold, labelFn) {
           </div>
           <div class="theme-row-symbols" style="color:${color}">${symbols}</div>
           <div class="theme-bar-track">
-            <div class="theme-bar-fill" style="width:${pct.toFixed(2)}%;background:${color};"></div>
+            <div class="theme-bar-fill" style="width:${Math.min(pct, 100).toFixed(2)}%;background:${color};"></div>
           </div>
         </div>
       `;
