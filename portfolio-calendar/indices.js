@@ -449,5 +449,12 @@ window.INDEX_HISTORY = [
     sp500: -0.22,   // S&P 500（來源A Yahoo被網路擋住；WebSearch收盤7,801.77/-17.16點/-0.22%，前日7,818.95驗算吻合，Yahoo/TheStreet報導一致，採用）
     nasdaq: -0.22,  // 那斯達克綜合指數（來源A Yahoo被網路擋住；WebSearch收盤27,538.69/-0.22%，前日27,599.79驗算吻合，採用）
     sox: null       // 費城半導體指數（查不到10/7收盤的可靠來源，留 null）
+  },
+  {
+    date: "2026-10-08",
+    taiex: -0.99,   // 台股加權指數（來源A Yahoo被網路擋住；WebSearch 10/8收盤49,313.44，-492.93點/-0.99%，前一交易日49,806.37自行驗算吻合，Yahoo股市/ETtoday等報導一致，採用）
+    sp500: -0.47,   // S&P 500（來源A Yahoo被網路擋住；WebSearch收盤7,765.36/-0.47%，前日7,801.77驗算吻合，Yahoo/Motley Fool一致，採用）
+    nasdaq: -1.25,  // 那斯達克綜合指數（來源A Yahoo被網路擋住；WebSearch收盤27,193.34/-1.25%，前日27,538.69驗算吻合，採用）
+    sox: -3.4       // 費城半導體指數（來源A Yahoo被網路擋住；WebSearch TheStreet與Investing.com皆報收跌約3.4%，一致，採用；無精確點數）
   }
 ];
