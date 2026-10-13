@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>交易紀錄</title>
+<script src="holdings.js"></script>
+<style>
+:root {
+  --bg: #0d1117; --panel: #14181f; --panel2: #1b2029; --line: #232833;
+  --text: #e6e6e6; --muted: #7d8590; --accent: #4da3ff; --gain: #ff5c5c; --loss: #2fbf6a; --warn: #f5c518;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.5 -apple-system, "Segoe UI", "Noto Sans TC", sans-serif; padding: 16px; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+.note { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+.tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.tab { background: var(--panel2); border: 1px solid var(--line); color: var(--muted); padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+.tab.active { color: var(--text); border-color: var(--accent); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+.panel h2 { font-size: 14px; margin: 0 0 10px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+label { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; color: var(--muted); }
+input, select, textarea { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 6px 8px; font-size: 13px; outline: none; font-family: inherit; }
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+textarea { resize: vertical; min-height: 54px; }
+button { background: var(--panel2); border: 1px solid var(--line); color: var(--text); padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+button.primary { border-color: var(--accent); color: var(--accent); }
+button:hover { border-color: var(--accent); }
+.metrics { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-top: 12px; }
+.m { background: var(--panel2); border-radius: 8px; padding: 8px 10px; }
+.m .k { color: var(--muted); font-size: 11px; }
+.m .v { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.checks { margin: 12px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }
+.checks li { background: var(--panel2); border-radius: 6px; padding: 6px 10px; }
+.hint { color: var(--muted); font-size: 11.5px; margin-top: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: right; white-space: nowrap; }
+th:first-child, td:first-child, td.l, th.l { text-align: left; }
+th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--panel); }
+.scroll { overflow-x: auto; max-height: 460px; overflow-y: auto; }
+.gain { color: var(--gain); } .loss { color: var(--loss); }
+.row-actions button { padding: 2px 8px; font-size: 11px; }
+.hidden { display: none; }
+.wide { grid-column: 1 / -1; }
+</style>
+</head>
+<body>
+<h1>交易紀錄</h1>
+<div class="note">期權下單前的檢查、金字塔加碼試算，以及自己的交易紀錄。紀錄只存在這台電腦的瀏覽器（不會上傳），記得定期按「匯出 CSV」備份。</div>
+
+<div class="tabs">
+  <button class="tab active" data-tab="calc">下單前檢查</button>
+  <button class="tab" data-tab="pyr">金字塔加碼試算</button>
+  <button class="tab" data-tab="log">交易紀錄</button>
+</div>
+
+<!-- ============ 下單前檢查 ============ -->
+<section id="tab-calc">
+  <div class="panel">
+    <h2>合約資料</h2>
+    <div class="grid">
+      <label>標的代號<input id="c_sym" placeholder="例如 GLD"></label>
+      <label>標的現價 (USD)<input id="c_S" type="number" step="0.01"></label>
+      <label>履約價<input id="c_K" type="number" step="0.01"></label>
+      <label>權利金（每股）<input id="c_P" type="number" step="0.01"></label>
+      <label>口數<input id="c_n" type="number" step="1" value="1"></label>
+      <label>到期日<input id="c_exp" type="date"></label>
+      <label>買進日<input id="c_buy" type="date"></label>
+      <label>隱含波動率 IV %（估 Delta 用）<input id="c_iv" type="number" step="1" value="50"></label>
+      <label>標的停損價（你自己訂）<input id="c_stopS" type="number" step="0.01"></label>
+      <label>總資產 (USD)<input id="c_assets" type="number" step="1"></label>
+    </div>
+    <div class="metrics" id="c_metrics"></div>
+    <ul class="checks" id="c_checks"></ul>
+    <div class="hint">Delta、槓桿與停損價的權利金用 Black-Scholes 估算（無風險利率 4.3%，沿用 IV 不變），只是估算，不是報價。</div>
+  </div>
+</section>
+
+<!-- ============ 金字塔 ============ -->
+<section id="tab-pyr" class="hidden">
+  <div class="panel">
+    <h2>金字塔加碼試算（以標的價位當加碼觸發點）</h2>
+    <div class="grid">
+      <label>標的代號<input id="p_sym" placeholder="例如 VRT"></label>
+      <label>首次進場標的價<input id="p_S" type="number" step="0.01"></label>
+      <label>履約價<input id="p_K" type="number" step="0.01"></label>
+      <label>剩餘天數<input id="p_dte" type="number" step="1" value="90"></label>
+      <label>IV %<input id="p_iv" type="number" step="1" value="50"></label>
+      <label>此標的總預算 (USD)<input id="p_budget" type="number" step="10" value="900"></label>
+      <label>每階加碼間距（標的 %）<input id="p_step" type="number" step="0.5" value="4"></label>
+      <label>各階比例 %（首次/加碼1/2/3）<input id="p_split" value="40,30,20,10"></label>
+      <label>標的停損價<input id="p_stopS" type="number" step="0.01"></label>
+      <label>可接受最大虧損 (USD)<input id="p_risk" type="number" step="10" value="300"></label>
+    </div>
+    <div class="scroll" style="margin-top:12px"><table id="p_table"></table></div>
+    <div class="metrics" id="p_metrics"></div>
+    <ul class="checks" id="p_checks"></ul>
+    <div class="hint">假設每一階都在觸發當天成交、剩餘天數不變（實際上時間價值會隨時間減少，會比這裡更差）。停損那一欄是估計值。</div>
+  </div>
+</section>
+
+<!-- ============ 紀錄 ============ -->
+<section id="tab-log" class="hidden">
+  <div class="panel">
+    <h2>新增一筆</h2>
+    <div class="grid" id="l_form">
+      <label>買進日<input id="l_date" type="date"></label>
+      <label>標的<input id="l_sym"></label>
+      <label>合約（例如 11/20/26 45C）<input id="l_con"></label>
+      <label>類別
+        <select id="l_cls">
+          <option>價內方向單</option><option>價平/輕微價外</option><option>短天期價外樂透</option><option>長天期價外樂透</option><option>股票</option>
+        </select></label>
+      <label>買進時標的價<input id="l_S" type="number" step="0.01"></label>
+      <label>買進權利金/股價<input id="l_P" type="number" step="0.01"></label>
+      <label>口數/股數<input id="l_n" type="number" step="1"></label>
+      <label>標的停損價<input id="l_stop" type="number" step="0.01"></label>
+      <label>目標價（標的）<input id="l_tgt" type="number" step="0.01"></label>
+      <label>最晚出場日<input id="l_by" type="date"></label>
+      <label class="wide">買進理由／催化劑<textarea id="l_why"></textarea></label>
+    </div>
+    <div style="margin-top:10px"><button class="primary" id="l_add">新增</button></div>
+  </div>
+
+  <div class="panel">
+    <h2>未結案／已結案</h2>
+    <div class="metrics" id="l_stats"></div>
+    <div class="scroll" style="margin-top:10px"><table id="l_table"></table></div>
+    <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
+      <button id="l_csv">匯出 CSV</button>
+      <button id="l_json">匯出 JSON 備份</button>
+      <button id="l_import">匯入 JSON</button>
+      <input type="file" id="l_file" accept=".json" class="hidden">
+    </div>
+    <div class="hint">結案時按該列「結案」，輸入賣出價與持有期間最大浮虧（%），之後累積 30–50 筆就能校準停損幅度。</div>
+  </div>
+</section>
+
+<script>
+// ---------- 規則參數（想調整就改這裡） ----------
+const RULES = {
+  maxSinglePct: 3,       // 單筆期權成本 ≤ 總資產 %
+  minDteDirectional: 60, // 方向單買進時最少剩餘天數
+  maxTimeValueShare: 40, // 時間價值佔權利金 %
+  maxLeverage: 5,        // 建議槓桿上限
+  lotteryMaxUsd: 200,    // 樂透單筆上限
+  lotteryMonthlyUsd: 400,// 樂透每月總預算
+  maxStopLossPct: 1,     // 停損時損失 ≤ 總資產 %
+  nearAtmOtmPct: 5,      // 價外在此 % 以內視同價內類（要停損）
+  longDteDays: 45,       // 長/短天期分界
+};
+const R = 0.043;
+const $ = (id) => document.getElementById(id);
+const num = (id) => { const v = parseFloat($(id).value); return isFinite(v) ? v : null; };
+const fmt = (n, d = 2) => n == null || !isFinite(n) ? "--" : n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+const usd = (n) => n == null || !isFinite(n) ? "--" : (n < 0 ? "-" : "") + "$" + Math.abs(n).toLocaleString("en-US", { maximumFractionDigits: 0 });
+
+function cdf(x) { // 標準常態累積分布
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const d = 0.3989423 * Math.exp(-x * x / 2);
+  const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  return x > 0 ? 1 - p : p;
+}
+function bs(S, K, T, sigma) { // 買權價格與 delta
+  if (T <= 0 || sigma <= 0) return { price: Math.max(S - K, 0), delta: S > K ? 1 : 0 };
+  const d1 = (Math.log(S / K) + (R + sigma * sigma / 2) * T) / (sigma * Math.sqrt(T));
+  const d2 = d1 - sigma * Math.sqrt(T);
+  return { price: S * cdf(d1) - K * Math.exp(-R * T) * cdf(d2), delta: cdf(d1) };
+}
+const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+const today = () => new Date().toISOString().slice(0, 10);
+
+// ---------- 分頁 ----------
+document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === b));
+  ["calc", "pyr", "log"].forEach((t) => $("tab-" + t).classList.toggle("hidden", t !== b.dataset.tab));
+}));
+
+// ---------- 預設總資產 ----------
+const defAssets = window.HOLDINGS && window.HOLDINGS.totals ? Math.round(window.HOLDINGS.totals.totalAssets / 31) : "";
+$("c_assets").value = defAssets;
+$("c_buy").value = today();
+
+// ---------- 下單前檢查 ----------
+function metric(k, v) { return `<div class="m"><div class="k">${k}</div><div class="v">${v}</div></div>`; }
+function calc() {
+  const S = num("c_S"), K = num("c_K"), P = num("c_P"), n = num("c_n") || 1, exp = $("c_exp").value, buy = $("c_buy").value || today();
+  const iv = (num("c_iv") || 50) / 100, stopS = num("c_stopS"), assets = num("c_assets");
+  const M = $("c_metrics"), C = $("c_checks");
+  if (!S || !K || !P || !exp) { M.innerHTML = ""; C.innerHTML = '<li class="hint">填入標的現價、履約價、權利金、到期日後會自動檢查。</li>'; return; }
+  const dte = daysBetween(buy, exp), T = Math.max(dte, 0) / 365;
+  const cost = P * 100 * n, intrinsic = Math.max(S - K, 0), tv = P - intrinsic, tvShare = tv / P * 100;
+  const { delta } = bs(S, K, T, iv);
+  const lev = delta * S / P;
+  const moneyPct = (S / K - 1) * 100; // 正=價內
+  const otmPct = -moneyPct;
+  const costPct = assets ? cost / assets * 100 : null;
+  let cls;
+  if (moneyPct >= 0) cls = "價內方向單";
+  else if (otmPct <= RULES.nearAtmOtmPct) cls = "價平/輕微價外（視同價內，要停損）";
+  else cls = dte <= RULES.longDteDays ? "短天期價外樂透" : "長天期價外樂透";
+  const isLottery = cls.includes("樂透");
+  const stop40Under = 40 / lev; // 40% 權利金停損 ≈ 標的跌幅 %
+
+  let stopLoss = null, stopLossPct = null;
+  if (stopS) {
+    const after = bs(stopS, K, T, iv).price;
+    stopLoss = (P - after) * 100 * n;
+    stopLossPct = (P - after) / P * 100;
+  }
+  M.innerHTML = [
+    metric("分類", cls),
+    metric("成本", usd(cost) + (costPct != null ? `（${fmt(costPct, 1)}% 總資產）` : "")),
+    metric("剩餘天數", dte + " 天"),
+    metric(moneyPct >= 0 ? "價內幅度" : "價外幅度", fmt(Math.abs(moneyPct), 1) + "%"),
+    metric("時間價值佔權利金", fmt(tvShare, 0) + "%"),
+    metric("估計 Delta", fmt(delta, 2)),
+    metric("槓桿（Delta×股價÷權利金）", fmt(lev, 1) + " 倍"),
+    metric("權利金 -40% ≈ 標的跌", fmt(stop40Under, 1) + "%"),
+    stopS ? metric("停損價對應權利金虧損", `${fmt(stopLossPct, 0)}% / ${usd(stopLoss)}`) : "",
+  ].join("");
+
+  const items = [];
+  const add = (lvl, txt) => items.push(`<li>${lvl === "ok" ? "✅" : lvl === "warn" ? "⚠️" : "❌"} ${txt}</li>`);
+  if (isLottery) {
+    cost <= RULES.lotteryMaxUsd ? add("ok", `樂透成本 ${usd(cost)} ≤ ${usd(RULES.lotteryMaxUsd)}`) : add("bad", `樂透成本 ${usd(cost)} 超過上限 ${usd(RULES.lotteryMaxUsd)}，超過就視為方向單`);
+    const monthSpent = lotteryThisMonth();
+    monthSpent + cost <= RULES.lotteryMonthlyUsd ? add("ok", `本月樂透累計 ${usd(monthSpent + cost)} ≤ 月預算 ${usd(RULES.lotteryMonthlyUsd)}`) : add("bad", `本月樂透累計 ${usd(monthSpent + cost)} 超過月預算 ${usd(RULES.lotteryMonthlyUsd)}`);
+    if (cls.startsWith("長")) add("warn", `長天期樂透槓桿高（${fmt(lev, 0)} 倍），不要用權利金 % 停損；改用「標的跌破論點價位」或「剩 ${RULES.longDteDays} 天仍價外超過 10% 就賣」。`);
+    else add("ok", "短天期樂透：可以不停損放到到期，但要有明確催化劑（財報／事件），記在紀錄裡。");
+  } else {
+    costPct != null && costPct <= RULES.maxSinglePct ? add("ok", `單筆 ${fmt(costPct, 1)}% 總資產 ≤ ${RULES.maxSinglePct}%`) : add("bad", `單筆 ${costPct != null ? fmt(costPct, 1) + "%" : "?"} 總資產，超過 ${RULES.maxSinglePct}% 上限（約 ${usd((assets || 0) * RULES.maxSinglePct / 100)}）`);
+    dte >= RULES.minDteDirectional ? add("ok", `剩餘 ${dte} 天 ≥ ${RULES.minDteDirectional} 天`) : add("bad", `剩餘 ${dte} 天，低於 ${RULES.minDteDirectional} 天，時間價值損耗會很快`);
+    tvShare <= RULES.maxTimeValueShare ? add("ok", `時間價值佔 ${fmt(tvShare, 0)}% ≤ ${RULES.maxTimeValueShare}%`) : add("warn", `時間價值佔 ${fmt(tvShare, 0)}%（> ${RULES.maxTimeValueShare}%），標的不漲就一直在損耗`);
+    lev <= RULES.maxLeverage ? add("ok", `槓桿 ${fmt(lev, 1)} 倍 ≤ ${RULES.maxLeverage}`) : add("warn", `槓桿 ${fmt(lev, 1)} 倍：權利金停損 40% 只對應標的跌 ${fmt(stop40Under, 1)}%，單一個股很容易被日常波動洗出場，建議改用標的價位停損或選更深價內、更長天期的合約`);
+    if (!stopS) add("bad", "還沒填標的停損價（下單前就要決定，不要等加碼完才決定）");
+    else if (assets) {
+      const lp = stopLoss / assets * 100;
+      lp <= RULES.maxStopLossPct ? add("ok", `停損時虧損約 ${usd(stopLoss)}（${fmt(lp, 2)}% 總資產）≤ ${RULES.maxStopLossPct}%`) : add("bad", `停損時虧損約 ${usd(stopLoss)}（${fmt(lp, 2)}% 總資產）> ${RULES.maxStopLossPct}%，請縮小口數`);
+    }
+    add("warn", "停利計畫：權利金賺到 +100% 先賣一半收回本金，剩下的用移動停利。");
+  }
+  if (exp && dte <= 7) add("bad", `只剩 ${dte} 天到期，這是賭到期日，不是方向單`);
+  C.innerHTML = items.join("");
+}
+["c_sym", "c_S", "c_K", "c_P", "c_n", "c_exp", "c_buy", "c_iv", "c_stopS", "c_assets"].forEach((id) => $(id).addEventListener("input", calc));
+
+// ---------- 金字塔 ----------
+function pyr() {
+  const S0 = num("p_S"), K = num("p_K"), dte = num("p_dte") || 90, iv = (num("p_iv") || 50) / 100, budget = num("p_budget") || 0;
+  const step = (num("p_step") || 4) / 100, stopS = num("p_stopS"), risk = num("p_risk") || 0;
+  const split = ($("p_split").value || "40,30,20,10").split(",").map((x) => parseFloat(x) || 0);
+  const tb = $("p_table"), M = $("p_metrics"), C = $("p_checks");
+  if (!S0 || !K) { tb.innerHTML = ""; M.innerHTML = ""; C.innerHTML = '<li class="hint">填入首次進場標的價與履約價。</li>'; return; }
+  const T = dte / 365, sumSplit = split.reduce((a, b) => a + b, 0) || 1;
+  let rows = "", totalCost = 0, totalN = 0, totalPrem = 0, valueAtStop = 0;
+  split.forEach((s, i) => {
+    const S = S0 * (1 + step * i), q = bs(S, K, T, iv);
+    const allot = budget * s / sumSplit, n = Math.floor(allot / (q.price * 100));
+    const cost = n * q.price * 100;
+    totalCost += cost; totalN += n; totalPrem += n * q.price;
+    if (stopS) valueAtStop += n * bs(stopS, K, T, iv).price * 100;
+    rows += `<tr><td>${i === 0 ? "首次" : "加碼 " + i}</td><td>${fmt(S)}</td><td>${fmt(q.price)}</td><td>${fmt(q.delta, 2)}</td><td>${n}</td><td>${usd(cost)}</td><td>${usd(totalCost)}</td></tr>`;
+  });
+  tb.innerHTML = `<thead><tr><th class="l">階段</th><th>觸發標的價</th><th>估計權利金</th><th>Delta</th><th>口數</th><th>本階成本</th><th>累計成本</th></tr></thead><tbody>${rows}</tbody>`;
+  const avg = totalN ? totalPrem / totalN : 0;
+  const loss = stopS ? totalCost - valueAtStop : null;
+  M.innerHTML = [
+    metric("總口數", totalN), metric("總成本", usd(totalCost)), metric("平均權利金", fmt(avg)),
+    stopS ? metric("停損價估計虧損", `${usd(loss)}（${fmt(loss / totalCost * 100, 0)}%）`) : "",
+  ].join("");
+  const items = [];
+  const add = (lvl, t) => items.push(`<li>${lvl === "ok" ? "✅" : lvl === "warn" ? "⚠️" : "❌"} ${t}</li>`);
+  const one = bs(S0, K, T, iv).price * 100;
+  if (!totalN) add("bad", `預算 ${usd(budget)} 買不到 1 口（1 口約 ${usd(one)}）。這檔金字塔用期權做不起來，改選更便宜的合約，或改用正股。`);
+  else if (split.some((s, i) => budget * s / sumSplit < bs(S0 * (1 + step * i), K, T, iv).price * 100)) add("warn", "有幾階分到的預算不夠買 1 口（口數 0），這幾階實際上不會加碼，實際階數比你以為的少。");
+  if (!stopS) add("bad", "請先填標的停損價：期權沒辦法像股票一樣『加碼三次才停損』，停損要在第一次進場前就決定。");
+  else if (totalN) {
+    loss <= risk ? add("ok", `停損價 ${fmt(stopS)} 的估計虧損 ${usd(loss)} ≤ 可接受 ${usd(risk)}`) : add("bad", `停損價 ${fmt(stopS)} 的估計虧損 ${usd(loss)} > 可接受 ${usd(risk)}，請縮小預算或各階口數`);
+    if (stopS >= S0) add("bad", "停損價高於首次進場價，請確認。");
+  }
+  if (split[0] < split[split.length - 1]) add("warn", "金字塔應該是『愈加愈少』，目前最後一階比第一階還多。");
+  add("warn", "只在標的上漲、論點成立時往上加碼；往下加碼（攤平）在期權上會同時被槓桿與時間價值放大虧損，不建議。");
+  add("warn", `每次加碼前先檢查剩餘天數，低於 ${RULES.minDteDirectional} 天就不要再加。`);
+  C.innerHTML = items.join("");
+}
+["p_sym", "p_S", "p_K", "p_dte", "p_iv", "p_budget", "p_step", "p_split", "p_stopS", "p_risk"].forEach((id) => $(id).addEventListener("input", pyr));
+
+// ---------- 紀錄 ----------
+const KEY = "tradeJournal.v1";
+function load() { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; } }
+function save(list) { try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) { alert("無法寫入瀏覽器儲存空間，請改用匯出備份。"); } }
+function lotteryThisMonth() {
+  const m = today().slice(0, 7);
+  return load().filter((r) => r.cls && r.cls.includes("樂透") && (r.date || "").startsWith(m)).reduce((a, r) => a + (r.P || 0) * (r.n || 0) * 100, 0);
+}
+$("l_date").value = today();
+$("l_add").addEventListener("click", () => {
+  const r = {
+    id: Date.now(), date: $("l_date").value, sym: $("l_sym").value.trim().toUpperCase(), con: $("l_con").value.trim(),
+    cls: $("l_cls").value, S: num("l_S"), P: num("l_P"), n: num("l_n"), stop: num("l_stop"), tgt: num("l_tgt"),
+    by: $("l_by").value, why: $("l_why").value.trim(), exitP: null, exitDate: null, mae: null,
+  };
+  if (!r.sym || !r.P || !r.n) { alert("至少要填標的、權利金/股價、口數"); return; }
+  const list = load(); list.push(r); save(list);
+  ["l_sym", "l_con", "l_S", "l_P", "l_n", "l_stop", "l_tgt", "l_why"].forEach((id) => $(id).value = "");
+  renderLog();
+});
+const mult = (r) => r.cls === "股票" ? 1 : 100;
+const cost = (r) => (r.P || 0) * (r.n || 0) * mult(r);
+const pnl = (r) => r.exitP == null ? null : (r.exitP - r.P) * (r.n || 0) * mult(r);
+function renderLog() {
+  const list = load().sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const closed = list.filter((r) => r.exitP != null);
+  const groups = {};
+  closed.forEach((r) => { (groups[r.cls] = groups[r.cls] || []).push(r); });
+  let st = metric("筆數", `${list.length}（已結案 ${closed.length}）`);
+  Object.keys(groups).forEach((k) => {
+    const g = groups[k], p = g.map(pnl), w = p.filter((x) => x > 0), l = p.filter((x) => x <= 0);
+    const avgW = w.length ? w.reduce((a, b) => a + b, 0) / w.length : 0, avgL = l.length ? -l.reduce((a, b) => a + b, 0) / l.length : 0;
+    st += metric(k, `${g.length} 筆・勝率 ${fmt(w.length / g.length * 100, 0)}%・賺賠比 ${avgL ? fmt(avgW / avgL, 1) : "--"}・${usd(p.reduce((a, b) => a + b, 0))}`);
+  });
+  $("l_stats").innerHTML = st;
+  const head = ["買進日", "標的", "合約", "類別", "標的價", "進價", "數量", "成本", "停損價", "最晚出場", "出場", "損益", "最大浮虧", "理由", ""];
+  const body = list.map((r) => {
+    const p = pnl(r);
+    const res = p == null ? "未結案" : `<span class="${p > 0 ? "gain" : "loss"}">${usd(p)}（${fmt(p / cost(r) * 100, 0)}%）</span>`;
+    return `<tr><td class="l">${r.date || ""}</td><td class="l">${r.sym}</td><td class="l">${r.con || ""}</td><td class="l">${r.cls}</td><td>${fmt(r.S)}</td><td>${fmt(r.P)}</td><td>${r.n}</td><td>${usd(cost(r))}</td><td>${r.stop != null ? fmt(r.stop) : ""}</td><td>${r.by || ""}</td><td>${r.exitP != null ? fmt(r.exitP) : ""}</td><td>${res}</td><td>${r.mae != null ? fmt(r.mae, 0) + "%" : ""}</td><td class="l" style="white-space:normal;min-width:160px">${(r.why || "").replace(/</g, "&lt;")}</td><td class="row-actions">${p == null ? `<button data-close="${r.id}">結案</button>` : ""}<button data-del="${r.id}">刪除</button></td></tr>`;
+  }).join("");
+  $("l_table").innerHTML = `<thead><tr>${head.map((h, i) => `<th class="${i < 4 ? "l" : ""}">${h}</th>`).join("")}</tr></thead><tbody>${body || '<tr><td class="l" colspan="15">還沒有紀錄</td></tr>'}</tbody>`;
+}
+$("l_table").addEventListener("click", (e) => {
+  const c = e.target.dataset.close, d = e.target.dataset.del;
+  const list = load();
+  if (c) {
+    const r = list.find((x) => String(x.id) === c);
+    const ep = parseFloat(prompt("賣出（或到期）價格，到期歸零填 0："));
+    if (!isFinite(ep)) return;
+    const mae = parseFloat(prompt("持有期間最大浮虧 %（例如 35；不知道就留空）：", ""));
+    r.exitP = ep; r.exitDate = today(); r.mae = isFinite(mae) ? mae : null;
+    save(list); renderLog();
+  } else if (d && confirm("確定刪除這筆？")) { save(list.filter((x) => String(x.id) !== d)); renderLog(); }
+});
+function download(name, text, type) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name; a.click();
+}
+$("l_csv").addEventListener("click", () => {
+  const cols = ["date", "sym", "con", "cls", "S", "P", "n", "stop", "tgt", "by", "exitDate", "exitP", "mae", "why"];
+  const esc = (v) => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
+  download("trade_journal.csv", "﻿" + cols.join(",") + "\n" + load().map((r) => cols.map((c) => esc(r[c])).join(",")).join("\n"), "text/csv");
+});
+$("l_json").addEventListener("click", () => download("trade_journal.json", JSON.stringify(load(), null, 2), "application/json"));
+$("l_import").addEventListener("click", () => $("l_file").click());
+$("l_file").addEventListener("change", (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => { try { const arr = JSON.parse(rd.result); if (Array.isArray(arr) && confirm(`匯入 ${arr.length} 筆並覆蓋目前紀錄？`)) { save(arr); renderLog(); } } catch (err) { alert("檔案格式不對"); } };
+  rd.readAsText(f);
+});
+
+calc(); pyr(); renderLog();
+</script>
+</body>
+</html>
