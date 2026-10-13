@@ -232,6 +232,8 @@ const LKEY = "tradeJournal.v1";
 let LOG = [];
 function setStatus(kind, extra) {
   $("syncStatus").innerHTML = kind === "cloud" ? "☁️ 已連線 Google Sheet，所有裝置同步。"
+    : kind === "saving" ? "⏳ 儲存中…（可以繼續操作）"
+    : kind === "saved" ? "✅ 已儲存到 Google Sheet。"
     : kind === "err" ? `⚠️ 連線 Google Sheet 失敗：${extra || ""}（目前顯示的可能不是最新資料）`
     : "💾 本機模式：紀錄只存在這個瀏覽器。要跨裝置同步，請從 Streamlit 的「交易紀錄」頁解鎖後使用。";
 }
@@ -255,21 +257,27 @@ async function refresh() {
   } else { LOG = localLoad(); setStatus("local"); }
   renderLog();
 }
-// 先更新畫面再送出（不用等 Google Apps Script 回應，也不再多打一次讀取）；送出失敗才重新讀取並提示。
-async function upsertRec(rec) {
+// 先更新畫面、立刻讓你繼續操作，背景再送出到 Google Sheet（Apps Script 通常要 1–3 秒，閒置後第一次可能更久）。
+// 右上方狀態列會顯示「儲存中 → 已儲存」；送出失敗才會跳提示並重新讀取。
+let pending = 0;
+function track(promise, failMsg) {
+  pending++;
+  setStatus("saving");
+  return promise.then(() => { pending--; if (!pending) setStatus("saved"); })
+    .catch(async (e) => { pending--; alert(failMsg + e.message); await refresh(); });
+}
+function upsertRec(rec) {
   const i = LOG.findIndex((x) => String(x.id) === String(rec.id));
   if (i >= 0) LOG[i] = rec; else LOG.push(rec);
   renderLog();
-  if (!API) { localSave(LOG); return; }
-  try { await apiPost({ action: "upsert", row: rec }); }
-  catch (e) { await refresh(); throw e; }
+  if (!API) { localSave(LOG); return Promise.resolve(); }
+  return track(apiPost({ action: "upsert", row: rec }), "儲存失敗：");
 }
-async function deleteRec(id) {
+function deleteRec(id) {
   LOG = LOG.filter((x) => String(x.id) !== String(id));
   renderLog();
-  if (!API) { localSave(LOG); return; }
-  try { await apiPost({ action: "delete", id }); }
-  catch (e) { await refresh(); throw e; }
+  if (!API) { localSave(LOG); return Promise.resolve(); }
+  return track(apiPost({ action: "delete", id }), "刪除失敗：");
 }
 const load = () => LOG;
 function lotteryThisMonth() {
@@ -284,9 +292,8 @@ $("l_add").addEventListener("click", () => {
     by: $("l_by").value, why: $("l_why").value.trim(), exitP: null, exitDate: null, mae: null,
   };
   if (!r.sym || !r.P || !r.n) { alert("至少要填標的、權利金/股價、口數"); return; }
-  upsertRec(r).then(() => {
-    ["l_sym", "l_con", "l_S", "l_P", "l_n", "l_stop", "l_tgt", "l_why"].forEach((id) => $(id).value = "");
-  }).catch((err) => alert("儲存失敗：" + err.message));
+  ["l_sym", "l_con", "l_S", "l_P", "l_n", "l_stop", "l_tgt", "l_why"].forEach((id) => $(id).value = "");
+  upsertRec(r);
 });
 const mult = (r) => r.cls === "股票" ? 1 : 100;
 const cost = (r) => (r.P || 0) * (r.n || 0) * mult(r);
@@ -319,8 +326,8 @@ $("l_table").addEventListener("click", (e) => {
     if (!isFinite(ep)) return;
     const mae = parseFloat(prompt("持有期間最大浮虧 %（例如 35；不知道就留空）：", ""));
     r.exitP = ep; r.exitDate = today(); r.mae = isFinite(mae) ? mae : null;
-    upsertRec(r).catch((err) => alert("儲存失敗：" + err.message));
-  } else if (d && confirm("確定刪除這筆？")) deleteRec(d).catch((err) => alert("刪除失敗：" + err.message));
+    upsertRec(r);
+  } else if (d && confirm("確定刪除這筆？")) deleteRec(d);
 });
 function download(name, text, type) {
   const a = document.createElement("a");
