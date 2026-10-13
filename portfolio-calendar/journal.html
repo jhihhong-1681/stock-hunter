@@ -52,7 +52,7 @@ th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background
 
 <div class="tabs">
   <button class="tab active" data-tab="calc">下單前檢查</button>
-  <button class="tab" data-tab="pyr">金字塔加碼試算</button>
+  <button class="tab" data-tab="pyr">分批加碼試算</button>
   <button class="tab" data-tab="log">交易紀錄</button>
 </div>
 
@@ -81,7 +81,7 @@ th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background
 <!-- ============ 金字塔 ============ -->
 <section id="tab-pyr" class="hidden">
   <div class="panel">
-    <h2>金字塔加碼試算（以標的價位當加碼觸發點）</h2>
+    <h2>分批加碼試算（以標的價位當加碼觸發點）</h2>
     <div class="grid">
       <label>標的代號<input id="p_sym" placeholder="例如 VRT"></label>
       <label>首次進場標的價<input id="p_S" type="number" step="0.01"></label>
@@ -89,7 +89,12 @@ th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background
       <label>剩餘天數<input id="p_dte" type="number" step="1" value="90"></label>
       <label>IV %<input id="p_iv" type="number" step="1" value="50"></label>
       <label>此標的總預算 (USD)<input id="p_budget" type="number" step="10" value="900"></label>
-      <label>每階加碼間距（標的 %）<input id="p_step" type="number" step="0.5" value="4"></label>
+      <label>加碼方向
+        <select id="p_dir"><option value="down">回檔加碼（往下）</option><option value="up">上漲加碼（往上）</option></select></label>
+      <label>每階間距（標的 %）<input id="p_step" type="number" step="0.5" value="5"></label>
+      <label>每階間隔天數<input id="p_gap" type="number" step="1" value="7"></label>
+      <label>每階都改買新的長天期？
+        <select id="p_reset"><option value="no">否，沿用同一到期日</option><option value="yes">是，每階剩餘天數重設</option></select></label>
       <label>各階比例 %（首次/加碼1/2/3）<input id="p_split" value="40,30,20,10"></label>
       <label>標的停損價<input id="p_stopS" type="number" step="0.01"></label>
       <label>可接受最大虧損 (USD)<input id="p_risk" type="number" step="10" value="300"></label>
@@ -97,7 +102,7 @@ th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background
     <div class="scroll" style="margin-top:12px"><table id="p_table"></table></div>
     <div class="metrics" id="p_metrics"></div>
     <ul class="checks" id="p_checks"></ul>
-    <div class="hint">假設每一階都在觸發當天成交、剩餘天數不變（實際上時間價值會隨時間減少，會比這裡更差）。停損那一欄是估計值。</div>
+    <div class="hint">每一階在觸發日以 Black-Scholes 估價成交（IV 不變）；停損價的虧損是以最後一階買進當天、標的跌到停損價來估，沒有算跳空。全部是估計值。</div>
   </div>
 </section>
 
@@ -250,43 +255,51 @@ function calc() {
 // ---------- 金字塔 ----------
 function pyr() {
   const S0 = num("p_S"), K = num("p_K"), dte = num("p_dte") || 90, iv = (num("p_iv") || 50) / 100, budget = num("p_budget") || 0;
-  const step = (num("p_step") || 4) / 100, stopS = num("p_stopS"), risk = num("p_risk") || 0;
+  const step = (num("p_step") || 5) / 100, gap = num("p_gap") || 0, stopS = num("p_stopS"), risk = num("p_risk") || 0;
+  const dir = $("p_dir").value === "down" ? -1 : 1, reset = $("p_reset").value === "yes";
   const split = ($("p_split").value || "40,30,20,10").split(",").map((x) => parseFloat(x) || 0);
   const tb = $("p_table"), M = $("p_metrics"), C = $("p_checks");
   if (!S0 || !K) { tb.innerHTML = ""; M.innerHTML = ""; C.innerHTML = '<li class="hint">填入首次進場標的價與履約價。</li>'; return; }
-  const T = dte / 365, sumSplit = split.reduce((a, b) => a + b, 0) || 1;
-  let rows = "", totalCost = 0, totalN = 0, totalPrem = 0, valueAtStop = 0;
+  const sumSplit = split.reduce((a, b) => a + b, 0) || 1, last = split.length - 1;
+  const tStop = gap * last; // 最後一階買進那天，用來估停損價的權利金
+  let rows = "", totalCost = 0, totalN = 0, totalPrem = 0, valueAtStop = 0, zero = false, firstN = 0, grew = false, lastRemain = dte, lastS = S0;
   split.forEach((s, i) => {
-    const S = S0 * (1 + step * i), q = bs(S, K, T, iv);
-    const allot = budget * s / sumSplit, n = Math.floor(allot / (q.price * 100));
-    const cost = n * q.price * 100;
-    totalCost += cost; totalN += n; totalPrem += n * q.price;
-    if (stopS) valueAtStop += n * bs(stopS, K, T, iv).price * 100;
-    rows += `<tr><td>${i === 0 ? "首次" : "加碼 " + i}</td><td>${fmt(S)}</td><td>${fmt(q.price)}</td><td>${fmt(q.delta, 2)}</td><td>${n}</td><td>${usd(cost)}</td><td>${usd(totalCost)}</td></tr>`;
+    const S = S0 * (1 + dir * step * i), buyDay = gap * i;
+    const expDay = reset ? buyDay + dte : dte;
+    const remain = expDay - buyDay, q = bs(S, K, remain / 365, iv);
+    const n = Math.floor(budget * s / sumSplit / (q.price * 100)), c = n * q.price * 100;
+    if (!n) zero = true;
+    if (i === 0) firstN = n; else if (n > firstN) grew = true;
+    totalCost += c; totalN += n; totalPrem += n * q.price;
+    if (stopS) valueAtStop += n * bs(stopS, K, Math.max(expDay - tStop, 0) / 365, iv).price * 100;
+    lastRemain = remain; lastS = S;
+    rows += `<tr><td>${i === 0 ? "首次" : "加碼 " + i}</td><td>${fmt(S)}</td><td>${remain}</td><td>${fmt(q.price)}</td><td>${fmt(q.delta, 2)}</td><td>${n}</td><td>${usd(c)}</td><td>${usd(totalCost)}</td></tr>`;
   });
-  tb.innerHTML = `<thead><tr><th class="l">階段</th><th>觸發標的價</th><th>估計權利金</th><th>Delta</th><th>口數</th><th>本階成本</th><th>累計成本</th></tr></thead><tbody>${rows}</tbody>`;
-  const avg = totalN ? totalPrem / totalN : 0;
+  tb.innerHTML = `<thead><tr><th class="l">階段</th><th>觸發標的價</th><th>買進時剩餘天數</th><th>估計權利金</th><th>Delta</th><th>口數</th><th>本階成本</th><th>累計成本</th></tr></thead><tbody>${rows}</tbody>`;
   const loss = stopS ? totalCost - valueAtStop : null;
   M.innerHTML = [
-    metric("總口數", totalN), metric("總成本", usd(totalCost)), metric("平均權利金", fmt(avg)),
-    stopS ? metric("停損價估計虧損", `${usd(loss)}（${fmt(loss / totalCost * 100, 0)}%）`) : "",
+    metric("總口數", totalN), metric("總成本", usd(totalCost)), metric("平均權利金", fmt(totalN ? totalPrem / totalN : 0)),
+    stopS ? metric("停損價估計虧損", `${usd(loss)}（${totalCost ? fmt(loss / totalCost * 100, 0) : "--"}%）`) : "",
   ].join("");
   const items = [];
   const add = (lvl, t) => items.push(`<li>${lvl === "ok" ? "✅" : lvl === "warn" ? "⚠️" : "❌"} ${t}</li>`);
-  const one = bs(S0, K, T, iv).price * 100;
-  if (!totalN) add("bad", `預算 ${usd(budget)} 買不到 1 口（1 口約 ${usd(one)}）。這檔金字塔用期權做不起來，改選更便宜的合約，或改用正股。`);
-  else if (split.some((s, i) => budget * s / sumSplit < bs(S0 * (1 + step * i), K, T, iv).price * 100)) add("warn", "有幾階分到的預算不夠買 1 口（口數 0），這幾階實際上不會加碼，實際階數比你以為的少。");
-  if (!stopS) add("bad", "請先填標的停損價：期權沒辦法像股票一樣『加碼三次才停損』，停損要在第一次進場前就決定。");
+  if (!totalN) add("bad", `預算 ${usd(budget)} 買不到 1 口（首次 1 口約 ${usd(bs(S0, K, dte / 365, iv).price * 100)}）。改選更便宜的合約，或改用正股。`);
+  else if (zero) add("warn", "有幾階分到的預算不夠買 1 口（口數 0），實際加碼次數比你以為的少。");
+  if (!stopS) add("bad", "請先填標的停損價：停損要在第一次進場前就決定。期權槓桿大，等加碼完才設停損，通常已經虧掉大半。");
   else if (totalN) {
-    loss <= risk ? add("ok", `停損價 ${fmt(stopS)} 的估計虧損 ${usd(loss)} ≤ 可接受 ${usd(risk)}`) : add("bad", `停損價 ${fmt(stopS)} 的估計虧損 ${usd(loss)} > 可接受 ${usd(risk)}，請縮小預算或各階口數`);
-    if (stopS >= S0) add("bad", "停損價高於首次進場價，請確認。");
+    loss <= risk ? add("ok", `從最後一階跌到停損價 ${fmt(stopS)}，估計虧損 ${usd(loss)} ≤ 可接受 ${usd(risk)}`) : add("bad", `跌到停損價 ${fmt(stopS)}，估計虧損 ${usd(loss)} > 可接受 ${usd(risk)}，請縮小預算或口數`);
+    if (dir < 0 && stopS >= lastS) add("bad", `停損價 ${fmt(stopS)} 不低於最後一階 ${fmt(lastS)}，加碼還沒做完就觸發了停損，請重新設定。`);
+    if (dir > 0 && stopS >= S0) add("bad", "停損價高於首次進場價，請確認。");
   }
-  if (split[0] < split[split.length - 1]) add("warn", "金字塔應該是『愈加愈少』，目前最後一階比第一階還多。");
-  add("warn", "只在標的上漲、論點成立時往上加碼；往下加碼（攤平）在期權上會同時被槓桿與時間價值放大虧損，不建議。");
-  add("warn", `每次加碼前先檢查剩餘天數，低於 ${RULES.minDteDirectional} 天就不要再加。`);
+  if (grew) add("bad", "後面某階口數比首次還多（權利金變便宜，同樣預算買到更多口）：這會變成愈跌愈加大賭注，請改成口數愈加愈少或固定。");
+  if (!reset && lastRemain < RULES.minDteDirectional) add("bad", `最後一階買進時只剩 ${lastRemain} 天（< ${RULES.minDteDirectional} 天）。沿用同一到期日會愈加愈短，建議每階改買較長的到期日。`);
+  if (dir < 0) {
+    add("warn", "回檔加碼只在『上升趨勢中的正常回檔』做：標的必須仍在你定義的趨勢位置之上（例如均線或前一個低點）。跌破停損價就全部出場，不要再加。");
+    add("warn", "每階間隔至少幾天，不要同一天連續加碼；加碼前先看標的是否出現止跌，而不是看權利金變便宜。");
+  } else add("warn", "上漲加碼：每階權利金會更貴，平均成本被拉高。");
   C.innerHTML = items.join("");
 }
-["p_sym", "p_S", "p_K", "p_dte", "p_iv", "p_budget", "p_step", "p_split", "p_stopS", "p_risk"].forEach((id) => $(id).addEventListener("input", pyr));
+["p_sym", "p_S", "p_K", "p_dte", "p_iv", "p_budget", "p_dir", "p_step", "p_gap", "p_reset", "p_split", "p_stopS", "p_risk"].forEach((id) => $(id).addEventListener("input", pyr));
 
 // ---------- 紀錄 ----------
 const KEY = "tradeJournal.v1";
