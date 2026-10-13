@@ -48,11 +48,10 @@ th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background
 </head>
 <body>
 <h1>交易紀錄</h1>
-<div class="note">期權下單前的檢查、金字塔加碼試算，以及自己的交易紀錄。紀錄只存在這台電腦的瀏覽器（不會上傳），記得定期按「匯出 CSV」備份。</div>
+<div class="note">期權下單前的檢查，以及自己的交易紀錄。<span id="syncStatus"></span></div>
 
 <div class="tabs">
   <button class="tab active" data-tab="calc">下單前檢查</button>
-  <button class="tab" data-tab="pyr">分批加碼試算</button>
   <button class="tab" data-tab="log">交易紀錄</button>
 </div>
 
@@ -75,34 +74,6 @@ th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background
     <div class="metrics" id="c_metrics"></div>
     <ul class="checks" id="c_checks"></ul>
     <div class="hint">Delta、槓桿與停損價的權利金用 Black-Scholes 估算（無風險利率 4.3%，沿用 IV 不變），只是估算，不是報價。</div>
-  </div>
-</section>
-
-<!-- ============ 金字塔 ============ -->
-<section id="tab-pyr" class="hidden">
-  <div class="panel">
-    <h2>分批加碼試算（以標的價位當加碼觸發點）</h2>
-    <div class="grid">
-      <label>標的代號<input id="p_sym" placeholder="例如 VRT"></label>
-      <label>首次進場標的價<input id="p_S" type="number" step="0.01"></label>
-      <label>履約價<input id="p_K" type="number" step="0.01"></label>
-      <label>剩餘天數<input id="p_dte" type="number" step="1" value="90"></label>
-      <label>IV %<input id="p_iv" type="number" step="1" value="50"></label>
-      <label>此標的總預算 (USD)<input id="p_budget" type="number" step="10" value="900"></label>
-      <label>加碼方向
-        <select id="p_dir"><option value="down">回檔加碼（往下）</option><option value="up">上漲加碼（往上）</option></select></label>
-      <label>每階間距（標的 %）<input id="p_step" type="number" step="0.5" value="5"></label>
-      <label>每階間隔天數<input id="p_gap" type="number" step="1" value="7"></label>
-      <label>每階都改買新的長天期？
-        <select id="p_reset"><option value="no">否，沿用同一到期日</option><option value="yes">是，每階剩餘天數重設</option></select></label>
-      <label>各階比例 %（首次/加碼1/2/3）<input id="p_split" value="40,30,20,10"></label>
-      <label>標的停損價<input id="p_stopS" type="number" step="0.01"></label>
-      <label>可接受最大虧損 (USD)<input id="p_risk" type="number" step="10" value="300"></label>
-    </div>
-    <div class="scroll" style="margin-top:12px"><table id="p_table"></table></div>
-    <div class="metrics" id="p_metrics"></div>
-    <ul class="checks" id="p_checks"></ul>
-    <div class="hint">每一階在觸發日以 Black-Scholes 估價成交（IV 不變）；停損價的虧損是以最後一階買進當天、標的跌到停損價來估，沒有算跳空。全部是估計值。</div>
   </div>
 </section>
 
@@ -139,7 +110,7 @@ th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background
       <button id="l_import">匯入 JSON</button>
       <input type="file" id="l_file" accept=".json" class="hidden">
     </div>
-    <div class="hint">結案時按該列「結案」，輸入賣出價與持有期間最大浮虧（%），之後累積 30–50 筆就能校準停損幅度。</div>
+    <div class="hint">匯出的 CSV 可以直接貼進 Excel。結案時按該列「結案」，輸入賣出價與持有期間最大浮虧（%），之後累積 30–50 筆就能校準停損幅度。</div>
   </div>
 </section>
 
@@ -180,7 +151,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 // ---------- 分頁 ----------
 document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => {
   document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === b));
-  ["calc", "pyr", "log"].forEach((t) => $("tab-" + t).classList.toggle("hidden", t !== b.dataset.tab));
+  ["calc", "log"].forEach((t) => $("tab-" + t).classList.toggle("hidden", t !== b.dataset.tab));
 }));
 
 // ---------- 預設總資產 ----------
@@ -252,59 +223,49 @@ function calc() {
 }
 ["c_sym", "c_S", "c_K", "c_P", "c_n", "c_exp", "c_buy", "c_iv", "c_stopS", "c_assets"].forEach((id) => $(id).addEventListener("input", calc));
 
-// ---------- 金字塔 ----------
-function pyr() {
-  const S0 = num("p_S"), K = num("p_K"), dte = num("p_dte") || 90, iv = (num("p_iv") || 50) / 100, budget = num("p_budget") || 0;
-  const step = (num("p_step") || 5) / 100, gap = num("p_gap") || 0, stopS = num("p_stopS"), risk = num("p_risk") || 0;
-  const dir = $("p_dir").value === "down" ? -1 : 1, reset = $("p_reset").value === "yes";
-  const split = ($("p_split").value || "40,30,20,10").split(",").map((x) => parseFloat(x) || 0);
-  const tb = $("p_table"), M = $("p_metrics"), C = $("p_checks");
-  if (!S0 || !K) { tb.innerHTML = ""; M.innerHTML = ""; C.innerHTML = '<li class="hint">填入首次進場標的價與履約價。</li>'; return; }
-  const sumSplit = split.reduce((a, b) => a + b, 0) || 1, last = split.length - 1;
-  const tStop = gap * last; // 最後一階買進那天，用來估停損價的權利金
-  let rows = "", totalCost = 0, totalN = 0, totalPrem = 0, valueAtStop = 0, zero = false, firstN = 0, grew = false, lastRemain = dte, lastS = S0;
-  split.forEach((s, i) => {
-    const S = S0 * (1 + dir * step * i), buyDay = gap * i;
-    const expDay = reset ? buyDay + dte : dte;
-    const remain = expDay - buyDay, q = bs(S, K, remain / 365, iv);
-    const n = Math.floor(budget * s / sumSplit / (q.price * 100)), c = n * q.price * 100;
-    if (!n) zero = true;
-    if (i === 0) firstN = n; else if (n > firstN) grew = true;
-    totalCost += c; totalN += n; totalPrem += n * q.price;
-    if (stopS) valueAtStop += n * bs(stopS, K, Math.max(expDay - tStop, 0) / 365, iv).price * 100;
-    lastRemain = remain; lastS = S;
-    rows += `<tr><td>${i === 0 ? "首次" : "加碼 " + i}</td><td>${fmt(S)}</td><td>${remain}</td><td>${fmt(q.price)}</td><td>${fmt(q.delta, 2)}</td><td>${n}</td><td>${usd(c)}</td><td>${usd(totalCost)}</td></tr>`;
-  });
-  tb.innerHTML = `<thead><tr><th class="l">階段</th><th>觸發標的價</th><th>買進時剩餘天數</th><th>估計權利金</th><th>Delta</th><th>口數</th><th>本階成本</th><th>累計成本</th></tr></thead><tbody>${rows}</tbody>`;
-  const loss = stopS ? totalCost - valueAtStop : null;
-  M.innerHTML = [
-    metric("總口數", totalN), metric("總成本", usd(totalCost)), metric("平均權利金", fmt(totalN ? totalPrem / totalN : 0)),
-    stopS ? metric("停損價估計虧損", `${usd(loss)}（${totalCost ? fmt(loss / totalCost * 100, 0) : "--"}%）`) : "",
-  ].join("");
-  const items = [];
-  const add = (lvl, t) => items.push(`<li>${lvl === "ok" ? "✅" : lvl === "warn" ? "⚠️" : "❌"} ${t}</li>`);
-  if (!totalN) add("bad", `預算 ${usd(budget)} 買不到 1 口（首次 1 口約 ${usd(bs(S0, K, dte / 365, iv).price * 100)}）。改選更便宜的合約，或改用正股。`);
-  else if (zero) add("warn", "有幾階分到的預算不夠買 1 口（口數 0），實際加碼次數比你以為的少。");
-  if (!stopS) add("bad", "請先填標的停損價：停損要在第一次進場前就決定。期權槓桿大，等加碼完才設停損，通常已經虧掉大半。");
-  else if (totalN) {
-    loss <= risk ? add("ok", `從最後一階跌到停損價 ${fmt(stopS)}，估計虧損 ${usd(loss)} ≤ 可接受 ${usd(risk)}`) : add("bad", `跌到停損價 ${fmt(stopS)}，估計虧損 ${usd(loss)} > 可接受 ${usd(risk)}，請縮小預算或口數`);
-    if (dir < 0 && stopS >= lastS) add("bad", `停損價 ${fmt(stopS)} 不低於最後一階 ${fmt(lastS)}，加碼還沒做完就觸發了停損，請重新設定。`);
-    if (dir > 0 && stopS >= S0) add("bad", "停損價高於首次進場價，請確認。");
-  }
-  if (grew) add("bad", "後面某階口數比首次還多（權利金變便宜，同樣預算買到更多口）：這會變成愈跌愈加大賭注，請改成口數愈加愈少或固定。");
-  if (!reset && lastRemain < RULES.minDteDirectional) add("bad", `最後一階買進時只剩 ${lastRemain} 天（< ${RULES.minDteDirectional} 天）。沿用同一到期日會愈加愈短，建議每階改買較長的到期日。`);
-  if (dir < 0) {
-    add("warn", "回檔加碼只在『上升趨勢中的正常回檔』做：標的必須仍在你定義的趨勢位置之上（例如均線或前一個低點）。跌破停損價就全部出場，不要再加。");
-    add("warn", "每階間隔至少幾天，不要同一天連續加碼；加碼前先看標的是否出現止跌，而不是看權利金變便宜。");
-  } else add("warn", "上漲加碼：每階權利金會更貴，平均成本被拉高。");
-  C.innerHTML = items.join("");
-}
-["p_sym", "p_S", "p_K", "p_dte", "p_iv", "p_budget", "p_dir", "p_step", "p_gap", "p_reset", "p_split", "p_stopS", "p_risk"].forEach((id) => $(id).addEventListener("input", pyr));
-
 // ---------- 紀錄 ----------
-const KEY = "tradeJournal.v1";
-function load() { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; } }
-function save(list) { try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) { alert("無法寫入瀏覽器儲存空間，請改用匯出備份。"); } }
+// 儲存：網址帶 #api=...&key=... 時（由 Streamlit 的交易紀錄頁解鎖後帶入）存到 Google Sheet，
+// 不同電腦、瀏覽器都看得到同一份；沒帶時退回這個瀏覽器的 localStorage，並提示。
+const hp = new URLSearchParams(location.hash.slice(1));
+const API = hp.get("api"), KEYP = hp.get("key");
+const LKEY = "tradeJournal.v1";
+let LOG = [];
+function setStatus(kind, extra) {
+  $("syncStatus").innerHTML = kind === "cloud" ? "☁️ 已連線 Google Sheet，所有裝置同步。"
+    : kind === "err" ? `⚠️ 連線 Google Sheet 失敗：${extra || ""}（目前顯示的可能不是最新資料）`
+    : "💾 本機模式：紀錄只存在這個瀏覽器。要跨裝置同步，請從 Streamlit 的「交易紀錄」頁解鎖後使用。";
+}
+function localLoad() { try { return JSON.parse(localStorage.getItem(LKEY)) || []; } catch (e) { return []; } }
+function localSave(list) { try { localStorage.setItem(LKEY, JSON.stringify(list)); } catch (e) { alert("無法寫入瀏覽器儲存空間，請改用匯出備份。"); } }
+const clean = (r) => { const o = {}; Object.keys(r).forEach((k) => { o[k] = r[k] === "" ? null : r[k]; }); return o; };
+async function apiGet() {
+  const r = await fetch(API + (API.includes("?") ? "&" : "?") + "key=" + encodeURIComponent(KEYP));
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || "unknown");
+  return j.rows.map(clean);
+}
+async function apiPost(payload) {
+  const r = await fetch(API, { method: "POST", body: JSON.stringify({ key: KEYP, ...payload }) });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || "unknown");
+}
+async function refresh() {
+  if (API) {
+    try { LOG = await apiGet(); setStatus("cloud"); } catch (e) { setStatus("err", e.message); }
+  } else { LOG = localLoad(); setStatus("local"); }
+  renderLog();
+}
+async function upsertRec(rec) {
+  if (API) await apiPost({ action: "upsert", row: rec });
+  else { const l = localLoad(), i = l.findIndex((x) => String(x.id) === String(rec.id)); if (i >= 0) l[i] = rec; else l.push(rec); localSave(l); }
+  await refresh();
+}
+async function deleteRec(id) {
+  if (API) await apiPost({ action: "delete", id });
+  else localSave(localLoad().filter((x) => String(x.id) !== String(id)));
+  await refresh();
+}
+const load = () => LOG;
 function lotteryThisMonth() {
   const m = today().slice(0, 7);
   return load().filter((r) => r.cls && r.cls.includes("樂透") && (r.date || "").startsWith(m)).reduce((a, r) => a + (r.P || 0) * (r.n || 0) * 100, 0);
@@ -317,15 +278,15 @@ $("l_add").addEventListener("click", () => {
     by: $("l_by").value, why: $("l_why").value.trim(), exitP: null, exitDate: null, mae: null,
   };
   if (!r.sym || !r.P || !r.n) { alert("至少要填標的、權利金/股價、口數"); return; }
-  const list = load(); list.push(r); save(list);
-  ["l_sym", "l_con", "l_S", "l_P", "l_n", "l_stop", "l_tgt", "l_why"].forEach((id) => $(id).value = "");
-  renderLog();
+  upsertRec(r).then(() => {
+    ["l_sym", "l_con", "l_S", "l_P", "l_n", "l_stop", "l_tgt", "l_why"].forEach((id) => $(id).value = "");
+  }).catch((err) => alert("儲存失敗：" + err.message));
 });
 const mult = (r) => r.cls === "股票" ? 1 : 100;
 const cost = (r) => (r.P || 0) * (r.n || 0) * mult(r);
 const pnl = (r) => r.exitP == null ? null : (r.exitP - r.P) * (r.n || 0) * mult(r);
 function renderLog() {
-  const list = load().sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const list = [...load()].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
   const closed = list.filter((r) => r.exitP != null);
   const groups = {};
   closed.forEach((r) => { (groups[r.cls] = groups[r.cls] || []).push(r); });
@@ -346,15 +307,14 @@ function renderLog() {
 }
 $("l_table").addEventListener("click", (e) => {
   const c = e.target.dataset.close, d = e.target.dataset.del;
-  const list = load();
   if (c) {
-    const r = list.find((x) => String(x.id) === c);
+    const r = { ...load().find((x) => String(x.id) === c) };
     const ep = parseFloat(prompt("賣出（或到期）價格，到期歸零填 0："));
     if (!isFinite(ep)) return;
     const mae = parseFloat(prompt("持有期間最大浮虧 %（例如 35；不知道就留空）：", ""));
     r.exitP = ep; r.exitDate = today(); r.mae = isFinite(mae) ? mae : null;
-    save(list); renderLog();
-  } else if (d && confirm("確定刪除這筆？")) { save(list.filter((x) => String(x.id) !== d)); renderLog(); }
+    upsertRec(r).catch((err) => alert("儲存失敗：" + err.message));
+  } else if (d && confirm("確定刪除這筆？")) deleteRec(d).catch((err) => alert("刪除失敗：" + err.message));
 });
 function download(name, text, type) {
   const a = document.createElement("a");
@@ -371,11 +331,17 @@ $("l_import").addEventListener("click", () => $("l_file").click());
 $("l_file").addEventListener("change", (e) => {
   const f = e.target.files[0]; if (!f) return;
   const rd = new FileReader();
-  rd.onload = () => { try { const arr = JSON.parse(rd.result); if (Array.isArray(arr) && confirm(`匯入 ${arr.length} 筆並覆蓋目前紀錄？`)) { save(arr); renderLog(); } } catch (err) { alert("檔案格式不對"); } };
+  rd.onload = async () => {
+    try {
+      const arr = JSON.parse(rd.result);
+      if (!Array.isArray(arr) || !confirm(`匯入 ${arr.length} 筆（相同 id 會覆蓋）？`)) return;
+      for (const r of arr) await upsertRec(r);
+    } catch (err) { alert("匯入失敗：" + err.message); }
+  };
   rd.readAsText(f);
 });
 
-calc(); pyr(); renderLog();
+calc(); refresh();
 </script>
 </body>
 </html>
