@@ -190,6 +190,11 @@
         </div>
         <div class="closed-list" id="closedList">
           <input type="text" id="closedSearch" class="closed-search" placeholder="搜尋代號或名稱...">
+          <select id="closedSort" class="closed-search">
+            <option value="date">依日期（新→舊）</option>
+            <option value="amount_desc">依金額（賺最多在前）</option>
+            <option value="amount_asc">依金額（賠最多在前）</option>
+          </select>
           <div class="closed-rows" id="closedRows"></div>
         </div>
       </div>

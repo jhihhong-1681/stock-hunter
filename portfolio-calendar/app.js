@@ -1381,10 +1381,12 @@ const closedHeaderTitleEl = document.getElementById("closedHeaderTitle");
 const closedListEl = document.getElementById("closedList");
 const closedRowsEl = document.getElementById("closedRows");
 const closedSearchEl = document.getElementById("closedSearch");
+const closedSortEl = document.getElementById("closedSort");
 const closedSectionEl = document.querySelector(".closed-section");
 
 let allClosedPositions = [];
 let closedSearchTerm = "";
+let closedSortMode = "date";
 
 // 依已實現損益排序（最賺的排最前面，最賠的排最後面），比照原始 Sheet 順序反而看不出重點，
 // 搜尋框只篩選代號/名稱，跟排序邏輯分開，77 筆紀錄要找特定一檔時不用整份手動滑找。
@@ -1396,7 +1398,11 @@ function renderClosedRows() {
       (p) => p.symbol.toUpperCase().includes(term) || (p.name || "").toUpperCase().includes(term)
     );
   }
-  const sorted = [...list].sort((a, b) => b.realized - a.realized);
+  // date：closedPositions 照 Sheet 順序存（新平倉的排最上面），沒有逐筆平倉日期欄位，
+  // 所以「依日期」就是這個順序（新→舊）；amount_desc / amount_asc 依已實現損益。
+  const sorted = [...list];
+  if (closedSortMode === "amount_desc") sorted.sort((a, b) => b.realized - a.realized);
+  else if (closedSortMode === "amount_asc") sorted.sort((a, b) => a.realized - b.realized);
 
   closedRowsEl.innerHTML = sorted.length
     ? sorted
@@ -1438,6 +1444,11 @@ function renderClosedPositions(closedPositions) {
     closedSearchTerm = e.target.value;
     renderClosedRows();
   };
+  closedSortEl.value = closedSortMode;
+  closedSortEl.onchange = (e) => {
+    closedSortMode = e.target.value;
+    renderClosedRows();
+  };
 }
 
 // 未成交訂單追蹤：Firstrade 當日有效單沒成交隔天就會從訂單現況消失，排程每天把前一個交易日沒成交的
@@ -1453,6 +1464,24 @@ let pendingSearchTerm = "";
 
 function pendingSideCls(side) {
   return /buy|買/i.test(side || "") ? "po-buy" : "po-sell";
+}
+
+// 未成交訂單對照現價：股票用持股的現價，期權用持股裡同合約的權利金；沒持有就沒有現價可比。
+function optionKey(desc) {
+  const m = /^(\w+)\s+(\d\d)\/(\d\d)\/(\d{2,4})\s+([\d.]+)\s+([CP])/i.exec(desc || "");
+  if (!m) return null;
+  return `${m[1].toUpperCase()}|${m[2]}${m[3]}${m[4].slice(-2)}|${parseFloat(m[5])}|${m[6].toUpperCase()}`;
+}
+
+function pendingCurrentPrice(o) {
+  const positions = (window.HOLDINGS && window.HOLDINGS.positions) || [];
+  if (o.type === "option") {
+    const key = optionKey(o.description);
+    const p = key && positions.find((x) => x.type === "option" && optionKey(x.name) === key);
+    return p ? p.price : null;
+  }
+  const p = positions.find((x) => x.type !== "option" && x.symbol === o.symbol);
+  return p ? p.price : null;
 }
 
 function renderPendingRows(orders) {
@@ -1471,7 +1500,15 @@ function renderPendingRows(orders) {
         .map((o) => {
           const isOption = o.type === "option";
           const qtyTxt = o.qty !== null && o.qty !== undefined ? `${o.qty} ${isOption ? "口" : "股"}` : "";
-          const priceTxt = o.limitPrice !== null && o.limitPrice !== undefined ? fmtUsd2(o.limitPrice) : o.priceType || "市價";
+          const hasLimit = o.limitPrice !== null && o.limitPrice !== undefined;
+          const priceTxt = hasLimit ? `限價 ${fmtUsd2(o.limitPrice)}` : o.priceType || "市價";
+          const cur = hasLimit ? pendingCurrentPrice(o) : null;
+          let gapTxt = "";
+          if (cur !== null && cur !== undefined && o.limitPrice > 0) {
+            const gap = ((cur - o.limitPrice) / o.limitPrice) * 100;
+            const dir = gap >= 0 ? "高於" : "低於";
+            gapTxt = `<div class="po-gap">現價 ${fmtUsd2(cur)}・${dir}限價 ${Math.abs(gap).toFixed(1)}%（差 ${fmtUsd2(Math.abs(cur - o.limitPrice))}）</div>`;
+          }
           const repeat = countBySymbol[o.symbol] > 1 ? `<span class="po-repeat">掛單 ${countBySymbol[o.symbol]} 次</span>` : "";
           const descTxt = isOption && o.description ? `<div class="po-desc">${o.description}</div>` : "";
           const meta = [o.priceType, o.validity, o.conditions, o.status].filter(Boolean).join(" · ");
@@ -1486,6 +1523,7 @@ function renderPendingRows(orders) {
                 <span class="po-price">${priceTxt}</span>
               </div>
               ${descTxt}
+              ${gapTxt}
               <div class="po-meta">${qtyTxt}${meta ? " · " + meta : ""}</div>
             </div>
           `;
