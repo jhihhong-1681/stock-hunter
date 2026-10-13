@@ -24,7 +24,7 @@ if not (PASSWORD and API_URL and API_KEY):
         f"尚未設定：{'、'.join(missing)}（Streamlit Cloud → Settings → Secrets），"
         "設定步驟寫在 `scripts/journal_relay.gs` 開頭。設定完成前，下面的紀錄只會存在這個瀏覽器。"
     )
-    components.iframe(f"{JOURNAL_URL}?v={int(time.time())}", height=1400, scrolling=True)
+    components.iframe(f"{JOURNAL_URL}?v={int(time.time() // 300)}", height=1400, scrolling=True)
     st.stop()
 
 if not st.session_state.get("journal_unlocked"):
@@ -40,7 +40,7 @@ if not st.session_state.get("journal_unlocked"):
 
 # 網址 # 後面的參數不會送到 GitHub Pages 伺服器，只有瀏覽器裡的頁面讀得到。
 components.iframe(
-    f"{JOURNAL_URL}?v={int(time.time())}#api={quote(API_URL, safe='')}&key={quote(API_KEY, safe='')}",
+    f"{JOURNAL_URL}?v={int(time.time() // 300)}#api={quote(API_URL, safe='')}&key={quote(API_KEY, safe='')}",
     height=1400,
     scrolling=True,
 )

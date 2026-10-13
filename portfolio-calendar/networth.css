@@ -63,7 +63,7 @@ body {
 }
 
 .nw-chart-title {
-  font-size: 13px;
+  font-size: 15px;
   color: #9aa0a8;
   margin-bottom: 10px;
   font-weight: 700;
@@ -88,7 +88,7 @@ body {
   color: #e6e6e6;
   border-radius: 6px;
   padding: 6px 10px;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.6;
   white-space: nowrap;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
@@ -106,7 +106,7 @@ body {
   flex-wrap: wrap;
   gap: 10px 16px;
   margin-top: 10px;
-  font-size: 12px;
+  font-size: 14px;
   color: #9aa0a8;
 }
 

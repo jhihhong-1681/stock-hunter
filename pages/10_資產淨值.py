@@ -12,4 +12,4 @@ NETWORTH_URL = "https://jhihhong-1681.github.io/stock-hunter/portfolio-calendar/
 
 st.link_button("↗ 在新分頁開啟完整版", NETWORTH_URL)
 
-components.iframe(f"{NETWORTH_URL}?v={int(time.time())}", height=1400, scrolling=True)
+components.iframe(f"{NETWORTH_URL}?v={int(time.time() // 300)}", height=1400, scrolling=True)

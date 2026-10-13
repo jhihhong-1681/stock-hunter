@@ -10,6 +10,7 @@
 <script>
   document.write('<link rel="stylesheet" href="holdings-editor.css?v=' + Date.now() + '">');
   document.write('<link rel="stylesheet" href="networth.css?v=' + Date.now() + '">');
+  document.write('<link rel="stylesheet" href="theme.css?v=' + Date.now() + '">');
 </script>
 </head>
 <body>
@@ -60,10 +61,17 @@
       </div>
 
   <script>
-    // 每次都用當下時間戳當版本號，確保阿紘每次要求同步後，重新整理就能看到最新資料，不用手動清快取。
-    var __v = Date.now();
-    document.write('<script src="networth_data.js?v=' + __v + '"><\/script>');
-    document.write('<script src="networth.js?v=' + __v + '"><\/script>');
+    // 資料檔跟主程式加上當下時間戳，確保每次打開都抓到排程任務推上去的最新版本。
+    // 用 async=false 的動態 script：同時並行下載，但仍依序執行（主程式最後跑）。
+    (function () {
+      var v = Date.now();
+      ["networth_data.js", "networth.js"].forEach(function (src) {
+        var s = document.createElement("script");
+        s.src = src + "?v=" + v;
+        s.async = false;
+        document.body.appendChild(s);
+      });
+    })();
   </script>
 </body>
 </html>

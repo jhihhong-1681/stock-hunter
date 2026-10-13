@@ -1,0 +1,104 @@
+/* 色調與質感的覆蓋層：載入在 style.css 之後，只調外觀（背景、卡片、標題色條、強調色），不改版面結構。
+   紅漲綠跌的語意色（.gain / .loss 等）一律不動，標題與裝飾用藍、紫、琥珀、青、粉這幾個非紅綠的色。 */
+:root {
+  --bg0: #0a0e17;
+  --card-top: #1a2133;
+  --card-bot: #131927;
+  --card-line: #28324a;
+  --c-blue: #5aa9ff;
+  --c-violet: #a78bfa;
+  --c-amber: #f6b94a;
+  --c-teal: #34d3c0;
+  --c-pink: #f472b6;
+}
+
+body {
+  background:
+    radial-gradient(1100px 520px at 12% -8%, rgba(90, 169, 255, 0.14), transparent 60%),
+    radial-gradient(900px 480px at 92% 0%, rgba(167, 139, 250, 0.12), transparent 60%),
+    var(--bg0);
+  background-attachment: fixed;
+  color: #eef1f7;
+  line-height: 1.5;
+}
+
+.card {
+  background: linear-gradient(180deg, var(--card-top), var(--card-bot));
+  border: 1px solid var(--card-line);
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* 三張大卡片各有一條頂部色帶 */
+.hero-card { border-top: 3px solid transparent; border-image: linear-gradient(90deg, var(--c-blue), var(--c-violet), var(--c-pink)) 1; border-radius: 0; }
+.hero-card { border-radius: 18px; border-image: none; position: relative; overflow: hidden; }
+.hero-card::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, var(--c-blue), var(--c-violet), var(--c-pink)); }
+.calendar-card { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 3px 0 rgba(90, 169, 255, 0.55); }
+.holdings-card { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 3px 0 rgba(246, 185, 74, 0.55); }
+
+/* 區塊標題：左邊色條，依區塊配色 */
+.section-title, .compare-title, .title-row .title-text, .hero-title {
+  letter-spacing: 0.02em;
+}
+.section-title, .compare-title {
+  position: relative;
+  padding-left: 12px;
+  font-weight: 700;
+  color: #f2f5fb;
+}
+.section-title::before, .compare-title::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 12%; bottom: 12%;
+  width: 4px;
+  border-radius: 3px;
+  background: var(--c-blue);
+}
+.donut-section .section-title::before { background: var(--c-pink); }
+.ytd-section .section-title::before { background: var(--c-blue); }
+.asset-section .compare-title::before { background: var(--c-blue); }
+.compare-section .compare-title::before { background: var(--c-violet); }
+.theme-section .compare-title::before { background: var(--c-teal); }
+.closed-header-title::before { background: var(--c-amber); }
+.pending-section .closed-header-title::before { background: var(--c-pink); }
+
+.title-row .title-text { font-size: 24px; }
+.title-row .title-icon { font-size: 26px; }
+.hero-title { color: #cdd6ea; }
+
+/* 總資產大數字 */
+.networth-value { text-shadow: 0 2px 18px rgba(90, 169, 255, 0.25); }
+.networth-label { color: #cdd6ea; }
+.networth-label-en { color: #8793ad; }
+
+/* 摘要小卡：三張三種色調 */
+.stat-tile { border: 1px solid var(--card-line); border-radius: 12px; }
+.stat-tile:nth-child(1) { background: linear-gradient(160deg, rgba(90, 169, 255, 0.16), rgba(90, 169, 255, 0.04)); border-color: rgba(90, 169, 255, 0.35); }
+.stat-tile:nth-child(2) { background: linear-gradient(160deg, rgba(167, 139, 250, 0.16), rgba(167, 139, 250, 0.04)); border-color: rgba(167, 139, 250, 0.35); }
+.stat-tile:nth-child(3) { background: linear-gradient(160deg, rgba(246, 185, 74, 0.16), rgba(246, 185, 74, 0.04)); border-color: rgba(246, 185, 74, 0.35); }
+.stat-label { color: #b5bfd6; }
+.stat-sub { color: #8793ad; }
+
+/* 可展開區塊（已平倉、未成交）當作獨立小卡 */
+.closed-section {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--card-line);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.closed-header-title { position: relative; padding-left: 12px; }
+.closed-header-title::before { content: ""; position: absolute; left: 0; top: 14%; bottom: 14%; width: 4px; border-radius: 3px; background: var(--c-amber); }
+.closed-header-title { font-weight: 700; color: #f2f5fb; }
+.closed-chevron { color: var(--c-amber); }
+
+.closed-row, .po-row { background: rgba(255, 255, 255, 0.04); }
+.po-row { border-left-color: var(--c-pink); }
+
+/* 次要文字提亮一點，原本太暗不好讀 */
+.footer, .sheet-note, .hint, .note { color: #8f9bb5; }
+
+/* 輸入框、按鈕 */
+input, select, textarea { background: #1a2133; border-color: #2c3750; }
+input:focus, select:focus, textarea:focus { border-color: var(--c-blue); box-shadow: 0 0 0 3px rgba(90, 169, 255, 0.18); }
+button.nav-btn, .range-tab { border-radius: 8px; }
+.range-tab.active { background: rgba(90, 169, 255, 0.2); border-color: var(--c-blue); color: #fff; }

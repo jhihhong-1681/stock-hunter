@@ -28,7 +28,7 @@ body {
 }
 
 .sheet-header h1 {
-  font-size: 18px;
+  font-size: 19.5px;
   margin: 0;
   color: #202124;
 }
@@ -37,7 +37,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .auth-status { color: #5f6368; }
@@ -55,7 +55,7 @@ body {
   border-radius: 4px;
   padding: 3px 5px;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 14px;
   color: #202124;
 }
 
@@ -67,7 +67,7 @@ body {
 }
 
 .sheet-note {
-  font-size: 11px;
+  font-size: 13px;
   color: #80868b;
   margin: -6px 0 12px;
 }
@@ -78,7 +78,7 @@ body {
   border: none;
   border-radius: 6px;
   padding: 7px 14px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -94,7 +94,7 @@ body {
   border-collapse: collapse;
   width: 100%;
   min-width: 1150px;
-  font-size: 12.5px;
+  font-size: 14.5px;
 }
 
 .sheet-table th {
@@ -125,7 +125,7 @@ body {
   border: 1px solid transparent;
   background: transparent;
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: 14.5px;
   padding: 4px 5px;
   border-radius: 3px;
   color: #202124;
@@ -170,7 +170,7 @@ body {
   border: none;
   color: #d93025;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 16.5px;
   padding: 2px 6px;
 }
 
@@ -189,7 +189,7 @@ tfoot td {
   color: #1a73e8;
   border-radius: 6px;
   padding: 9px;
-  font-size: 13px;
+  font-size: 15px;
   cursor: pointer;
   width: 100%;
 }
@@ -198,7 +198,7 @@ tfoot td {
 
 .sheet-footer {
   margin-top: 10px;
-  font-size: 11px;
+  font-size: 13px;
   color: #80868b;
   text-align: right;
 }

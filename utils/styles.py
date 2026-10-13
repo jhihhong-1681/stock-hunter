@@ -2,10 +2,17 @@ import streamlit as st
 
 _CSS = """
 <style>
+/* ── 字體稍微放大、側邊欄選單更清楚 ───────────────────────── */
+.stMarkdown p, .stMarkdown li { font-size: 1.04rem; line-height: 1.65; }
+[data-testid="stSidebarNav"] a span { font-size: 1.02rem; }
+[data-testid="stSidebarNav"] a[aria-current="page"] { background: rgba(90,169,255,0.16) !important; border-left: 3px solid #5aa9ff; }
+.stCaption p { font-size: 0.85rem !important; }
+[data-testid="stMetricLabel"] p { font-size: 0.85rem !important; }
+
 /* ── 標題下方強調線 ──────────────────────────────────── */
 h1 {
     padding-bottom: 0.55rem !important;
-    border-bottom: 2px solid rgba(255,75,75,0.30) !important;
+    border-bottom: 2px solid rgba(90,169,255,0.35) !important;
     margin-bottom: 1.4rem !important;
 }
 

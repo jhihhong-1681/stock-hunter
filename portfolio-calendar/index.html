@@ -11,6 +11,7 @@
   // 每次都用當下時間戳當版本號，強迫瀏覽器每次都重新抓最新的 CSS/JS，
   // 這樣排程任務每天更新完資料後，打開網站就一定是最新的，不用手動清快取。
   document.write('<link rel="stylesheet" href="style.css?v=' + Date.now() + '">');
+  document.write('<link rel="stylesheet" href="theme.css?v=' + Date.now() + '">');
 </script>
 </head>
 <body>
@@ -204,14 +205,17 @@
   </div>
 
   <script>
-    // 同上：幫每個資料檔跟主程式加上當下時間戳，確保每次打開都抓到當天排程任務推上去的最新版本。
-    var __v = Date.now();
-    document.write('<script src="data.js?v=' + __v + '"><\/script>');
-    document.write('<script src="indices.js?v=' + __v + '"><\/script>');
-    document.write('<script src="holdings.js?v=' + __v + '"><\/script>');
-    document.write('<script src="positions_history.js?v=' + __v + '"><\/script>');
-    document.write('<script src="pending_orders.js?v=' + __v + '"><\/script>');
-    document.write('<script src="app.js?v=' + __v + '"><\/script>');
+    // 資料檔跟主程式加上當下時間戳，確保每次打開都抓到排程任務推上去的最新版本。
+    // 用 async=false 的動態 script：同時並行下載，但仍依序執行（主程式最後跑）。
+    (function () {
+      var v = Date.now();
+      ["data.js", "indices.js", "holdings.js", "positions_history.js", "pending_orders.js", "app.js"].forEach(function (src) {
+        var s = document.createElement("script");
+        s.src = src + "?v=" + v;
+        s.async = false;
+        document.body.appendChild(s);
+      });
+    })();
   </script>
 </body>
 </html>

@@ -14,4 +14,4 @@ st.link_button("↗ 在新分頁開啟完整版", CALENDAR_URL)
 
 # 加上時間戳查詢參數，避免 GitHub Pages CDN 或瀏覽器把 iframe 內容快取住，
 # 導致改版後這裡還顯示舊畫面。
-components.iframe(f"{CALENDAR_URL}?v={int(time.time())}", height=1400, scrolling=True)
+components.iframe(f"{CALENDAR_URL}?v={int(time.time() // 300)}", height=1400, scrolling=True)
