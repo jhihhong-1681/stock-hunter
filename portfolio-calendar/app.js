@@ -967,6 +967,7 @@ const THEME_MAP = {
   AVGO: "AI-客製晶片與高速連接",
   CRDO: "AI-客製晶片與高速連接",
   ALGM: "類比與功率半導體",
+  NVTS: "類比與功率半導體",
   STM: "類比與功率半導體",
   INTC: "晶圓代工與CPU",
   SMCI: "AI-伺服器",
