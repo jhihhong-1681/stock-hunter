@@ -1241,6 +1241,8 @@ window.POSITIONS_HISTORY = {
   },
   "2026-10-13": {
     positions: [
+      { symbol: "HAL", name: "HAL 10/16/26 32 Call", pl: 0, realized: -23770.8 },
+      { symbol: "XOM", name: "XOM 10/16/26 155 Call", pl: 0, realized: 50840 },
       { symbol: "ASTS", name: "AST Spacemobile", pl: -45411.59, realized: null },
       { symbol: "VOYG", name: "Voyager Technologies", pl: -14892.4, realized: null },
       { symbol: "SMR", name: "NuScale Power", pl: -62831.51, realized: -106338.51 },
@@ -1258,7 +1260,7 @@ window.POSITIONS_HISTORY = {
       { symbol: "BWXT", name: "BWX Technologies", pl: -176.7, realized: null },
       { symbol: "MRCY", name: "Mercury Systems", pl: -3844.93, realized: null },
       { symbol: "PATH", name: "UiPath", pl: 232.5, realized: null },
-      { symbol: "ET", name: "Energy Transfer", pl: -6547.2, realized: null },
+      { symbol: "ET", name: "Energy Transfer", pl: 446.4, realized: null },
       { symbol: "GLD", name: "GLD 10/16/26 395 Call", pl: -95325, realized: null },
       { symbol: "VRT", name: "VRT 10/16/26 260 Call", pl: -84134, realized: null },
       { symbol: "XOM", name: "XOM 11/20/26 160 Call", pl: -775, realized: null },
@@ -1289,10 +1291,8 @@ window.POSITIONS_HISTORY = {
       { symbol: "BB", name: "BB 11/20/26 10 C", pl: -2170, realized: null },
       { symbol: "BULL", name: "BULL 10/16/26 10 Call", pl: -1860, realized: null },
       { symbol: "HOOD", name: "HOOD 10/16/26 120 Call", pl: -310, realized: null },
-      { symbol: "QUBT", name: "QUBT 10/16/26 10 Call", pl: -868, realized: null },
-      { symbol: "XOM", name: "XOM 10/16/26 155 Call", pl: 28365, realized: 50840 },
-      { symbol: "HAL", name: "HAL 10/16/26 32 Call", pl: -22382, realized: -23770.8 }
+      { symbol: "QUBT", name: "QUBT 10/16/26 10 Call", pl: -868, realized: null }
     ],
-    totals: { cash: 127531, invested: 1457665, realizedPL: 569744 }
+    totals: { cash: 127531, invested: 1394673, realizedPL: 569744 }
   }
 };

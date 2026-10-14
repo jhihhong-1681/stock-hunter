@@ -3,7 +3,7 @@
 // 但它們的已實現損益仍計入 totals.realizedPL。
 window.HOLDINGS = {
   asOf: "2026-10-13",
-  totals: { invested: 1457665, value: 931299, unrealizedPL: -526366, unrealizedPct: -36.11, realizedPL: 569744, cash: 127531, totalAssets: 1058830 },
+  totals: { invested: 1394673, value: 869318, unrealizedPL: -525355, unrealizedPct: -37.67, realizedPL: 569744, cash: 127531, totalAssets: 996848 },
   positions: [
     { symbol: "ASTS", name: "AST Spacemobile", shares: 73, avgCost: 67.14, price: 47.07, invested: 151931, value: 106519, pl: -45411.59, pct: -29.9, realized: null },
     { symbol: "VOYG", name: "Voyager Technologies", shares: 110, avgCost: 30.73, price: 26.36, invested: 104780, value: 89888, pl: -14892.4, pct: -14.2, realized: null },
@@ -22,7 +22,7 @@ window.HOLDINGS = {
     { symbol: "BWXT", name: "BWX Technologies", shares: 5, avgCost: 140, price: 138.86, invested: 21700, value: 21523, pl: -176.7, pct: -0.8, realized: null },
     { symbol: "MRCY", name: "Mercury Systems", shares: 7, avgCost: 94.43, price: 76.71, invested: 20491, value: 16646, pl: -3844.93, pct: -18.8, realized: null },
     { symbol: "PATH", name: "UiPath", shares: 50, avgCost: 13.1, price: 13.25, invested: 20305, value: 20538, pl: 232.5, pct: 1.1, realized: null },
-    { symbol: "ET", name: "Energy Transfer", shares: 30, avgCost: 20, price: 12.96, invested: 18600, value: 12053, pl: -6547.2, pct: -35.2, realized: null },
+    { symbol: "ET", name: "Energy Transfer", shares: 30, avgCost: 20, price: 20.48, invested: 18600, value: 19046, pl: 446.4, pct: 2.4, realized: null },
     { symbol: "GLD", name: "GLD 10/16/26 395 Call", type: "option", shares: 100, avgCost: 31, price: 0.25, underlyingPrice: 381.67, invested: 96100, value: 775, pl: -95325, pct: -99.2, realized: null, priceUnchangedDays: 0 },
     { symbol: "VRT", name: "VRT 10/16/26 260 Call", type: "option", shares: 200, avgCost: 14, price: 0.43, underlyingPrice: 237.29, invested: 86800, value: 2666, pl: -84134, pct: -96.9, realized: null, priceUnchangedDays: 0 },
     { symbol: "XOM", name: "XOM 11/20/26 160 Call", type: "option", shares: 100, avgCost: 16, price: 15.75, underlyingPrice: 174.08, invested: 49600, value: 48825, pl: -775, pct: -1.6, realized: null, priceUnchangedDays: 0 },
@@ -53,11 +53,11 @@ window.HOLDINGS = {
     { symbol: "BB", name: "BB 11/20/26 10 C", type: "option", shares: 200, avgCost: 0.56, price: 0.21, underlyingPrice: 8.47, invested: 3472, value: 1302, pl: -2170, pct: -62.5, realized: null, priceUnchangedDays: 1 },
     { symbol: "BULL", name: "BULL 10/16/26 10 Call", type: "option", shares: 600, avgCost: 0.11, price: 0.01, underlyingPrice: 6.31, invested: 2046, value: 186, pl: -1860, pct: -90.9, realized: null, priceUnchangedDays: 7 },
     { symbol: "HOOD", name: "HOOD 10/16/26 120 Call", type: "option", shares: 100, avgCost: 0.4, price: 0.3, underlyingPrice: 110.52, invested: 1240, value: 930, pl: -310, pct: -25, realized: null, priceUnchangedDays: 0 },
-    { symbol: "QUBT", name: "QUBT 10/16/26 10 Call", type: "option", shares: 100, avgCost: 0.3, price: 0.02, underlyingPrice: 6.87, invested: 930, value: 62, pl: -868, pct: -93.3, realized: null, priceUnchangedDays: 4 },
-    { symbol: "XOM", name: "XOM 10/16/26 155 Call", type: "option", shares: 100, avgCost: 9.95, price: 19.1, underlyingPrice: 174.08, invested: 30845, value: 59210, pl: 28365, pct: 92, realized: 50840, priceUnchangedDays: 0 },
-    { symbol: "HAL", name: "HAL 10/16/26 32 Call", type: "option", shares: 300, avgCost: 3.4567, price: 1.05, underlyingPrice: 32.79, invested: 32147, value: 9765, pl: -22382, pct: -69.6, realized: -23770.8, priceUnchangedDays: 0 }
+    { symbol: "QUBT", name: "QUBT 10/16/26 10 Call", type: "option", shares: 100, avgCost: 0.3, price: 0.02, underlyingPrice: 6.87, invested: 930, value: 62, pl: -868, pct: -93.3, realized: null, priceUnchangedDays: 4 }
   ],
   closedPositions: [
+    { symbol: "XOM", name: "XOM 10/16/26 155 Call", note: "17賣出1口 19.3賣出1口", realized: 50840 },
+    { symbol: "HAL", name: "HAL 10/16/26 32 Call", note: "0.9賣出", realized: -23770.8 },
     { symbol: "WMT", name: "WMT 10/16/26 110 Call", note: "2.73賣出1口 3賣出1口", realized: 11871.76 },
     { symbol: "MU", name: "Micron", note: "1065賣出", realized: 4185 },
     { symbol: "LPG", name: "Dorian LPG Ltd.", note: "55.8賣出10股", realized: 403 },
