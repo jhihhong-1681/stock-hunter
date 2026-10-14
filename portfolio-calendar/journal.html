@@ -95,7 +95,7 @@ th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background
       <label>標的停損價<input id="l_stop" type="number" step="0.01"></label>
       <label>目標價（標的）<input id="l_tgt" type="number" step="0.01"></label>
       <label>最晚出場日<input id="l_by" type="date"></label>
-      <label class="wide">買進理由／催化劑<textarea id="l_why"></textarea></label>
+      <label class="wide">買進理由／來源（來源寫第一行，後面接「｜」再寫補充，例如：10X TRADE｜查爾斯建議 150C）<textarea id="l_why"></textarea></label>
     </div>
     <div style="margin-top:10px"><button class="primary" id="l_add">新增</button></div>
   </div>
@@ -110,7 +110,7 @@ th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background
       <button id="l_import">匯入 JSON</button>
       <input type="file" id="l_file" accept=".json" class="hidden">
     </div>
-    <div class="hint">匯出的 CSV 可以直接貼進 Excel。結案時按該列「結案」，輸入賣出價與持有期間最大浮虧（%），之後累積 30–50 筆就能校準停損幅度。</div>
+    <div class="hint">匯出的 CSV 可以直接貼進 Excel。結案時按該列「結案」，輸入賣出價與持有期間最大浮虧（%），之後累積 30–50 筆就能校準停損幅度。統計區的「來源」是依買進理由第一行「｜」之前的文字分組，同一個來源請固定寫同樣的字。</div>
   </div>
 </section>
 
@@ -295,6 +295,8 @@ $("l_add").addEventListener("click", () => {
   ["l_sym", "l_con", "l_S", "l_P", "l_n", "l_stop", "l_tgt", "l_why"].forEach((id) => $(id).value = "");
   upsertRec(r);
 });
+// 來源 = 買進理由第一行「｜」或「|」之前的文字（沒有分隔符號就用整個第一行）；沒填歸「未填來源」。
+const srcOf = (r) => String(r.why || "").split("\n")[0].split(/[｜|]/)[0].trim() || "未填來源";
 const mult = (r) => r.cls === "股票" ? 1 : 100;
 const cost = (r) => (r.P || 0) * (r.n || 0) * mult(r);
 const pnl = (r) => r.exitP == null ? null : (r.exitP - r.P) * (r.n || 0) * mult(r);
@@ -308,6 +310,13 @@ function renderLog() {
     const g = groups[k], p = g.map(pnl), w = p.filter((x) => x > 0), l = p.filter((x) => x <= 0);
     const avgW = w.length ? w.reduce((a, b) => a + b, 0) / w.length : 0, avgL = l.length ? -l.reduce((a, b) => a + b, 0) / l.length : 0;
     st += metric(k, `${g.length} 筆・勝率 ${fmt(w.length / g.length * 100, 0)}%・賺賠比 ${avgL ? fmt(avgW / avgL, 1) : "--"}・${usd(p.reduce((a, b) => a + b, 0))}`);
+  });
+  const bySrc = {};
+  closed.forEach((r) => { const k = srcOf(r); (bySrc[k] = bySrc[k] || []).push(r); });
+  Object.keys(bySrc).forEach((k) => {
+    const g = bySrc[k], p = g.map(pnl), w = p.filter((x) => x > 0), l = p.filter((x) => x <= 0);
+    const avgW = w.length ? w.reduce((a, b) => a + b, 0) / w.length : 0, avgL = l.length ? -l.reduce((a, b) => a + b, 0) / l.length : 0;
+    st += metric("來源：" + k, `${g.length} 筆・勝率 ${fmt(w.length / g.length * 100, 0)}%・賺賠比 ${avgL ? fmt(avgW / avgL, 1) : "--"}・${usd(p.reduce((a, b) => a + b, 0))}`);
   });
   $("l_stats").innerHTML = st;
   const head = ["買進日", "標的", "合約", "類別", "標的價", "進價", "數量", "成本", "停損價", "最晚出場", "出場", "損益", "最大浮虧", "理由", ""];
