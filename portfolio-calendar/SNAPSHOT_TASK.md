@@ -40,7 +40,7 @@ Firstrade 未成交訂單（`portfolio-calendar/pending_orders.js`）**不歸這
 - **已平倉紀錄（closedPositions）**：總投入和現值都空白、但有已實現損益的列，整理成 `{ symbol, name, note: 平倉欄文字或 null, realized }`，name 是亂碼/純數字時換成正確名稱（例如 ALAB → "Astera Labs"）。保持表格順序。
   - **⚠ 截斷防呆（重要）**：`read_file_content` 會在 Sheet 變大時**靜默截斷已平倉區塊的尾端**（沒有任何警告，已發生多次）。所以：先讀上一份 `portfolio-calendar/holdings.js` 的 closedPositions；這次讀到的清單只要比上一份少，或上一份裡有 symbol+name 這次沒讀到，**一律視為截斷，不是阿紘刪除**——把這次讀到的放前面（新平倉的部位通常出現在已平倉區塊最上方），後面接上一份裡這次沒讀到的項目（沿用上一份的 realized 值）。
   - 核對：positions 的 realized 加總 + closedPositions 的 realized 加總，應該等於 totals.realizedPL（差 1 元以內是四捨五入）。對不上就在結果摘要裡說明差額，但 realizedPL 仍然照抄 Sheet。
-- **新代號檢查**：positions 裡每個 symbol 對照 `portfolio-calendar/app.js` 的 `THEME_MAP` key，不在裡面的記下來（給第 14 步）。不要自己改 app.js。
+- **新代號檢查**：positions 裡每個 symbol 對照 `portfolio-calendar/app.js` 的 `THEME_MAP` key，不在裡面的，**由排程自己研究分類**：WebSearch 查公司主業與未來布局，歸入 `THEME_MAP` 既有的細分產業（真的沒有適合的才新增細分，並同步補 `THEME_PARENT`），把新代號加進 `app.js` 的 `THEME_MAP`（相近的代號放一起），同樣提交進第 12 步的 commit。記下來給第 14 步回報（symbol、歸入哪個細分、一句理由）。
 
 ### 3. 期權價格
 
@@ -105,14 +105,14 @@ window.HOLDINGS = {
 寫完後用 node 驗證四個檔案都能正常執行，例如：
 `node -e "const w={};new Function('window',require('fs').readFileSync('portfolio-calendar/holdings.js','utf8'))(w);console.log(Object.keys(w))"`
 
-### 11. 只改這四個資料檔
+### 11. 只改這些檔案
 
-`data.js`、`indices.js`、`holdings.js`、`positions_history.js`。不要改 `index.html`、`style.css`、`app.js`、`pending_orders.js`，也不要改這份 SNAPSHOT_TASK.md。
+四個資料檔 `data.js`、`indices.js`、`holdings.js`、`positions_history.js`，加上新代號分類時的 `app.js`（**只能**在 `THEME_MAP` / `THEME_PARENT` 補條目，其他一行都不准動）。不要改 `index.html`、`style.css`、`pending_orders.js`，也不要改這份 SNAPSHOT_TASK.md。
 
 ### 12. 推上 GitHub（直接推 main，不要開 PR、不要開新分支）
 
 ```
-git add portfolio-calendar/data.js portfolio-calendar/indices.js portfolio-calendar/holdings.js portfolio-calendar/positions_history.js
+git add portfolio-calendar/data.js portfolio-calendar/indices.js portfolio-calendar/holdings.js portfolio-calendar/positions_history.js portfolio-calendar/app.js   # app.js 只有新代號分類時才有變動
 git commit -m "每日快照 <快照對應日期>"
 git push origin HEAD:main
 ```
@@ -132,7 +132,7 @@ push 被拒（remote 有新 commit，例如 ETF 持股、法人資料、本機 F
 - 有狀況：第一行寫「⚠️ 10/02 快照完成，有 N 件事要看」（失敗就寫「❌ 10/02 快照失敗：原因」），下面逐項列出：
 - (a) 有指數因來源B不可靠改採 Yahoo Finance（指數、兩來源數字、採用值）
 - (b) git push 失敗（原因）
-- (c) 有新代號不在 THEME_MAP（列出 symbol 跟名稱，請阿紘決定主題，或請 Claude 研究後分類）
+- (c) 有新代號已自動研究並加進 THEME_MAP（列出 symbol、歸入的細分產業與一句理由，阿紘不同意再改）
 - (d) 有期權 priceUnchangedDays ≥ 1（列出名稱與連續天數，請阿紘檢查 Sheet 現價是否忘記更新）
 - (e) 有期權的 Sheet 現價欄空白、underlyingPrice 留 null（列出 symbol）
 - (f) positions + closedPositions 的 realized 加總跟 Sheet 已實現損益對不上（差額多少；截斷本身已經是常態，補回後對得上就不用通知）
