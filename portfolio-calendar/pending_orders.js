@@ -20,6 +20,8 @@
 //               { date, time, price, qty, description, match }；match 是 "exact"（同一個期權合約/同一檔股票）
 //               或 "underlying"（期權同標的但履約價/到期日不同）。沒有這個欄位代表還在追蹤中；
 //               有這個欄位的網站就不再顯示（資料保留備查，拿掉 filled 就會恢復追蹤）。
+//   removed     （選填）阿紘在網站上按 ✕ 手動刪除時，網站經 GitHub API 補上 { date }（台北日期）。
+//               網站不顯示、排程也不拿它去對成交結案；拿掉 removed 就恢復追蹤。
 window.PENDING_ORDERS = [
   { date: "2026-09-28", time: "16:05:02", side: "Buy Open", symbol: "GRAB", type: "option", description: "GRAB 01/15/2027 3.00 Call", qty: 3, priceType: "限價", limitPrice: 0.4, validity: "當日有效", conditions: null, status: "已取消" },
   { date: "2026-09-29", time: "16:05:02", side: "Buy Open", symbol: "SMCI", type: "option", description: "SMCI 10/16/2026 45.00 Call", qty: 1, priceType: "限價", limitPrice: 1, validity: "當日有效", conditions: null, status: "已取消" },

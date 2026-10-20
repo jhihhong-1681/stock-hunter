@@ -571,7 +571,7 @@ def my_symbols() -> tuple[set[str], set[str]]:
     try:
         for line in (MY_DATA_DIR / "pending_orders.js").read_text(encoding="utf-8").splitlines():
             m = re.search(r'symbol:\s*"([A-Z.\-]+)"', line)
-            if m and "filled:" not in line:
+            if m and "filled:" not in line and "removed:" not in line:
                 pending.add(m.group(1))
     except OSError:
         pass

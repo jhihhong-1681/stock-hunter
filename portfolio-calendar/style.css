@@ -895,6 +895,20 @@ body {
 .po-gap { margin-top: 3px; color: #f5c518; font-size: 13px; font-variant-numeric: tabular-nums; }
 .po-desc { margin-top: 3px; color: #cfd3d8; }
 .po-meta { margin-top: 3px; color: #7d8590; font-size: 12.5px; }
+
+.po-del {
+  align-self: center;
+  border: none;
+  background: transparent;
+  color: #7d8590;
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.po-del:hover { color: #ff8a8a; background: rgba(255, 92, 92, 0.15); }
+.po-del:disabled { opacity: 0.4; cursor: wait; }
 /* ---- Hero 摘要卡 ---- */
 
 .hero-header {

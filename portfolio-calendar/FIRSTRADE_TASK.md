@@ -26,7 +26,7 @@ repo 在 `C:\Users\user1\Desktop\stock-hunter`（remote https://github.com/jhihh
    - 每筆整理成：`{ date: 快照對應日期, time: "HH:MM:SS"（美東）, side: 訂單類別原文, symbol: 標的代號（期權取合約名稱開頭的代號，例如 "SRPT 12/18/2026 17.50 Call" → "SRPT"）, type: "option" 或 "stock", description: 期權完整合約名稱／股票 null, qty: 數字, priceType: 原文, limitPrice: 數字或 null, validity: 原文, conditions: 原文或 null, status: 現況原文 }`
    - 附加到陣列尾端（舊資料原封不動）。用 date+time+symbol+side+description+limitPrice 檢查重複，已存在就不新增。
 
-4. **成交後結案（e2）**：把同一張表裡「更新時間的日期 = 快照對應日期」且「現況是已成交（含部分成交）」的每一筆，拿去對 PENDING_ORDERS 裡**還沒有 filled 欄位**的舊紀錄：
+4. **成交後結案（e2）**：把同一張表裡「更新時間的日期 = 快照對應日期」且「現況是已成交（含部分成交）」的每一筆，拿去對 PENDING_ORDERS 裡**還沒有 filled 也沒有 removed 欄位**的舊紀錄（removed 是阿紘在網站上手動刪除的，不要動它、也不要拿掉）：
    - 方向一樣：買方（買進 / Buy Open / Buy to Open / Buy Close）只對買方，賣方（賣出 / Sell Close / Sell Open）只對賣方。
    - 商品一樣：股票只對股票（symbol 相同）；期權只對期權——合約名稱完全相同 → `match: "exact"`；只有標的相同、履約價或到期日不同 → `match: "underlying"`。股票成交不對期權追蹤單，反之亦然。
    - 追蹤單的 date+time 必須早於成交時間。
