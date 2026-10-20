@@ -18,6 +18,7 @@
  * 沒有 API_KEY 的請求一律拿不到資料，也寫不進去。
  */
 const SHEET_NAME = 'Journal';
+const REMOVED_SHEET = 'PendingRemoved'; // 報酬日曆「未成交訂單追蹤」手動刪除的清單：key, 刪除時間
 const COLS = ['id', 'date', 'sym', 'con', 'cls', 'S', 'P', 'n', 'stop', 'tgt', 'by', 'why', 'exitDate', 'exitP', 'mae'];
 
 function json_(obj) {
@@ -54,8 +55,23 @@ function readRows_(sh) {
   });
 }
 
+function removedSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(REMOVED_SHEET);
+  if (!sh) {
+    sh = ss.insertSheet(REMOVED_SHEET);
+    sh.appendRow(['key', 'removedAt']);
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
 function doGet(e) {
   if (!authorized_(e && e.parameter && e.parameter.key)) return json_({ ok: false, error: 'unauthorized' });
+  if (e.parameter.what === 'removed') {
+    const keys = removedSheet_().getDataRange().getValues().slice(1).map((r) => String(r[0])).filter(Boolean);
+    return json_({ ok: true, keys: keys });
+  }
   return json_({ ok: true, rows: readRows_(sheet_()) });
 }
 
@@ -68,6 +84,19 @@ function doPost(e) {
   const lock = LockService.getScriptLock();
   lock.waitLock(15000);
   try {
+    if (body.action === 'removePending' && body.pkey) {
+      const rs = removedSheet_();
+      const keys = rs.getDataRange().getValues().map((r) => String(r[0]));
+      if (keys.indexOf(String(body.pkey)) < 0) rs.appendRow([String(body.pkey), new Date()]);
+      return json_({ ok: true });
+    }
+    if (body.action === 'restorePending' && body.pkey) {
+      const rs = removedSheet_();
+      const keys = rs.getDataRange().getValues().map((r) => String(r[0]));
+      const i = keys.indexOf(String(body.pkey));
+      if (i > 0) rs.deleteRow(i + 1);
+      return json_({ ok: true });
+    }
     const sh = sheet_();
     const ids = sh.getRange(1, 1, Math.max(sh.getLastRow(), 1), 1).getValues().map((r) => String(r[0]));
     if (body.action === 'upsert' && body.row && body.row.id != null) {

@@ -1529,7 +1529,7 @@ function renderPendingRows(orders) {
                 ${isOption ? '<span class="h-tag po-opt">期權</span>' : ""}
                 ${repeat}
                 <span class="po-price">${priceTxt}</span>
-                <button class="po-del" data-idx="${window.PENDING_ORDERS.indexOf(o)}" title="不再追蹤這筆">✕</button>
+                ${PO_API ? `<button class="po-del" data-idx="${window.PENDING_ORDERS.indexOf(o)}" title="不再追蹤這筆">✕</button>` : ""}
               </div>
               ${descTxt}
               ${gapTxt}
@@ -1541,102 +1541,32 @@ function renderPendingRows(orders) {
     : '<div class="flat" style="font-size:11.5px;padding:8px 0;text-align:center;">沒有符合的紀錄</div>';
 }
 
-// 手動刪除追蹤單：按 ✕ 經 GitHub API 在 pending_orders.js 該筆補上 removed: { date }（不真的刪，拿掉 removed 就恢復追蹤）。
-// 第一次要貼一個只開 stock-hunter repo「Contents: Read and write」權限的 fine-grained token，只存在這個瀏覽器的 localStorage。
-// GitHub Pages 重新部署要一兩分鐘，期間先用 localStorage 記住已刪的那幾筆，免得重新整理又冒出來。
-const GH_API = "https://api.github.com/repos/jhihhong-1681/stock-hunter/contents/portfolio-calendar/pending_orders.js";
-const GH_TOKEN_KEY = "pendingOrdersGhToken";
-const PO_REMOVED_KEY = "pendingOrdersRemoved";
+// 手動刪除追蹤單：按 ✕ 經 Apps Script 中繼（scripts/journal_relay.gs）把這筆的 key 記到阿紘 Google Sheet 的「PendingRemoved」分頁，
+// 載入時再把清單套在 pending_orders.js 上遮掉（pending_orders.js 本身不動，從 Sheet 拿掉那列就恢復追蹤）。
+// 網址帶 #api=...&key=... 時（由 Streamlit 報酬日曆頁解鎖後帶入）才有 ✕；直接開 GitHub Pages 網址只能看。
+const PO_PARAMS = new URLSearchParams(location.hash.slice(1));
+const PO_API = PO_PARAMS.get("api");
+const PO_KEY = PO_PARAMS.get("key");
+let poRemovedKeys = new Set();
 
 function pendingOrderKey(o) {
   return [o.date, o.time, o.symbol, o.side, o.description, o.limitPrice].join("|");
 }
 
-// { key: 刪除時間 ms }，只認一天內的（之後以檔案為準，手動拿掉 removed 恢復追蹤時才不會被這裡擋住）
-function localRemovedMap() {
+async function loadRemovedKeys() {
+  if (!PO_API) return;
   try {
-    const map = JSON.parse(localStorage.getItem(PO_REMOVED_KEY) || "{}");
-    const cutoff = Date.now() - 86400000;
-    Object.keys(map).forEach((k) => { if (!(map[k] > cutoff)) delete map[k]; });
-    return map;
-  } catch (e) { return {}; }
-}
-
-function localRemovedKeys() {
-  return new Set(Object.keys(localRemovedMap()));
-}
-
-function rememberRemoved(o) {
-  try {
-    const map = localRemovedMap();
-    map[pendingOrderKey(o)] = Date.now();
-    localStorage.setItem(PO_REMOVED_KEY, JSON.stringify(map));
-  } catch (e) { /* 存不了只影響重新整理後是否暫時冒出來 */ }
-}
-
-function b64ToUtf8(b64) {
-  return new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, "")), (c) => c.charCodeAt(0)));
-}
-
-function utf8ToB64(text) {
-  let bin = "";
-  new TextEncoder().encode(text).forEach((b) => { bin += String.fromCharCode(b); });
-  return btoa(bin);
-}
-
-// 在檔案文字裡找出這筆追蹤單那一行（每筆一行），補上 removed 欄位；找不到或不只一行就丟錯，不亂改。
-function markRemovedInSource(text, o, today) {
-  const q = (v) => (v === null || v === undefined ? "null" : JSON.stringify(v));
-  const needles = [
-    `date: ${q(o.date)}`, `time: ${q(o.time)}`, `side: ${q(o.side)}`, `symbol: ${q(o.symbol)}`,
-    `description: ${q(o.description)}`, `limitPrice: ${o.limitPrice === null || o.limitPrice === undefined ? "null" : o.limitPrice},`,
-  ];
-  const lines = text.split("\n");
-  const hits = lines.map((l, i) => i).filter((i) => needles.every((n) => lines[i].includes(n)) && !lines[i].includes("removed:"));
-  if (hits.length !== 1) throw new Error(hits.length ? "檔案裡有多筆一樣的紀錄，請跟 Claude 說要刪哪一筆" : "檔案裡找不到這筆（可能已經被刪過或剛結案）");
-  const i = hits[0];
-  const updated = lines[i].replace(/ \}(,?)(\r?)$/, `, removed: { date: "${today}" } }$1$2`);
-  if (updated === lines[i]) throw new Error("這一行格式看不懂，沒有修改");
-  lines[i] = updated;
-  return lines.join("\n");
+    const r = await fetch(PO_API + (PO_API.includes("?") ? "&" : "?") + "what=removed&key=" + encodeURIComponent(PO_KEY));
+    const data = await r.json();
+    if (data.ok) poRemovedKeys = new Set(data.keys);
+  } catch (e) { /* 讀不到就先不遮，不影響顯示 */ }
 }
 
 async function removePendingOrder(o) {
-  let token = null;
-  try { token = localStorage.getItem(GH_TOKEN_KEY); } catch (e) { /* 沒有 localStorage 就每次問 */ }
-  if (!token) {
-    token = (prompt("第一次刪除要貼 GitHub token（fine-grained，只開 stock-hunter repo 的 Contents: Read and write）。只存在這個瀏覽器。") || "").trim();
-    if (!token) return false;
-  }
-  const headers = { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" };
-  const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
-  // 排程剛好同時 push 會讓 sha 過期（409），重抓一次再試
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const getRes = await fetch(`${GH_API}?ref=main&t=${Date.now()}`, { headers, cache: "no-store" });
-    if (getRes.status === 401 || getRes.status === 403 || getRes.status === 404) {
-      try { localStorage.removeItem(GH_TOKEN_KEY); } catch (e) { /* ignore */ }
-      throw new Error("GitHub token 無效或權限不足，下次刪除會重新詢問");
-    }
-    if (!getRes.ok) throw new Error(`讀取檔案失敗（${getRes.status}）`);
-    const file = await getRes.json();
-    const content = markRemovedInSource(b64ToUtf8(file.content), o, today);
-    const label = `${o.description || o.symbol} ${o.side} ${o.date}`;
-    const putRes = await fetch(GH_API, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify({ message: `手動刪除未成交訂單追蹤：${label}`, content: utf8ToB64(content), sha: file.sha, branch: "main" }),
-    });
-    if (putRes.ok) {
-      try { localStorage.setItem(GH_TOKEN_KEY, token); } catch (e) { /* ignore */ }
-      return true;
-    }
-    if (putRes.status === 401 || putRes.status === 403) {
-      try { localStorage.removeItem(GH_TOKEN_KEY); } catch (e) { /* ignore */ }
-      throw new Error("GitHub token 沒有寫入權限，下次刪除會重新詢問");
-    }
-    if (putRes.status !== 409 && putRes.status !== 422) throw new Error(`寫入失敗（${putRes.status}）`);
-  }
-  throw new Error("檔案剛好被排程更新，請稍後再試");
+  const r = await fetch(PO_API, { method: "POST", body: JSON.stringify({ key: PO_KEY, action: "removePending", pkey: pendingOrderKey(o) }) });
+  const data = await r.json();
+  if (!data.ok) throw new Error(data.error || "寫入失敗");
+  poRemovedKeys.add(pendingOrderKey(o));
 }
 
 function renderPendingOrders() {
@@ -1646,8 +1576,7 @@ function renderPendingOrders() {
   }
   // 後來已經成交的追蹤單（排程補上了 filled 欄位）和手動刪除的（removed）不再顯示；資料仍留在 pending_orders.js 裡備查，
   // 移除原因（是哪一筆成交讓它結案）由排程在當天的回報/推播說明。
-  const localRemoved = localRemovedKeys();
-  const orders = window.PENDING_ORDERS.filter((o) => !o.filled && !o.removed && !localRemoved.has(pendingOrderKey(o)));
+  const orders = window.PENDING_ORDERS.filter((o) => !o.filled && !o.removed && !poRemovedKeys.has(pendingOrderKey(o)));
   const symbols = new Set(orders.map((o) => o.symbol)).size;
   pendingHeaderTitleEl.textContent = orders.length
     ? `未成交訂單追蹤（${orders.length} 筆 · ${symbols} 檔）`
@@ -1673,12 +1602,10 @@ function renderPendingOrders() {
     const o = window.PENDING_ORDERS[Number(btn.dataset.idx)];
     if (!o) return;
     const label = `${o.date.slice(5).replace("-", "/")} ${o.description || o.symbol} ${o.side}${o.limitPrice != null ? " 限價 " + fmtUsd2(o.limitPrice) : ""}`;
-    if (!confirm(`不再追蹤這筆？\n${label}\n\n（資料會留在 pending_orders.js，標記 removed，之後要恢復跟 Claude 說）`)) return;
+    if (!confirm(`不再追蹤這筆？\n${label}\n\n（只是不再顯示，要恢復跟 Claude 說）`)) return;
     btn.disabled = true;
     try {
-      if (!(await removePendingOrder(o))) { btn.disabled = false; return; }
-      o.removed = { date: new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" }) };
-      rememberRemoved(o);
+      await removePendingOrder(o);
       renderPendingOrders();
     } catch (err) {
       btn.disabled = false;
@@ -1749,6 +1676,7 @@ function renderHoldings() {
 
 renderHoldings();
 renderPendingOrders();
+loadRemovedKeys().then(() => { if (PO_API) renderPendingOrders(); });
 renderYtdChart();
 
 document.getElementById("prevBtn").addEventListener("click", () => {
