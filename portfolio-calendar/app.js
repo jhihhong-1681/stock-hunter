@@ -971,6 +971,7 @@ const THEME_MAP = {
   NVTS: "類比與功率半導體",
   STM: "類比與功率半導體",
   INTC: "晶圓代工與CPU",
+  TSM: "晶圓代工與CPU",
   SMCI: "AI-伺服器",
   VRT: "AI-資料中心電力散熱",
   NBIL: "AI-雲端算力",
