@@ -38,9 +38,14 @@ if not st.session_state.get("journal_unlocked"):
                 st.error("密碼錯誤")
     st.stop()
 
+# 新建倉位（報酬日曆快照偵測）對照研究監控日誌的推薦，預填成草稿，確認後才寫進 Google Sheet。
+from utils.journal_drafts import render_drafts
+render_drafts(API_URL, API_KEY)
+
 # 網址 # 後面的參數不會送到 GitHub Pages 伺服器，只有瀏覽器裡的頁面讀得到。
+# journal_rev 在加入草稿後加一，讓下面的 iframe 重新載入就看得到新增的那筆。
 components.iframe(
-    f"{JOURNAL_URL}?v={int(time.time() // 300)}#api={quote(API_URL, safe='')}&key={quote(API_KEY, safe='')}",
+    f"{JOURNAL_URL}?v={int(time.time() // 300)}-{st.session_state.get('journal_rev', 0)}#api={quote(API_URL, safe='')}&key={quote(API_KEY, safe='')}",
     height=1400,
     scrolling=True,
 )
