@@ -1,0 +1,48 @@
+name: Compute Trading Signals
+
+on:
+  # 雲端每日快照（台北 13:30）把 holdings.js 推上 main 後接著跑
+  push:
+    paths:
+      - 'portfolio-calendar/holdings.js'
+      - 'data/watchlist.json'
+      - 'data/company_profiles.json'
+      - 'data/partnerships.json'
+  schedule:
+    # 備援：台北 14:30（UTC 06:30），週一到週五
+    - cron: '30 6 * * 1-5'
+  workflow_dispatch:
+
+concurrency:
+  group: compute-signals
+  cancel-in-progress: true
+
+jobs:
+  compute:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install yfinance pandas numpy lxml
+
+      - name: Compute signals
+        run: python scripts/compute_signals.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/trading_signals.json
+          git diff --staged --quiet || git commit -m "chore: trading signals $(date -u +%Y-%m-%d)"
+          git pull --rebase origin main
+          git push
