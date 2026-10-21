@@ -156,7 +156,7 @@ with tab_fund:
                          "營收年增率": pct(m.get("營收年增率")), "毛利率": pct(m.get("毛利率")).replace("+", ""),
                          "營業利益率": pct(m.get("營業利益率")).replace("+", ""),
                          "現金可撐(月)": ("不燒錢" if m.get("可撐月數") == float("inf") else f"{m['可撐月數']:.0f}") if m.get("可撐月數") is not None else "-",
-                         "年化稀釋": pct(m.get("年化股本稀釋")), "巨頭合作": "、".join(p.get("partner", "?") for p in e["partners"]) or "-",
+                         "年化稀釋": pct(m.get("年化股本稀釋")), "巨頭合作": "、".join(p.get("partner", "?") + ("" if p.get("strength", "高") in ("高", "中") else "(低)") for p in e["partners"]) or "-",
                          "原因": "；".join(e["reasons"] + e["notes"])})
             prog.progress((i + 1) / len(fsyms))
         order = {"通過": 0, "警示": 1, "排除": 2, "資料不足": 3}

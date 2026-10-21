@@ -1,3 +1,205 @@
 {
-  "_說明": "巨頭合作清單（人工維護，每筆都要附出處網址）。判定用途：成長虧損型公司現金撐不夠久時，有巨頭合作可把「排除」降成「警示」。格式：代號 → [{partner 合作對象, type 客戶/投資人/供應商/合資, note 一句話說明, source 出處網址, asof 查證年月}]。這個 repo 是公開的，只放公開資訊與出處。"
+ "_說明": "巨頭合作清單（人工維護，每筆附出處）。strength=實質程度：高（簽約/持股/量產訂單）、中（簽約但金額或條款不明）、低（產品整合/路徑/意向）。判定只採計 高、中：現金撐不夠久時，有高/中合作可把「排除」降成「警示」。2026-10-21 由網路搜尋查證，多為搜尋摘要與二手報導，標「待核對」的請對照原始申報。這個 repo 是公開的，只放公開資訊與出處。",
+ "ASTS": [
+  {
+   "partner": "Verizon",
+   "type": "客戶/通路",
+   "strength": "中",
+   "note": "2025-10 簽確定性商業協議，2026 起提供手機直連服務；金額未公開",
+   "source": "https://convergedigest.com/ast-spacemobile-and-verizon-sign-definitive-agreement-for-space-based-cellular-broadband/",
+   "asof": "2025-10"
+  },
+  {
+   "partner": "Vodafone",
+   "type": "客戶/合資",
+   "strength": "高",
+   "note": "2024-12 簽涵蓋歐洲與非洲至 2034 年的協議，並成立合資公司 SatCo",
+   "source": "https://ast-science.com/our-journey/",
+   "asof": "2024-12"
+  }
+ ],
+ "RKLB": [
+  {
+   "partner": "美國太空發展局 SDA",
+   "type": "客戶",
+   "strength": "高",
+   "note": "US$816M 合約，製造 18 顆 Tracking Layer Tranche 3 衛星，公司史上最大單一合約",
+   "source": "https://www.ocbj.com/oc-homepage/rocket-lab-gets-816m-contract-largest-ever/",
+   "asof": "2026"
+  },
+  {
+   "partner": "美國太空軍",
+   "type": "客戶",
+   "strength": "高",
+   "note": "2026-07 宣布 US$266M 飛彈防禦多次發射合約（12 次 HASTE，可加 6 次）",
+   "source": "https://investors.rocketlabcorp.com/news-releases/news-release-details/rocket-lab-awarded-record-266m-missile-defense-contract-us-space",
+   "asof": "2026-07"
+  }
+ ],
+ "MP": [
+  {
+   "partner": "美國國防部",
+   "type": "投資人/客戶",
+   "strength": "高",
+   "note": "國防部為最大股東，簽有 NdPr 價格下限（10 年）與 10X 磁鐵廠全額包銷",
+   "source": "https://mpmaterials.com/news/mp-materials-announces-transformational-public-private-partnership-with-the-department-of-defense-to-accelerate-u-s-rare-earth-magnet-independence/",
+   "asof": "2025-07"
+  },
+  {
+   "partner": "Apple",
+   "type": "客戶",
+   "strength": "高",
+   "note": "US$5 億磁鐵供應協議，Apple 預付約 US$2 億（依里程碑）",
+   "source": "https://fortworthreport.org/2025/07/15/fort-worths-mp-materials-attracts-nearly-1b-in-deals-from-apple-defense-department/",
+   "asof": "2025-07"
+  }
+ ],
+ "BWXT": [
+  {
+   "partner": "美國海軍",
+   "type": "客戶",
+   "strength": "高",
+   "note": "2026-05 公告海軍核動力合約合計逾 US$14 億；2026-10 另有約 US$1.89 億核燃料合約",
+   "source": "https://www.investing.com/news/company-news/bwx-technologies-wins-navy-contracts-worth-over-14-billion-93CH-4667649",
+   "asof": "2026-05"
+  }
+ ],
+ "MRCY": [
+  {
+   "partner": "RTX",
+   "type": "客戶",
+   "strength": "高",
+   "note": "FY2026 10-K：占營收 15%",
+   "source": "https://www.sec.gov/Archives/edgar/data/0001049521/000104952126000045/mrcy-20260703.htm",
+   "asof": "2026-07"
+  },
+  {
+   "partner": "Lockheed Martin",
+   "type": "客戶",
+   "strength": "高",
+   "note": "FY2026 10-K：占營收 11%",
+   "source": "https://www.sec.gov/Archives/edgar/data/0001049521/000104952126000045/mrcy-20260703.htm",
+   "asof": "2026-07"
+  },
+  {
+   "partner": "Northrop Grumman",
+   "type": "客戶",
+   "strength": "高",
+   "note": "FY2026 10-K：首次達營收 10%",
+   "source": "https://www.sec.gov/Archives/edgar/data/0001049521/000104952126000045/mrcy-20260703.htm",
+   "asof": "2026-07"
+  }
+ ],
+ "TSM": [
+  {
+   "partner": "NVIDIA",
+   "type": "客戶",
+   "strength": "高",
+   "note": "量產訂單，報導稱已取代 Apple 成為最大客戶（約 19%）；占比為二手估計，待核對",
+   "source": "https://macrumors.com/2026/01/28/nvidia-replaces-apple-as-biggest-tsmc-customer/",
+   "asof": "2026-01"
+  },
+  {
+   "partner": "Apple",
+   "type": "客戶",
+   "strength": "高",
+   "note": "長期大客戶（約 17%）；占比為二手估計，待核對",
+   "source": "https://macrumors.com/2026/01/28/nvidia-replaces-apple-as-biggest-tsmc-customer/",
+   "asof": "2026-01"
+  }
+ ],
+ "NBIS": [
+  {
+   "partner": "Meta",
+   "type": "客戶",
+   "strength": "高",
+   "note": "2026-03 簽 US$12B 專用算力，Meta 另可在 5 年內加購最多 US$15B（選擇權）",
+   "source": "https://thenextweb.com/news/meta-nebius-27-billion-ai-infrastructure-deal",
+   "asof": "2026-03"
+  },
+  {
+   "partner": "Microsoft",
+   "type": "客戶",
+   "strength": "高",
+   "note": "新澤西 Vineland GPU 算力合約；金額有 US$17.4B 與 19.4B 兩種說法，待核對",
+   "source": "https://startupmap.iamsterdam.com/news/feed/nebius-secures-2b-nvidia-investment-and-44b-in-contracts-with-meta-and-microsoft",
+   "asof": "2025-09"
+  },
+  {
+   "partner": "NVIDIA",
+   "type": "投資人/供應商",
+   "strength": "高",
+   "note": "投資 US$20 億取得約 8.3% 股權，合作於 2030 年前部署逾 5GW",
+   "source": "https://aibusiness.com/generative-ai/meta-spends-27b-on-ai-infrastructure-with-nebius",
+   "asof": "2026-03"
+  }
+ ],
+ "UUUU": [
+  {
+   "partner": "美國國防部 Office of Strategic Capital",
+   "type": "融資方",
+   "strength": "中",
+   "note": "有條件承諾最高 US$7.25 億、20 年期貸款（White Mesa 廠擴建），非已撥款，待核對",
+   "source": "https://www.cnbc.com/amp/2026/06/23/energy-fuels-to-buy-magnet-manufacturer-vacuumschmelze-gmbh.html",
+   "asof": "2026-06"
+  }
+ ],
+ "VOYG": [
+  {
+   "partner": "NASA",
+   "type": "客戶",
+   "strength": "高",
+   "note": "Starlab 屬 NASA 商業低軌目的地計畫，Space Act Agreement 總額約 US$217.5M，2026-02 完成商業關鍵設計審查；第二階段仍需競標",
+   "source": "https://www.washingtontechnology.com/companies/2025/05/voyager-further-illuminates-space-strategy-ipo-filing/405426",
+   "asof": "2026-02"
+  },
+  {
+   "partner": "Airbus",
+   "type": "合資",
+   "strength": "高",
+   "note": "2023 年成立合資公司共同建造並營運 Starlab",
+   "source": "https://cyprusshippingnews.com/2023/08/10/voyager-space-and-airbus-announced-joint-venture-to-build-and-operate-starlab/",
+   "asof": "2023-08"
+  }
+ ],
+ "WDC": [
+  {
+   "partner": "匿名超大規模雲端客戶",
+   "type": "客戶",
+   "strength": "中",
+   "note": "與前五大雲端客戶有長期協議（LTA），涵蓋 2026 年，另有一家簽到 2027 全年；客戶未具名",
+   "source": "https://blocksandfiles.com/2025/10/31/western-digital-extends-lead-over-seagate-as-ai-drives-demand-tailwinds/",
+   "asof": "2025-10"
+  }
+ ],
+ "SMR": [
+  {
+   "partner": "TVA / ENTRA1",
+   "type": "客戶(路徑)",
+   "strength": "低",
+   "note": "2025-09 宣布 6GW 購電路徑（約 72 個模組），仍在洽談正式 PPA，非確定訂單",
+   "source": "https://simplywall.st/stocks/us/capital-goods/nyse-smr/nuscale-power/news/nuscale-power-smr-is-up-59-after-tva-linked-6gw-pathway-and",
+   "asof": "2025-09"
+  }
+ ],
+ "VRT": [
+  {
+   "partner": "NVIDIA",
+   "type": "技術合作",
+   "strength": "低",
+   "note": "為 NVIDIA 800 VDC 電力架構提供參考設計；無簽約金額或訂單揭露",
+   "source": "https://www.vertiv.com/en-us/about/news-and-insights/corporate-news/from-vision-to-readiness-vertiv-collaborates-with-nvidia-to-advance-800-vdc-platform-designs-to-power-the-next-generation-of-ai-factories/",
+   "asof": "2025"
+  }
+ ],
+ "PATH": [
+  {
+   "partner": "OpenAI / Google / NVIDIA / Microsoft",
+   "type": "產品整合",
+   "strength": "低",
+   "note": "2025-10 FUSION 大會公告的產品整合，無簽約金額、持股或訂單",
+   "source": "https://www.constellationr.com/insights/news/uipath-adds-agentic-ai-features-automation-platform-expands-partnerships",
+   "asof": "2025-10"
+  }
+ ]
 }

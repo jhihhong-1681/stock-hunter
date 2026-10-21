@@ -109,7 +109,9 @@ def evaluate(d: dict, partners: list | None, r: FundRules, kind: str | None = No
         dil = (shares[-1] / shares[0]) ** (4 / qs) - 1
     m["年化股本稀釋"] = dil
 
-    has_partner = bool(partners)
+    # 只採計實質程度「高/中」的合作；「低」（產品整合、意向、路徑）不算保障
+    partners_ok = [p for p in (partners or []) if p.get("strength", "高") in ("高", "中")]
+    has_partner = bool(partners_ok)
     level = 0  # 0 通過 / 1 警示 / 2 排除
 
     def bump(to, text):
@@ -151,7 +153,8 @@ def evaluate(d: dict, partners: list | None, r: FundRules, kind: str | None = No
             bump(1, f"營業利益率比一年前掉 {(om_old - om) * 100:.0f} 個百分點")
 
     # 財務體質（兩軌共用）
-    if runway is not None and runway != float("inf"):
+    # 現金可撐月數只用在營業利益為負的公司；賺錢的公司單季自由現金流為負（訴訟付款、營運資金時間差）不代表撐不住
+    if track == "成長虧損型" and runway is not None and runway != float("inf"):
         if runway < r.runway_exclude_months:
             if has_partner:
                 bump(1, f"現金只夠撐約 {runway:.0f} 個月（有巨頭合作，降為警示）")
@@ -162,10 +165,13 @@ def evaluate(d: dict, partners: list | None, r: FundRules, kind: str | None = No
     if dil is not None and dil > r.max_annual_dilution:
         bump(1, f"年化股本稀釋 {dil:.0%}")
     dc = m["負債/現金"]
-    if dc is not None and dc > r.max_debt_to_cash:
+    # 負債/現金只在「正在燒錢」時檢查：成熟又賺錢的公司本來就有債，用現金去比沒有意義
+    if dc is not None and dc > r.max_debt_to_cash and burn:
         bump(1, f"總負債是現金的 {dc:.1f} 倍")
     if has_partner:
-        notes.append("有巨頭合作：" + "、".join(p.get("partner", "?") for p in partners))
+        notes.append("有巨頭合作：" + "、".join(p.get("partner", "?") for p in partners_ok))
+    elif partners:
+        notes.append("有合作但實質程度低，不採計：" + "、".join(p.get("partner", "?") for p in partners))
     return {"track": track, "kind": kind, "verdict": ["通過", "警示", "排除"][level], "metrics": m, "reasons": reasons,
             "notes": notes, "partners": partners or []}
 
