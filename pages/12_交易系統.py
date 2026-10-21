@@ -8,7 +8,7 @@ import yfinance as yf
 st.set_page_config(page_title="交易系統 - 阿紘的股票儀表板", page_icon="🧭", layout="wide")
 from utils.styles import load_css
 load_css()
-from utils.fundamentals import FundRules, evaluate, fetch_quarterly, load_partnerships
+from utils.fundamentals import FundRules, evaluate, fetch_quarterly, load_partnerships, load_profiles
 from utils.trading_system import Rules, backtest, check_position, read_positions, read_trades, scan_symbol, summarize
 
 st.title("🧭 交易系統")
@@ -27,7 +27,7 @@ with st.sidebar:
     stop = st.slider("止損：首批價再跌", 30, 70, 50, 1, format="%d%%") / 100
 
     with st.expander("基本面門檻"):
-        f_growth = st.slider("成長型：營收年增率至少", 0, 100, 20, 5, format="%d%%") / 100
+        f_growth = st.slider("成長型：營收年增率至少", 0, 150, 40, 5, format="%d%%") / 100
         f_gm = st.slider("成長型：毛利率至少", 0, 60, 20, 5, format="%d%%") / 100
         f_runway = st.slider("現金可撐月數：警示線", 6, 48, 24, 6)
         f_runway_x = st.slider("現金可撐月數：排除線", 3, 24, 12, 3)
@@ -142,6 +142,7 @@ with tab_fund:
 **巨頭合作**記在 `data/partnerships.json`（人工維護、附出處），現金撐不夠久時可把「排除」降成「警示」。不看估值。
 """)
     partners = load_partnerships()
+    profiles = load_profiles()
     fin = st.text_input("分析的代號（空白或逗號分隔）", " ".join(sorted(set(json.loads((ROOT / "data" / "watchlist.json").read_text(encoding="utf-8"))))))
     fsyms = sorted({x.strip().upper() for x in fin.replace(",", " ").split() if x.strip()})
     if st.button("分析基本面", type="primary"):
@@ -149,9 +150,9 @@ with tab_fund:
         prog = st.progress(0.0)
         for i, sym in enumerate(fsyms):
             d = load_fund(sym)
-            e = evaluate(d, partners.get(sym), frules) if d else {"track": "-", "verdict": "資料不足", "metrics": {}, "reasons": ["Yahoo 沒有回財報"], "notes": [], "partners": []}
+            e = evaluate(d, partners.get(sym), frules, profiles.get(sym, {}).get("type")) if d else {"track": "-", "verdict": "資料不足", "metrics": {}, "reasons": ["Yahoo 沒有回財報"], "notes": [], "partners": []}
             m = e["metrics"]
-            rows.append({"代號": sym, "判定": e["verdict"], "軌道": e["track"],
+            rows.append({"代號": sym, "判定": e["verdict"], "類型": e.get("kind", "-"), "軌道": e["track"],
                          "營收年增率": pct(m.get("營收年增率")), "毛利率": pct(m.get("毛利率")).replace("+", ""),
                          "營業利益率": pct(m.get("營業利益率")).replace("+", ""),
                          "現金可撐(月)": ("不燒錢" if m.get("可撐月數") == float("inf") else f"{m['可撐月數']:.0f}") if m.get("可撐月數") is not None else "-",
