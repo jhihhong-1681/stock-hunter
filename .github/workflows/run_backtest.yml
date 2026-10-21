@@ -1,0 +1,37 @@
+name: Run Backtest
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'data/backtest_request.json'
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install yfinance pandas numpy
+
+      - name: Run backtest
+        run: python scripts/run_backtest.py
+
+      - name: Commit and push results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/backtest_results.json
+          git diff --staged --quiet || git commit -m "chore: backtest results $(date -u +%Y-%m-%d)"
+          git pull --rebase origin main
+          git push

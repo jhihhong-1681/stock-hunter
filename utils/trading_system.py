@@ -5,6 +5,7 @@
 - 加碼：金字塔往下，第 1/2/3 批各 NT$2 萬 / 3 萬 / 4 萬，最多 3 批；
   下一批在「上一批價再跌 10–15%」，或「首批後上漲、再從高點回落 20–30%」時買。
 - 止損：現價 ≤ 首批買入價 × 50% 就全部出清（中間不論加碼幾次）。
+- 止損後重新進場：從止損價再跌 30%，且基本面沒有太大改變 → 當作新一輪（新的首批價、批數歸零）。
 - 止盈：阿紘自己判斷，系統不替他決定；回測才需要一個假設，所以用 take_profit 參數。
 - 基本面濾網：v0 還沒有，下一版補。
 
@@ -47,6 +48,7 @@ class Rules:
     rebound_pullback: float = 0.25   # 上漲後從高點回落多少加碼（阿紘說 20–30%）
     rebound_min_gain: float = 0.10   # 回落加碼要先離均價漲過這麼多才算「上漲過」
     stop_from_first: float = 0.50    # 首批價再跌多少止損
+    reentry_drop: float = 0.30       # 止損後，從「止損價」再跌多少就重新進場（新一輪；基本面沒大變才做）
     take_profit: float | None = 0.50  # 僅回測用的假設：相對均價漲多少全出；None = 不止盈
     cooldown_days: int = 40          # 回測：出場後多久內不重新進場
     usd_twd: float = 31.0
@@ -105,6 +107,7 @@ def check_position(pos: dict, trades: list[dict], rules: Rules) -> dict:
         "symbol": sym, "name": pos["name"], "現價": price, "首批價": round(first, 2), "成本均價": pos["avgCost"],
         "已買批數": n, "距首批價": price / first - 1, "止損價": round(stop, 2), "距止損價": price / stop - 1,
         "已觸發止損": price <= stop, "報酬率": pos.get("pct"), "現值NT$": pos["value"], "備註": note,
+        "止損後再進場價": round(stop * (1 - rules.reentry_drop), 2),
     }
     if n < len(rules.tranches_ntd):
         out["下一批加碼價"] = round(last * (1 - rules.add_step), 2)
@@ -153,13 +156,32 @@ class Trade:
         self.ret = self.pnl / self.invested if self.invested else 0.0
 
 
+def _rolling_high(close: list[float], window: int = 252) -> list[float]:
+    """每一天的近 window 個交易日最高收盤（單調佇列，O(n)）。"""
+    from collections import deque
+    dq, out = deque(), []
+    for i, c in enumerate(close):
+        if c == c:
+            while dq and close[dq[-1]] <= c:
+                dq.pop()
+            dq.append(i)
+        while dq and dq[0] <= i - window:
+            dq.popleft()
+        out.append(close[dq[0]] if dq else float("nan"))
+    return out
+
+
 def backtest(symbol: str, dates: list, close: list[float], rules: Rules) -> list[Trade]:
     """單一標的、獨立回測（收盤價成交、不含手續費與滑價）。
+    止損出場後，等價格從止損價再跌 reentry_drop 才重新進場（新一輪）；止盈出場後回到正常進場條件。
+    回測沒有歷史基本面資料，所以「基本面沒大變」這個前提無法檢驗（只測價格規則）。
     回傳已結束的交易；回測終點仍持有的以最後收盤價結算，reason 標「持有中」。"""
     trades: list[Trade] = []
     n = len(close)
+    highs = _rolling_high(close)
     state = None
     cool_until = -1
+    reentry_px = None
     for i in range(n):
         px = close[i]
         if px != px:
@@ -167,11 +189,12 @@ def backtest(symbol: str, dates: list, close: list[float], rules: Rules) -> list
         if state is None:
             if i < 60 or i < cool_until:
                 continue
-            high = max(c for c in close[max(0, i - 251):i + 1] if c == c)
-            if px <= high * (1 - rules.entry_drop):
+            go = (px <= reentry_px) if reentry_px is not None else (px <= highs[i] * (1 - rules.entry_drop))
+            if go:
                 amt = rules.tranches_ntd[0]
                 state = {"first": px, "last": px, "peak": px, "shares": amt / rules.usd_twd / px,
                          "cost": amt, "n": 1, "entry_i": i}
+                reentry_px = None
             continue
         s = state
         avg = s["cost"] / rules.usd_twd / s["shares"]
@@ -185,8 +208,11 @@ def backtest(symbol: str, dates: list, close: list[float], rules: Rules) -> list
             value = s["shares"] * px * rules.usd_twd
             trades.append(Trade(symbol, str(dates[s["entry_i"]])[:10], str(dates[i])[:10], reason, s["n"],
                                 s["cost"], value - s["cost"], i - s["entry_i"], s["first"], px))
+            if reason == "止損":
+                reentry_px = s["first"] * (1 - rules.stop_from_first) * (1 - rules.reentry_drop)
+            else:
+                cool_until = i + rules.cooldown_days
             state = None
-            cool_until = i + rules.cooldown_days
             continue
         if s["n"] < len(rules.tranches_ntd):
             by_step = px <= s["last"] * (1 - rules.add_step)
@@ -227,14 +253,15 @@ def summarize(trades: list[Trade]) -> dict:
 
 
 # ── 價格訊號 × 基本面判定 ─────────────────────────────────────
-def hold_hint(stop_hit: bool, verdict: str, adds_left: bool) -> str:
+def hold_hint(stop_hit: bool, verdict: str, adds_left: bool, reentry_px: float | None = None) -> str:
     """持股：價格止損 + 基本面判定的對照。系統只提示，止盈與最後決定仍由阿紘判斷。"""
     if stop_hit:
+        re = f"；止損後再進場價 ${reentry_px:g}（止損價再跌 30%）" if reentry_px else ""
         if verdict == "通過":
-            return "已觸發止損：規則是出清；基本面仍通過，可列入重新進場觀察"
+            return "已觸發止損：規則是出清；基本面仍通過，到再進場價可開新一輪" + re
         if verdict in ("警示", "排除"):
-            return f"已觸發止損：規則是出清；基本面也{verdict}"
-        return "已觸發止損：規則是出清"
+            return f"已觸發止損：規則是出清；基本面{verdict}，再進場要先確認基本面" + re
+        return "已觸發止損：規則是出清" + re
     if verdict == "排除":
         return "基本面排除：不再加碼"
     if verdict == "警示":

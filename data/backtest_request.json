@@ -1,0 +1,6 @@
+{
+  "_說明": "推到 main 會觸發 .github/workflows/run_backtest.yml，在 GitHub 上抓股價、跑 scripts/run_backtest.py，結果寫進 data/backtest_results.json。symbols=\"from_trades\" 代表阿紘成交紀錄裡出現過的所有正股。",
+  "symbols": "from_trades",
+  "period": "10y",
+  "grid": {"take_profit": [null, 0.5, 1.0], "entry_drop": [0.2, 0.3, 0.4], "stop": [0.5, 0.99], "detail_tp": null}
+}

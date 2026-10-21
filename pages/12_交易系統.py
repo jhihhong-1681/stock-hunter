@@ -81,7 +81,9 @@ with tab_rule:
 **加碼（最多 3 批，金字塔）**：第 2 批 NT${rules.tranches_ntd[1]:,}、第 3 批 NT${rules.tranches_ntd[2]:,}。
 下一批在「上一批價再跌 {rules.add_step:.0%}」，或「首批後上漲、再從高點回落 {rules.rebound_pullback:.0%}」時買。
 **止損**：現價 ≤ 首批買入價 × {1 - rules.stop_from_first:.0%}，全部出清（中間不論加碼幾次）。
+**止損後重新進場**：從「止損價」再跌 {rules.reentry_drop:.0%}，且基本面沒有太大改變，就當作新一輪（新的首批價、批數歸零）。
 **止盈**：阿紘自己判斷。
+**檔數目標**：正股、期權各同時持有 5–10 檔。
 
 **單一標的最大虧損（三批都買、跌到止損價）**：約 NT${max_loss:,.0f}（投入 NT${total:,} 的 {max_loss / total:.0%}）。
 每一檔最多虧這個數字，所以檔數、總風險都可以事先算出來。
@@ -95,8 +97,10 @@ with tab_hold:
     df = pd.DataFrame(rows)
     hit = df[df["已觸發止損"]]
     near = df[(~df["已觸發止損"]) & (df["距止損價"] <= 0.15)]
-    c1, c2, c3 = st.columns(3)
-    c1.metric("正股檔數", len(df))
+    n_opt = sum(1 for p in read_positions() if p.get("type") == "option")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("正股檔數", len(df), help="目標 5–10 檔")
+    c4.metric("期權檔數", n_opt, help="目標 5–10 檔")
     c2.metric("已觸發止損", len(hit), help="現價 ≤ 首批價 × 止損比例")
     c3.metric("距止損價 15% 內", len(near))
     if len(hit):
@@ -105,14 +109,14 @@ with tab_hold:
         st.warning("接近止損價：" + "、".join(f"{r.symbol}（距止損價 {pct(r.距止損價)}）" for r in near.itertuples()))
     with_fund = st.checkbox("附上基本面判定（要抓財報，第一次約半分鐘，之後快取 12 小時）", key="hold_fund")
     cols = ["symbol", "name", "首批價", "現價", "距首批價", "止損價", "距止損價", "已觸發止損", "已買批數",
-            "下一批加碼價", "下一批金額NT$", "報酬率", "現值NT$", "備註"]
+            "下一批加碼價", "下一批金額NT$", "止損後再進場價", "報酬率", "現值NT$", "備註"]
     if with_fund:
         fr = pd.DataFrame([fund_row(sy) for sy in df["symbol"]])
         df = pd.concat([df.reset_index(drop=True), fr], axis=1)
-        df["對照"] = [hold_hint(bool(r["已觸發止損"]), r["基本面"], r["下一批加碼價"] is not None and r["下一批加碼價"] == r["下一批加碼價"])
+        df["對照"] = [hold_hint(bool(r["已觸發止損"]), r["基本面"], r["下一批加碼價"] is not None and r["下一批加碼價"] == r["下一批加碼價"], r["止損後再進場價"])
                     for _, r in df.iterrows()]
         cols = ["symbol", "name", "類型", "基本面", "對照", "首批價", "現價", "距首批價", "止損價", "距止損價", "已觸發止損",
-                "已買批數", "下一批加碼價", "報酬率", "現值NT$", "基本面原因", "備註"]
+                "已買批數", "下一批加碼價", "止損後再進場價", "報酬率", "現值NT$", "基本面原因", "備註"]
     show = df[cols].copy()
     show["距首批價"] = show["距首批價"].map(pct)
     show["距止損價"] = show["距止損價"].map(pct)
