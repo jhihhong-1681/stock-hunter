@@ -53,6 +53,42 @@ def read_history() -> dict[str, set[tuple[str, str]]]:
     return out
 
 
+def read_trades() -> list[dict]:
+    """trades.js：桌機排程每天抄下來的 Firstrade 成交紀錄（一筆一行）。檔案沒有或還是空的就回空清單。"""
+    try:
+        text = (DATA_DIR / "trades.js").read_text(encoding="utf-8")
+    except OSError:
+        return []
+    return [_js_obj(line) for line in text.splitlines() if line.strip().startswith("{")]
+
+
+def trade_occ(t: dict) -> str | None:
+    """成交紀錄裡期權合約名稱（例如 INTC 10/23/2026 100.00 Call）換成 OCC 代碼。"""
+    m = re.match(r"^([A-Z.\-]+)\s+(\d{2})/(\d{2})/(\d{4})\s+([\d.]+)\s+(Call|Put)$", t.get("description") or "", re.I)
+    return _occ(m.group(1), int(m.group(4)), int(m.group(2)), int(m.group(3)), m.group(6)[0].upper(), float(m.group(5))) if m else None
+
+
+def _is_buy_side(side: str) -> bool:
+    return "買" in side or side.lower().startswith("buy")
+
+
+def apply_fills(draft: dict, trades: list[dict]) -> bool:
+    """用 Firstrade 的實際買進成交蓋掉草稿的日期、價格、數量（同標的、同合約，買進日前 5 天內，同一天以外的加碼也一併加權平均）。
+    找得到就回傳 True。標的價（S）成交紀錄裡沒有，維持快照的數字。"""
+    seen = date.fromisoformat(draft["date"])
+    fills = [t for t in trades
+             if t.get("symbol") == draft["sym"] and _is_buy_side(t.get("side", ""))
+             and (trade_occ(t) == draft["occ"] if draft["occ"] else t.get("type") == "stock")
+             and seen - timedelta(days=5) <= date.fromisoformat(t["date"]) <= seen]
+    if not fills:
+        return False
+    qty = sum(t["qty"] for t in fills)
+    draft["P"] = round(sum(t["qty"] * t["price"] for t in fills) / qty, 4)
+    draft["n"] = qty
+    draft["date"] = min(t["date"] for t in fills)
+    return True
+
+
 def first_seen_dates() -> dict[tuple[str, str], str]:
     """每個目前還在的部位，連續出現的第一天。史上第一天就有的部位看不出是什麼時候買的，不列入。"""
     hist = read_history()
@@ -171,11 +207,12 @@ def pending_drafts(journal_rows: list[dict]) -> list[dict]:
     """最近才出現、而且交易紀錄裡還沒有的新倉。"""
     today = datetime.now(TAIPEI).date()
     pos = {(p["symbol"], p["name"]): p for p in read_positions()}
-    drafts = []
+    drafts, trades = [], read_trades()
     for key, seen in sorted(first_seen_dates().items(), key=lambda kv: kv[1], reverse=True):
         if key not in pos or (today - date.fromisoformat(seen)).days > NEW_WITHIN_DAYS:
             continue
         d = draft_from_position(pos[key], seen)
+        d["fill"] = apply_fills(d, trades)
         floor = date.fromisoformat(seen) - timedelta(days=7)
         if any(r.get("sym") == d["sym"] and _norm_con(r.get("con")) == _norm_con(d["con"]) and (r.get("date") or "") >= floor.isoformat()
                for r in journal_rows):
@@ -211,7 +248,7 @@ def render_drafts(api_url: str, api_key: str) -> bool:
     added = False
     with st.expander(f"📥 最近的新建倉位，還沒記進交易紀錄（{len(drafts)} 筆）", expanded=True):
         st.caption("從報酬日曆快照偵測到的新部位。來源是拿「研究監控日誌」的買進推薦（同標的、買進日前 3 週內）去對；"
-                   "對不到就預設「自己買」。價格是 Sheet 的成本均價（加碼會被平均），停損價、目標價、最晚出場日要你自己補。")
+                   "對不到就預設「自己買」。買進日、價格、數量優先用 Firstrade 成交紀錄（trades.js，桌機排程每天抄），沒有才用 Sheet 的成本均價；停損價、目標價、最晚出場日要你自己補。")
         if research_err:
             st.warning(f"研究監控日誌讀不到（{research_err}），來源沒有比對，全部預設「自己買」，請自己改。")
         for d in drafts:
@@ -220,6 +257,7 @@ def render_drafts(api_url: str, api_key: str) -> bool:
             title = f'{d["date"]}　{d["sym"]} {d["con"] or "股票"}'
             with st.form(f'draft_{d["id"]}'):
                 st.markdown(f"**{title}**")
+                st.caption("✅ 日期、價格、數量用 Firstrade 實際成交" if d["fill"] else "⚠️ 沒有對到 Firstrade 成交紀錄，價格是 Sheet 的成本均價")
                 if level == "exact":
                     st.caption(f'✅ 對到同合約的推薦：{SITE_LABEL.get(rec["site"], rec["site"])}')
                 elif level == "same":

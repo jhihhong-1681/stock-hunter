@@ -34,13 +34,18 @@ repo 在 `C:\Users\user1\Desktop\stock-hunter`（remote https://github.com/jhihh
    - 結案就加上 `filled: { date: 快照對應日期, time: 成交更新時間, price: 成交價, qty: 成交數量, description: 成交那筆的期權合約名稱（股票 null）, match }`，其他欄位不動。同一天先掛沒成交、改價後成交的，也照這個規則（第 3 步剛新增的那筆馬上標 filled）。
    - 有 filled 的網站就不顯示，但資料保留，不要刪（判斷錯了只要拿掉 filled 就恢復追蹤）。每一筆結案都記錄給第 6 步。
 
-5. **推上 GitHub**：做完關掉自己開的分頁。用 node 驗證 pending_orders.js 能正常執行，然後在 repo 根目錄：
+4b. **記錄成交（trades.js）**：同一張表裡「更新時間的日期 = 快照對應日期」且「現況是已成交（含部分成交）」的每一筆（買賣都記），整理成
+   `{ date: 快照對應日期, time: "HH:MM:SS"（美東）, side: 訂單類別原文, symbol, type: "option" 或 "stock", description: 期權完整合約名稱／股票 null, qty: 實際成交數量, price: 成交價 }`，
+   附加到 `portfolio-calendar/trades.js` 的 `window.TRADES` 陣列尾端（舊資料原封不動，格式跟欄位說明看該檔檔頭）。用 date+time+symbol+side+description+qty+price 檢查重複，已存在就不新增。
+   成交價抄「已成交 @ 價格」的價格；部分成交抓不到成交價就不記，記錄給第 6 步。這一步只讀頁面，跟第 4 步一樣不准操作。
+
+5. **推上 GitHub**：做完關掉自己開的分頁。用 node 驗證 pending_orders.js 和 trades.js 都能正常執行，然後在 repo 根目錄：
    ```
-   git add portfolio-calendar/pending_orders.js
+   git add portfolio-calendar/pending_orders.js portfolio-calendar/trades.js
    git commit -m "Firstrade 未成交訂單 <快照對應日期>"
    git push
    ```
-   push 被拒就 `git pull --rebase origin main` 再 push（不要 --force）；跟 pending_orders.js 衝突就 `git rebase --abort` 放棄並回報。沒有任何變動就不用 commit。只改 pending_orders.js，不要動其他檔案。
+   push 被拒就 `git pull --rebase origin main` 再 push（不要 --force）；跟 pending_orders.js 衝突就 `git rebase --abort` 放棄並回報。沒有任何變動就不用 commit。只改 pending_orders.js 和 trades.js，不要動其他檔案。
 
 6. **回報**：預設安靜結束。符合下列情況才簡短用繁體中文說明，並同時呼叫 PushNotification（status: "proactive"，200 字元內純文字，多項合併成一則）：
    - (f) 訂單沒抄到（沒登入、Chrome 沒連線、讀不到頁面、或表格只剩別天的單），說明原因，例如「Firstrade 未登入，昨天的未成交訂單沒抄到，請登入後手動檢查訂單現況」。
