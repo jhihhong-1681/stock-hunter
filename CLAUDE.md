@@ -31,3 +31,17 @@
 
 - 本機（阿紘桌機）Python 是 embeddable 版本；Node 可用。
 - 預覽 `portfolio-calendar/` 要用 HTTP server，直接開 `file://` 不會跑 JS。
+
+## 交易系統（`pages/12_交易系統.py` + `utils/trading_system.py` + `utils/fundamentals.py`）
+
+阿紘的「下跌才買」交易系統：價格訊號 + 基本面。網址 https://jhihhong-stock-hunter-v2.streamlit.app/交易系統 。規則是阿紘定的，**改規則前先問他**；回測與判定只是輔助，買賣由他決定（止盈完全由他自己判斷，系統不替他決定）。
+
+**正股規則**：距 52 週高點回檔 ≥ 20%（可依個股波動率自行判斷）進場 → 金字塔三批（NT$2 萬／3 萬／4 萬，最多 3 批）→ 下一批在上一批價再跌 10–15%，或首批後上漲再從高點回落 20–30% → 首批價再跌 50% 全出（止損）→ 止損後從止損價再跌 30% 且基本面沒大變就開新一輪。檔數目標正股、期權各 5–10 檔；舊部位（批數超過 3 批的）不處理。
+**期權規則**：獨立的短線工具，標的要在進場區、基本面不是「排除」；買進時距到期 ≥ 14 天；價外程度、單筆金額、總成本占比不設上限（價外樂透可以）；權利金虧損達 60% 出場；現有期權部位不處理。阿紘收到報牌會貼給 Claude 或填在「期權檢查」分頁對照規則。
+**基本面**：成長型營收年增率至少 40%、成熟型不衰退且利益率不惡化；虧損中的公司另看毛利率、現金可撐月數、稀釋；實質程度「高/中」的巨頭合作可把「排除」降成「警示」；不看估值。
+
+**資料來源與更新**
+- 持股、現價：`portfolio-calendar/holdings.js`（雲端每日快照，見 SNAPSHOT_TASK.md）。首批價、已買批數**完全以成交紀錄 `trades.js` 為準**（桌機 Firstrade 排程），不要用 Sheet 的「第一筆建倉」；「一輪」= 上次全部賣光之後重新買進的第一批，同一天買進併成一批；`trades.js` 同一天沒有時間時要先算買再算賣。
+- `data/company_profiles.json`（成長型/成熟型/ETF，新正股由每日快照自動登記）、`data/partnerships.json`（巨頭合作，附出處與實質程度，人工維護，只放公開資訊）、`data/conviction.json`（高信念，目前先不用）。
+- 股價與財報（yfinance）只有 Streamlit Cloud 和 GitHub Actions 抓得到，**Claude 雲端環境連不到 Yahoo/SEC**。回測因此跑在 GitHub Actions：改 `data/backtest_request.json` 推上 main 就會觸發 `.github/workflows/run_backtest.yml` → `scripts/run_backtest.py` → `data/backtest_results*.json`。回測只測價格規則，有倖存者偏差，絕對報酬偏樂觀，只有相對比較（止損 vs 不止損、止盈寬度、進場深度）比較可信。
+- 頁面開頭會 `importlib.reload` 兩個 utils 模組：Streamlit Cloud 部署後舊模組快取會造成 ImportError；若仍出現，請阿紘在 Manage app → Reboot app。
