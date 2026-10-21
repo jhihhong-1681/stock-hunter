@@ -1,6 +1,9 @@
 {
-  "_說明": "推到 main 會觸發 .github/workflows/run_backtest.yml，在 GitHub 上抓股價、跑 scripts/run_backtest.py，結果寫進 data/backtest_results.json。symbols=\"from_trades\" 代表阿紘成交紀錄裡出現過的所有正股。",
-  "symbols": "from_trades",
-  "period": "10y",
-  "grid": {"take_profit": [null, 0.5, 1.0], "entry_drop": [0.2, 0.3, 0.4], "stop": [0.5, 0.99], "detail_tp": null}
+  "_說明": "推到 main 會觸發 .github/workflows/run_backtest.yml，在 GitHub 上抓股價、跑 scripts/run_backtest.py，結果寫進各 job 的 output。symbols=\"from_trades\" 是阿紘成交紀錄裡出現過的所有正股；\"sp500\" 是 S&P 500 成分股（對照組，避免只測阿紘挑過的標的）。",
+  "jobs": [
+    {"symbols": "from_trades", "period": "10y", "output": "backtest_results.json",
+     "grid": {"take_profit": [null, 0.5, 1.0], "entry_drop": [0.2, 0.3, 0.4], "stop": [0.5, 0.99], "detail_tp": null}},
+    {"symbols": "sp500", "period": "10y", "output": "backtest_results_sp500.json",
+     "grid": {"take_profit": [0.5, 1.0], "entry_drop": [0.3], "stop": [0.5, 0.99], "detail_tp": null}}
+  ]
 }

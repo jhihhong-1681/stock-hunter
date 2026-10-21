@@ -15,6 +15,13 @@ from utils.trading_system import Rules, backtest, read_trades  # noqa: E402
 
 
 def load_symbols(req):
+    if req.get("symbols") == "sp500":
+        import csv
+        import io
+        import urllib.request
+        url = "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv"
+        rows = csv.DictReader(io.StringIO(urllib.request.urlopen(url, timeout=60).read().decode("utf-8")))
+        return sorted({r["Symbol"].replace(".", "-") for r in rows})
     if req.get("symbols") == "from_trades":
         return sorted({t["symbol"] for t in read_trades() if t.get("type") == "stock"})
     return sorted(set(req["symbols"]))
@@ -69,8 +76,7 @@ def summarize(trades):
     }
 
 
-def main():
-    req = json.loads((ROOT / "data" / "backtest_request.json").read_text(encoding="utf-8"))
+def run_job(req):
     symbols = load_symbols(req)
     prices = download(symbols, req.get("period", "10y"))
     series, coverage = {}, {}
@@ -97,8 +103,14 @@ def main():
         configs.append(cfg)
     out = {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "period": req.get("period", "10y"),
            "symbols_requested": len(symbols), "symbols_with_data": len(series), "coverage": coverage, "configs": configs}
-    (ROOT / "data" / "backtest_results.json").write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
-    print(f"done: {len(series)}/{len(symbols)} symbols, {len(configs)} configs")
+    (ROOT / "data" / req.get("output", "backtest_results.json")).write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"{req.get('output', 'backtest_results.json')}: {len(series)}/{len(symbols)} symbols, {len(configs)} configs")
+
+
+def main():
+    req = json.loads((ROOT / "data" / "backtest_request.json").read_text(encoding="utf-8"))
+    for job in req["jobs"]:
+        run_job(job)
 
 
 if __name__ == "__main__":
