@@ -222,6 +222,12 @@ def pending_drafts(journal_rows: list[dict]) -> list[dict]:
     return drafts
 
 
+def _journal_row(d: dict, cls, S, P, n, stop, why: str) -> dict:
+    return {"id": d["id"], "date": d["date"], "sym": d["sym"], "con": d["con"], "cls": cls, "S": S or None,
+            "P": P, "n": int(n), "stop": stop or None, "tgt": None, "by": None, "why": why.strip(),
+            "exitDate": None, "exitP": None, "mae": None}
+
+
 def render_drafts(api_url: str, api_key: str) -> bool:
     """畫在交易紀錄頁上方。回傳這次有沒有新增（呼叫端據此讓下面的 iframe 重新載入）。"""
     try:
@@ -251,9 +257,29 @@ def render_drafts(api_url: str, api_key: str) -> bool:
                    "對不到就預設「自己買」。買進日、價格、數量優先用 Firstrade 成交紀錄（trades.js，桌機排程每天抄），沒有才用 Sheet 的成本均價；停損價、目標價、最晚出場日要你自己補。")
         if research_err:
             st.warning(f"研究監控日誌讀不到（{research_err}），來源沒有比對，全部預設「自己買」，請自己改。")
+        matched = {}
         for d in drafts:
             rec, level = match_source(d, rows) if rows else (None, "")
-            prefill = why_text(rec if level in ("exact", "same") else None, d)
+            matched[d["id"]] = (rec, level, why_text(rec if level in ("exact", "same") else None, d))
+        if st.button(f"⚡ 全部加入（{len(drafts)} 筆，照下面預填的內容）", type="primary", key="draft_add_all"):
+            fails = []
+            bar = st.progress(0.0)
+            for i, d in enumerate(drafts):
+                row = _journal_row(d, d["cls"], d["S"], d["P"], d["n"], None, matched[d["id"]][2])
+                try:
+                    relay(api_url, api_key, {"action": "upsert", "row": row})
+                except Exception as e:
+                    fails.append(f'{d["sym"]} {d["con"] or "股票"}：{e}')
+                bar.progress((i + 1) / len(drafts))
+            if len(fails) < len(drafts):
+                st.session_state["journal_rev"] = st.session_state.get("journal_rev", 0) + 1
+            if fails:
+                st.error("有幾筆寫入失敗（其他已加入）：" + "；".join(fails))
+            else:
+                st.rerun()
+        st.caption("一鍵加入用的是下面預填的值（不包含你在表單裡改過但還沒按加入的內容）；停損價、目標價會是空的，之後到交易紀錄表補。")
+        for d in drafts:
+            rec, level, prefill = matched[d["id"]]
             title = f'{d["date"]}　{d["sym"]} {d["con"] or "股票"}'
             with st.form(f'draft_{d["id"]}'):
                 st.markdown(f"**{title}**")
@@ -278,9 +304,7 @@ def render_drafts(api_url: str, api_key: str) -> bool:
                 skipped.add(d["id"])
                 st.rerun()
             if go:
-                row = {"id": d["id"], "date": d["date"], "sym": d["sym"], "con": d["con"], "cls": cls, "S": S or None,
-                       "P": P, "n": int(n), "stop": stop or None, "tgt": None, "by": None, "why": why.strip(),
-                       "exitDate": None, "exitP": None, "mae": None}
+                row = _journal_row(d, cls, S, P, n, stop, why)
                 try:
                     relay(api_url, api_key, {"action": "upsert", "row": row})
                 except Exception as e:
