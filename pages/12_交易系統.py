@@ -8,6 +8,7 @@ import yfinance as yf
 st.set_page_config(page_title="交易系統 - 阿紘的股票儀表板", page_icon="🧭", layout="wide")
 from utils.styles import load_css
 load_css()
+from utils.fundamentals import FundRules, evaluate, fetch_quarterly, load_partnerships
 from utils.trading_system import Rules, backtest, check_position, read_positions, read_trades, scan_symbol, summarize
 
 st.title("🧭 交易系統")
@@ -25,10 +26,19 @@ with st.sidebar:
     rebound = st.slider("加碼：上漲後從高點回落", 10, 40, 25, 1, format="%d%%") / 100
     stop = st.slider("止損：首批價再跌", 30, 70, 50, 1, format="%d%%") / 100
 
+    with st.expander("基本面門檻"):
+        f_growth = st.slider("成長型：營收年增率至少", 0, 100, 20, 5, format="%d%%") / 100
+        f_gm = st.slider("成長型：毛利率至少", 0, 60, 20, 5, format="%d%%") / 100
+        f_runway = st.slider("現金可撐月數：警示線", 6, 48, 24, 6)
+        f_runway_x = st.slider("現金可撐月數：排除線", 3, 24, 12, 3)
+        f_dil = st.slider("年化股本稀釋上限", 5, 100, 30, 5, format="%d%%") / 100
+
+frules = FundRules(min_rev_yoy_growth=f_growth, min_gross_margin=f_gm, runway_pass_months=f_runway,
+                   runway_exclude_months=f_runway_x, max_annual_dilution=f_dil)
 rules = Rules(entry_drop=entry_drop, tranches_ntd=(t1, t2, t3), add_step=add_step,
               rebound_pullback=rebound, stop_from_first=stop)
 
-tab_rule, tab_hold, tab_scan, tab_bt = st.tabs(["📐 規則", "📋 持股對照規則", "🔍 進場掃描", "🧪 回測"])
+tab_rule, tab_hold, tab_scan, tab_fund, tab_bt = st.tabs(["📐 規則", "📋 持股對照規則", "🔍 進場掃描", "🧬 基本面", "🧪 回測"])
 
 
 def pct(x):
@@ -115,6 +125,47 @@ with tab_scan:
             view["距高點"] = view["距高點"].map(pct)
             st.dataframe(view, hide_index=True, use_container_width=True)
             st.caption("加碼價、止損價以「現價當第 1 批」估算；實際以你真正買進的價格為準。")
+
+# ── 基本面 ───────────────────────────────────────────────
+@st.cache_data(ttl=3600 * 12)
+def load_fund(sym: str) -> dict:
+    try:
+        return fetch_quarterly(sym)
+    except Exception:
+        return {}
+
+
+with tab_fund:
+    st.markdown("""
+**兩條軌道**：近四季營業利益為正走「已獲利型」（看營收是否成長、利益率有沒有惡化）；
+為負走「成長虧損型」（不因虧損排除，改看營收年增率、毛利率、虧損有沒有收斂、現金可撐多久、股本稀釋）。
+**巨頭合作**記在 `data/partnerships.json`（人工維護、附出處），現金撐不夠久時可把「排除」降成「警示」。不看估值。
+""")
+    partners = load_partnerships()
+    fin = st.text_input("分析的代號（空白或逗號分隔）", " ".join(sorted(set(json.loads((ROOT / "data" / "watchlist.json").read_text(encoding="utf-8"))))))
+    fsyms = sorted({x.strip().upper() for x in fin.replace(",", " ").split() if x.strip()})
+    if st.button("分析基本面", type="primary"):
+        rows, detail = [], {}
+        prog = st.progress(0.0)
+        for i, sym in enumerate(fsyms):
+            d = load_fund(sym)
+            e = evaluate(d, partners.get(sym), frules) if d else {"track": "-", "verdict": "資料不足", "metrics": {}, "reasons": ["Yahoo 沒有回財報"], "notes": [], "partners": []}
+            m = e["metrics"]
+            rows.append({"代號": sym, "判定": e["verdict"], "軌道": e["track"],
+                         "營收年增率": pct(m.get("營收年增率")), "毛利率": pct(m.get("毛利率")).replace("+", ""),
+                         "營業利益率": pct(m.get("營業利益率")).replace("+", ""),
+                         "現金可撐(月)": ("不燒錢" if m.get("可撐月數") == float("inf") else f"{m['可撐月數']:.0f}") if m.get("可撐月數") is not None else "-",
+                         "年化稀釋": pct(m.get("年化股本稀釋")), "巨頭合作": "、".join(p.get("partner", "?") for p in e["partners"]) or "-",
+                         "原因": "；".join(e["reasons"] + e["notes"])})
+            prog.progress((i + 1) / len(fsyms))
+        order = {"通過": 0, "警示": 1, "排除": 2, "資料不足": 3}
+        fdf = pd.DataFrame(rows).sort_values("判定", key=lambda c: c.map(order))
+        c = st.columns(4)
+        for k, lab in enumerate(["通過", "警示", "排除", "資料不足"]):
+            c[k].metric(lab, int((fdf["判定"] == lab).sum()))
+        st.dataframe(fdf, hide_index=True, use_container_width=True)
+        st.caption("財報來自 Yahoo Finance，通常只有最近 4–5 季；不足 5 季算不出年增率會標註。"
+                   "最新一季的毛利率、營業利益率與一年前比較；現金可撐月數 = 現金 ÷ 近兩季平均每季自由現金流燒錢 × 3。")
 
 # ── 回測 ─────────────────────────────────────────────────
 with tab_bt:
