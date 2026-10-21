@@ -165,8 +165,8 @@ def evaluate(d: dict, partners: list | None, r: FundRules, kind: str | None = No
     if dil is not None and dil > r.max_annual_dilution:
         bump(1, f"年化股本稀釋 {dil:.0%}")
     dc = m["負債/現金"]
-    # 負債/現金只在「正在燒錢」時檢查：成熟又賺錢的公司本來就有債，用現金去比沒有意義
-    if dc is not None and dc > r.max_debt_to_cash and burn:
+    # 負債/現金只用在營業利益為負的公司：賺錢的公司（JLL、CAG 這類）本來就有債，用現金去比沒有意義
+    if track == "成長虧損型" and dc is not None and dc > r.max_debt_to_cash and burn:
         bump(1, f"總負債是現金的 {dc:.1f} 倍")
     if has_partner:
         notes.append("有巨頭合作：" + "、".join(p.get("partner", "?") for p in partners_ok))

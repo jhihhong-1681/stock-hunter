@@ -8,6 +8,9 @@ on:
       - 'data/watchlist.json'
       - 'data/company_profiles.json'
       - 'data/partnerships.json'
+      - 'utils/fundamentals.py'
+      - 'utils/trading_system.py'
+      - 'scripts/compute_signals.py'
   schedule:
     # 備援：台北 14:30（UTC 06:30），週一到週五
     - cron: '30 6 * * 1-5'
