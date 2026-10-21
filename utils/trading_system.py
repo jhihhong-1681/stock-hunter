@@ -277,3 +277,59 @@ def entry_hint(in_zone: bool, verdict: str) -> str:
         return ""
     return {"通過": "符合進場（價格 + 基本面）", "警示": "價格到位，基本面警示：小心", "排除": "價格到位，但基本面排除：不進",
             "資料不足": "價格到位，基本面資料不足", "不適用": "價格到位（ETF，無基本面）"}.get(verdict, "")
+
+
+# ── 期權檢查（草案，數字等阿紘確認） ──────────────────────────
+@dataclass
+class OptionRules:
+    min_dte: int = 30              # 買進時離到期至少幾天（<=14 天的歷史勝率只有 25%）
+    max_otm: float = 0.10          # 行使價高於現價最多幾 %（草案，待確認）
+    per_trade_cap_ntd: float = 15000.0   # 單筆權利金成本上限（草案，約過去平均每批 NT$1.2 萬）
+    total_cap_pct: float = 0.20    # 期權總成本占總資產上限（草案）
+    max_names: int = 10            # 期權同時持有檔數上限（阿紘：5–10 檔）
+
+
+def read_totals() -> dict:
+    """holdings.js 的 totals 那一行（總資產等）。"""
+    for line in (DATA_DIR / "holdings.js").read_text(encoding="utf-8").splitlines():
+        if line.strip().startswith("totals:"):
+            return _js_obj("{" + line.split("{", 1)[1].rsplit("}", 1)[0] + "}")
+    return {}
+
+
+def check_option(*, spot: float, high52: float | None, strike: float, dte: int, premium: float, qty: int,
+                 total_assets: float, option_cost_now: float, option_names_now: int, is_new_name: bool,
+                 verdict: str | None, rules: Rules, orules: OptionRules, kind: str = "Call") -> dict:
+    """報牌檢查：標的是否符合「再跌深」前提、基本面、到期日、價外程度、金額與檔數。
+    每項回 (名稱, ok: True/False/None, 說明)。ok=None 表示資料不足、無法判斷。"""
+    cost_ntd = premium * 100 * qty * rules.usd_twd
+    checks = []
+    if high52:
+        dd = spot / high52 - 1
+        checks.append(("標的在進場區（距 52 週高點回檔）", dd <= -rules.entry_drop,
+                       f"距高點 {dd:+.1%}，門檻 ≤ -{rules.entry_drop:.0%}"))
+    else:
+        checks.append(("標的在進場區（距 52 週高點回檔）", None, "沒有 52 週高點資料"))
+    if verdict in (None, "資料不足"):
+        checks.append(("基本面判定不是「排除」", None, "基本面資料不足，請自行確認"))
+    elif verdict == "不適用":
+        checks.append(("基本面判定不是「排除」", None, "ETF 沒有公司財報"))
+    else:
+        checks.append(("基本面判定不是「排除」", verdict != "排除", f"基本面判定：{verdict}"))
+    checks.append(("到期日夠遠", dte >= orules.min_dte,
+                   f"買進時距到期 {dte} 天，至少 {orules.min_dte} 天" + ("（14 天內歷史勝率僅 25%）" if dte <= 14 else "")))
+    otm = strike / spot - 1 if kind == "Call" else 1 - strike / spot
+    checks.append(("價外程度", otm <= orules.max_otm,
+                   f"行使價{'高' if kind == 'Call' else '低'}於現價 {otm:+.1%}，上限 {orules.max_otm:.0%}"))
+    checks.append(("單筆成本", cost_ntd <= orules.per_trade_cap_ntd, f"NT${cost_ntd:,.0f}，上限 NT${orules.per_trade_cap_ntd:,.0f}"))
+    after = option_cost_now + cost_ntd
+    checks.append(("期權總成本占比", after / total_assets <= orules.total_cap_pct,
+                   f"買進後期權總成本 NT${after:,.0f}，占總資產 {after / total_assets:.1%}，上限 {orules.total_cap_pct:.0%}"))
+    names_after = option_names_now + (1 if is_new_name else 0)
+    checks.append(("期權檔數", names_after <= orules.max_names, f"買進後 {names_after} 檔，上限 {orules.max_names} 檔"))
+    be = strike + premium if kind == "Call" else strike - premium
+    info = {"成本NT$": cost_ntd, "最大虧損NT$": cost_ntd, "損益兩平價": be,
+            "損益兩平距現價": be / spot - 1, "權利金占股價": premium / spot}
+    bad = [c for c in checks if c[1] is False]
+    unk = [c for c in checks if c[1] is None]
+    return {"checks": checks, "info": info, "pass": not bad and not unk, "n_bad": len(bad), "n_unknown": len(unk)}

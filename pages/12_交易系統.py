@@ -1,4 +1,5 @@
 import json
+from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -9,7 +10,8 @@ st.set_page_config(page_title="交易系統 - 阿紘的股票儀表板", page_ic
 from utils.styles import load_css
 load_css()
 from utils.fundamentals import FundRules, evaluate, fetch_quarterly, load_partnerships, load_profiles
-from utils.trading_system import Rules, backtest, check_position, entry_hint, hold_hint, read_positions, read_trades, scan_symbol, summarize
+from utils.trading_system import (OptionRules, Rules, backtest, check_option, check_position, entry_hint, hold_hint,
+                                  read_positions, read_totals, read_trades, scan_symbol, summarize)
 
 st.title("🧭 交易系統")
 st.markdown("下跌才買、金字塔加碼、首批價再跌 50% 止損。止盈由阿紘自己判斷，系統不代替決定。價格訊號 + 基本面（成長／獲利／財務體質）。")
@@ -33,6 +35,14 @@ with st.sidebar:
         f_runway_x = st.slider("現金可撐月數：排除線", 3, 24, 12, 3)
         f_dil = st.slider("年化股本稀釋上限", 5, 100, 30, 5, format="%d%%") / 100
 
+    with st.expander("期權規則（草案，待阿紘確認數字）"):
+        o_dte = st.slider("買進時距到期至少（天）", 7, 120, 30, 1)
+        o_otm = st.slider("行使價高於現價最多", 0, 30, 10, 1, format="%d%%") / 100
+        o_cap = st.number_input("單筆權利金成本上限 NT$", 1000, 200000, 15000, 1000)
+        o_total = st.slider("期權總成本占總資產上限", 5, 50, 20, 1, format="%d%%") / 100
+        o_names = st.slider("期權同時持有檔數上限", 3, 30, 10, 1)
+
+orules = OptionRules(min_dte=o_dte, max_otm=o_otm, per_trade_cap_ntd=float(o_cap), total_cap_pct=o_total, max_names=o_names)
 frules = FundRules(min_rev_yoy_growth=f_growth, min_gross_margin=f_gm, runway_pass_months=f_runway,
                    runway_exclude_months=f_runway_x, max_annual_dilution=f_dil)
 rules = Rules(entry_drop=entry_drop, tranches_ntd=(t1, t2, t3), add_step=add_step,
@@ -62,7 +72,8 @@ def fund_row(sym: str) -> dict:
     return {"類型": e.get("kind", "-"), "基本面": e["verdict"], "基本面原因": "；".join(e["reasons"] + e["notes"]) or "-"}
 
 
-tab_rule, tab_hold, tab_scan, tab_fund, tab_bt = st.tabs(["📐 規則", "📋 持股對照規則", "🔍 進場掃描", "🧬 基本面", "🧪 回測"])
+tab_rule, tab_hold, tab_scan, tab_fund, tab_opt, tab_bt, tab_hist = st.tabs(
+    ["📐 規則", "📋 持股對照規則", "🔍 進場掃描", "🧬 基本面", "💹 期權檢查", "🧪 回測", "📊 歷史回測結果"])
 
 
 def pct(x):
@@ -172,10 +183,22 @@ with tab_scan:
                 sc = sc[lead + [c for c in sc.columns if c not in lead]]
             else:
                 st.metric("進場區（距高點回檔達標）", n_in)
+            conv_file = ROOT / "data" / "conviction.json"
+            conv = set(json.loads(conv_file.read_text(encoding="utf-8")).get("symbols", [])) if conv_file.exists() else set()
+            sc["高信念"] = sc["代號"].map(lambda x: "★" if x in conv else "")
+            vorder = {"通過": 0, "警示": 1, "排除": 2, "資料不足": 3, "不適用": 3}
+            sc["_v"] = sc["基本面"].map(lambda x: vorder.get(x, 4)) if "基本面" in sc.columns else 0
+            sc["_z"] = ~sc["進場區"]
+            sc = sc.sort_values(["_z", "_v", "距高點", "高信念"], ascending=[True, True, True, False])
+            sc["優先序"] = [str(i + 1) if not z else "" for i, z in enumerate(sc["_z"])]
+            sc = sc.drop(columns=["_v", "_z"])
+            sc = sc[["優先序", "代號", "高信念"] + [c for c in sc.columns if c not in ("優先序", "代號", "高信念")]]
             view = sc.copy()
             view["距高點"] = view["距高點"].map(pct)
             st.dataframe(view, hide_index=True, use_container_width=True)
-            st.caption("加碼價、止損價以「現價當第 1 批」估算；實際以你真正買進的價格為準。")
+            st.caption("加碼價、止損價以「現價當第 1 批」估算；實際以你真正買進的價格為準。"
+                       "進場區內的優先序：基本面「通過」> 跌幅更深 > 高信念（★，在 data/conviction.json 標記）。"
+                       "沒勾「附上基本面判定」時只依跌幅排序。")
 
 # ── 基本面 ───────────────────────────────────────────────
 with tab_fund:
@@ -247,3 +270,87 @@ with tab_bt:
                 st.dataframe(tdf.sort_values("進場"), hide_index=True, use_container_width=True)
                 st.caption("提醒：只回測現在還在市場上的標的，有倖存者偏差；沒有基本面濾網，"
                            "所以也會買進「便宜但持續惡化」的公司。結果是規則的上限參考，不是績效預測。")
+
+# ── 期權檢查 ─────────────────────────────────────────────
+with tab_opt:
+    st.markdown("""
+收到報牌資訊時填在這裡，系統對照規則逐項檢查：標的是不是已經跌深、基本面有沒有被排除、到期日夠不夠遠、
+價外程度、單筆金額、期權總成本占比、檔數。期權規則目前是**草案**，數字在側邊欄「期權規則」可調，確認後我再寫死。
+""")
+    o1, o2, o3, o4, o5 = st.columns(5)
+    o_sym = o1.text_input("標的代號", "", key="o_sym").strip().upper()
+    o_kind = o2.selectbox("類型", ["Call", "Put"], key="o_kind")
+    o_strike = o3.number_input("行使價", 0.0, 100000.0, 0.0, 0.5, key="o_strike")
+    o_exp = o4.date_input("到期日", value=date.today() + timedelta(days=60), key="o_exp")
+    o_prem = o5.number_input("權利金（每股 US$）", 0.0, 10000.0, 0.0, 0.05, key="o_prem")
+    q1, q2, q3 = st.columns(3)
+    o_qty = q1.number_input("口數", 1, 1000, 1, key="o_qty")
+    o_spot_m = q2.number_input("現價（抓不到股價時手動填，0 = 自動）", 0.0, 100000.0, 0.0, 0.5, key="o_spot")
+    o_high_m = q3.number_input("52 週高點（抓不到時手動填，0 = 自動）", 0.0, 100000.0, 0.0, 0.5, key="o_high")
+    if st.button("檢查這筆期權", type="primary", key="o_go"):
+        if not o_sym or o_strike <= 0 or o_prem <= 0:
+            st.warning("請填標的代號、行使價、權利金。")
+        else:
+            spot, high52 = o_spot_m or None, o_high_m or None
+            if spot is None or high52 is None:
+                cl = load_closes((o_sym,), "2y")
+                if not cl.empty and o_sym in cl.columns:
+                    ser = cl[o_sym].dropna()
+                    spot = spot or float(ser.iloc[-1])
+                    high52 = high52 or float(ser.iloc[-252:].max())
+            if spot is None:
+                st.error("抓不到這檔的股價，請在上面手動填現價（和 52 週高點）再檢查。")
+            else:
+                pos_all = read_positions()
+                opt = [p for p in pos_all if p.get("type") == "option"]
+                tot = read_totals()
+                fr = fund_row(o_sym)
+                res = check_option(spot=spot, high52=high52, strike=o_strike, dte=(o_exp - date.today()).days, premium=o_prem,
+                                   qty=int(o_qty), total_assets=tot.get("totalAssets", 1), option_cost_now=sum(p["invested"] for p in opt),
+                                   option_names_now=len({p["symbol"] for p in opt}), is_new_name=o_sym not in {p["symbol"] for p in opt},
+                                   verdict=fr["基本面"], rules=rules, orules=orules, kind=o_kind)
+                if res["pass"]:
+                    st.success("符合全部規則。")
+                else:
+                    st.error(f"不符合 {res['n_bad']} 項" + (f"，另有 {res['n_unknown']} 項資料不足" if res["n_unknown"] else ""))
+                for name, ok, detail in res["checks"]:
+                    st.markdown(f"{'✅' if ok else '❌' if ok is False else '❓'} **{name}**：{detail}")
+                i = res["info"]
+                mm = st.columns(4)
+                mm[0].metric("成本 NT$", f"{i['成本NT$']:,.0f}", help="這筆最大虧損 = 全部權利金")
+                mm[1].metric("損益兩平價", f"${i['損益兩平價']:.2f}", f"{i['損益兩平距現價']:+.1%} 距現價")
+                mm[2].metric("權利金占股價", f"{i['權利金占股價']:.1%}")
+                mm[3].metric("現價 / 52週高點", f"${spot:.2f}", f"{(spot / high52 - 1):+.1%}" if high52 else "")
+                if fr["基本面原因"] and fr["基本面原因"] != "-":
+                    st.caption("基本面：" + fr["基本面原因"])
+
+# ── 歷史回測結果 ─────────────────────────────────────────
+with tab_hist:
+    st.markdown("""
+在 GitHub 上用 10 年日線跑的回測（`scripts/run_backtest.py`，結果在 `data/backtest_results*.json`；
+想重跑就改 `data/backtest_request.json` 再推上去）。**只測價格規則**：沒有歷史基本面資料，基本面濾網無法回測。
+""")
+    def hist_table(fname, title):
+        f = ROOT / "data" / fname
+        if not f.exists():
+            return
+        r = json.loads(f.read_text(encoding="utf-8"))
+        rows = []
+        for c in r["configs"]:
+            p, sm = c["params"], c["summary"]
+            rows.append({"止盈": "不止盈（抱到現在）" if p["take_profit"] is None else f"+{p['take_profit']:.0%}",
+                         "進場跌幅": f"-{p['entry_drop']:.0%}", "止損": "無" if p["stop"] >= 0.95 else f"首批價 -{p['stop']:.0%}",
+                         "交易數": sm["trades"], "已結束": sm["done"], "持有中": sm["open"],
+                         "勝率": "-" if sm["win_rate"] is None else f"{sm['win_rate']:.0%}", "止損次數": sm["stops"],
+                         "平均賺NT$": round(sm["avg_win"]), "平均賠NT$": round(sm["avg_loss"]),
+                         "報酬率(損益/投入)": f"{sm['pnl'] / sm['invested']:.0%}" if sm["invested"] else "-",
+                         "最差單筆NT$": round(sm["worst"]), "同時最多檔數": sm["peak_positions"], "平均持有天": round(sm["avg_days"])})
+        st.subheader(title)
+        st.caption(f"{r['symbols_with_data']}/{r['symbols_requested']} 檔有資料，期間 {r['period']}，更新 {r['generated'][:10]}")
+        st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+
+    hist_table("backtest_results.json", "你交易過的正股（約 100 檔）")
+    hist_table("backtest_results_sp500.json", "對照組：S&P 500 成分股")
+    st.caption("**怎麼讀**：絕對報酬偏樂觀（兩組都是「現在還在交易」的公司，倖存者偏差；你的標的又集中在近年強勢的族群），"
+               "比較可信的是相對比較：止損 vs 不止損、止盈寬度、進場深度。「不止盈」的損益多半是還沒賣的帳面數字。"
+               "同時最多檔數代表訊號會在大盤大跌時集中出現，所以需要排序與檔數上限。")
