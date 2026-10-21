@@ -9,6 +9,13 @@ import yfinance as yf
 st.set_page_config(page_title="交易系統 - 阿紘的股票儀表板", page_icon="🧭", layout="wide")
 from utils.styles import load_css
 load_css()
+import importlib
+
+import utils.fundamentals as _fund_mod
+import utils.trading_system as _ts_mod
+# Streamlit Cloud 部署新版後，行程裡的 utils 模組可能還是舊版快取，匯入新增的名稱會 ImportError；每次載入都重新載入
+importlib.reload(_fund_mod)
+importlib.reload(_ts_mod)
 from utils.fundamentals import FundRules, evaluate, fetch_quarterly, load_partnerships, load_profiles
 from utils.trading_system import (OptionRules, Rules, backtest, check_option, check_position, entry_hint, hold_hint,
                                   option_dte, read_positions, read_totals, read_trades, scan_symbol, summarize)
@@ -20,7 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 with st.sidebar:
     st.subheader("規則參數")
-    entry_drop = st.slider("進場：距 52 週高點回檔 ≥", 20, 50, 30, 1, format="%d%%") / 100
+    entry_drop = st.slider("進場：距 52 週高點回檔 ≥", 10, 50, 20, 1, format="%d%%") / 100
     t1 = st.number_input("第 1 批 NT$", 0, 500000, 20000, 5000)
     t2 = st.number_input("第 2 批 NT$", 0, 500000, 30000, 5000)
     t3 = st.number_input("第 3 批 NT$", 0, 500000, 40000, 5000)
@@ -206,10 +213,13 @@ with tab_scan:
             sc = sc[["優先序", "代號", "高信念"] + [c for c in sc.columns if c not in ("優先序", "代號", "高信念")]]
             view = sc.copy()
             view["距高點"] = view["距高點"].map(pct)
+            view["年化波動率"] = view["年化波動率"].map(lambda x: "-" if x is None or x != x else f"{x:.0%}")
+            view["回檔/波動率"] = view["回檔/波動率"].map(lambda x: "-" if x is None or x != x else f"{x:.1f}")
             st.dataframe(view, hide_index=True, use_container_width=True)
             st.caption("加碼價、止損價以「現價當第 1 批」估算；實際以你真正買進的價格為準。"
                        "進場區內的優先序：基本面「通過」> 跌幅更深 > 高信念（★，在 data/conviction.json 標記）。"
-                       "沒勾「附上基本面判定」時只依跌幅排序。")
+                       "沒勾「附上基本面判定」時只依跌幅排序。"
+                       "「回檔/波動率」= 距高點回檔 ÷ 年化波動率，越負代表相對這檔自己的波動越超跌，供你判斷要不要進場。")
 
 # ── 基本面 ───────────────────────────────────────────────
 with tab_fund:
@@ -302,13 +312,15 @@ with tab_opt:
         if not o_sym or o_strike <= 0 or o_prem <= 0:
             st.warning("請填標的代號、行使價、權利金。")
         else:
-            spot, high52 = o_spot_m or None, o_high_m or None
+            spot, high52, o_vol = o_spot_m or None, o_high_m or None, None
             if spot is None or high52 is None:
                 cl = load_closes((o_sym,), "2y")
                 if not cl.empty and o_sym in cl.columns:
                     ser = cl[o_sym].dropna()
                     spot = spot or float(ser.iloc[-1])
                     high52 = high52 or float(ser.iloc[-252:].max())
+                    sc_ = scan_symbol(ser, rules)
+                    o_vol = sc_["年化波動率"] if sc_ else None
             if spot is None:
                 st.error("抓不到這檔的股價，請在上面手動填現價（和 52 週高點）再檢查。")
             else:
@@ -333,6 +345,8 @@ with tab_opt:
                 mm[2].metric("損益兩平價", f"${i['損益兩平價']:.2f}", f"{i['損益兩平距現價']:+.1%} 距現價")
                 mm[3].metric(f"出場權利金（虧 {orules.exit_loss:.0%}）", f"${i['出場權利金']:.2f}", help="權利金跌到這個價就出場")
                 mm[4].metric("現價 / 52週高點", f"${spot:.2f}", f"{(spot / high52 - 1):+.1%}" if high52 else "")
+                if o_vol:
+                    st.caption(f"這檔年化波動率約 {o_vol:.0%}；距高點回檔是波動率的 {((spot / high52 - 1) / o_vol):.1f} 倍。")
                 if fr["基本面原因"] and fr["基本面原因"] != "-":
                     st.caption("基本面：" + fr["基本面原因"])
 

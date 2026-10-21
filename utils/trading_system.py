@@ -1,7 +1,7 @@
 """阿紘的交易系統（v0）：下跌才買、金字塔加碼、首批價再跌 50% 止損。
 
 規則（阿紘 2026-10 對話定案）：
-- 進場：股價從 52 週高點回檔 ≥ 30%，買第一批。
+- 進場：股價從 52 週高點回檔 ≥ 20%（原 30%，阿紘改 20% 並依個股波動率自行判斷），買第一批。
 - 加碼：金字塔往下，第 1/2/3 批各 NT$2 萬 / 3 萬 / 4 萬，最多 3 批；
   下一批在「上一批價再跌 10–15%」，或「首批後上漲、再從高點回落 20–30%」時買。
 - 止損：現價 ≤ 首批買入價 × 50% 就全部出清（中間不論加碼幾次）。
@@ -42,7 +42,7 @@ def read_trades() -> list[dict]:
 
 @dataclass
 class Rules:
-    entry_drop: float = 0.30
+    entry_drop: float = 0.20         # 距 52 週高點回檔多少算進場區（阿紘 2026-10-21 由 30% 改 20%，並依個股波動率自行判斷）
     tranches_ntd: tuple = (20000, 30000, 40000)
     add_step: float = 0.12           # 上一批價再跌多少加碼（阿紘說 10–15%）
     rebound_pullback: float = 0.25   # 上漲後從高點回落多少加碼（阿紘說 20–30%）
@@ -120,20 +120,25 @@ def check_position(pos: dict, trades: list[dict], rules: Rules) -> dict:
 
 # ── 進場掃描 ───────────────────────────────────────────────
 def scan_symbol(close: list[float] | "pd.Series", rules: Rules) -> dict | None:
-    """最新收盤價相對近 252 個交易日高點的回檔，與三批的建議買進價位（以首批 = 現價估算）。"""
+    """最新收盤價相對近 252 個交易日高點的回檔、年化波動率、回檔是波動率的幾倍，與三批的建議買進價位（以首批 = 現價估算）。
+    門檻只是參考：阿紘依個股波動率自己決定要不要進場，所以一併給波動率。"""
     vals = [float(x) for x in close if x == x]
     if len(vals) < 60:
         return None
     window = vals[-252:]
     high, last = max(window), vals[-1]
     dd = last / high - 1
+    rets = [window[i] / window[i - 1] - 1 for i in range(1, len(window))]
+    mean = sum(rets) / len(rets)
+    vol = (sum((r - mean) ** 2 for r in rets) / (len(rets) - 1)) ** 0.5 * (252 ** 0.5) if len(rets) > 2 else None
     first = last
     return {
         "現價": last, "52週高點": high, "距高點": dd, "進場區": dd <= -rules.entry_drop,
-        "進場價(距高點-30%)": round(high * (1 - rules.entry_drop), 2),
+        "年化波動率": vol, "回檔/波動率": (dd / vol) if vol else None,
+        "進場價(距高點-%d%%)" % round(rules.entry_drop * 100): round(high * (1 - rules.entry_drop), 2),
         "加碼價2(再-%d%%)" % round(rules.add_step * 100): round(first * (1 - rules.add_step), 2),
         "加碼價3": round(first * (1 - rules.add_step) ** 2, 2),
-        "止損價(首批-50%)": round(first * (1 - rules.stop_from_first), 2),
+        "止損價(首批-%d%%)" % round(rules.stop_from_first * 100): round(first * (1 - rules.stop_from_first), 2),
     }
 
 
