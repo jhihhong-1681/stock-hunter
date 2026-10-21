@@ -9,10 +9,10 @@ st.set_page_config(page_title="交易系統 - 阿紘的股票儀表板", page_ic
 from utils.styles import load_css
 load_css()
 from utils.fundamentals import FundRules, evaluate, fetch_quarterly, load_partnerships, load_profiles
-from utils.trading_system import Rules, backtest, check_position, read_positions, read_trades, scan_symbol, summarize
+from utils.trading_system import Rules, backtest, check_position, entry_hint, hold_hint, read_positions, read_trades, scan_symbol, summarize
 
 st.title("🧭 交易系統")
-st.markdown("下跌才買、金字塔加碼、首批價再跌 50% 止損。止盈由阿紘自己判斷，系統不代替決定。（v0：還沒有基本面濾網）")
+st.markdown("下跌才買、金字塔加碼、首批價再跌 50% 止損。止盈由阿紘自己判斷，系統不代替決定。價格訊號 + 基本面（成長／獲利／財務體質）。")
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -38,6 +38,30 @@ frules = FundRules(min_rev_yoy_growth=f_growth, min_gross_margin=f_gm, runway_pa
 rules = Rules(entry_drop=entry_drop, tranches_ntd=(t1, t2, t3), add_step=add_step,
               rebound_pullback=rebound, stop_from_first=stop)
 
+partners_all = load_partnerships()
+profiles = load_profiles()
+
+
+@st.cache_data(ttl=3600 * 12)
+def load_fund(sym: str) -> dict:
+    try:
+        return fetch_quarterly(sym)
+    except Exception:
+        return {}
+
+
+def fund_row(sym: str) -> dict:
+    """單檔基本面判定（持股對照、進場掃描共用）。"""
+    prof = profiles.get(sym, {})
+    if prof.get("type") == "ETF":
+        return {"類型": "ETF", "基本面": "不適用", "基本面原因": "ETF 沒有公司財報"}
+    d = load_fund(sym)
+    if not d:
+        return {"類型": prof.get("type", "-"), "基本面": "資料不足", "基本面原因": "Yahoo 沒有回財報"}
+    e = evaluate(d, partners_all.get(sym), frules, prof.get("type"))
+    return {"類型": e.get("kind", "-"), "基本面": e["verdict"], "基本面原因": "；".join(e["reasons"] + e["notes"]) or "-"}
+
+
 tab_rule, tab_hold, tab_scan, tab_fund, tab_bt = st.tabs(["📐 規則", "📋 持股對照規則", "🔍 進場掃描", "🧬 基本面", "🧪 回測"])
 
 
@@ -62,7 +86,7 @@ with tab_rule:
 **單一標的最大虧損（三批都買、跌到止損價）**：約 NT${max_loss:,.0f}（投入 NT${total:,} 的 {max_loss / total:.0%}）。
 每一檔最多虧這個數字，所以檔數、總風險都可以事先算出來。
 """)
-    st.caption("匯率固定 31。基本面濾網（營收、毛利率、現金流、估值）下一版加入，目前進場訊號只看價格。")
+    st.caption("匯率固定 31。進場訊號看價格，基本面濾網在「基本面」分頁，持股對照與進場掃描可附上基本面判定。")
 
 # ── 持股對照 ─────────────────────────────────────────────
 with tab_hold:
@@ -79,8 +103,17 @@ with tab_hold:
         st.error("已觸發止損：" + "、".join(f"{r.symbol}（首批 ${r.首批價:g} → 現價 ${r.現價:g}，{pct(r.距首批價)}）" for r in hit.itertuples()))
     if len(near):
         st.warning("接近止損價：" + "、".join(f"{r.symbol}（距止損價 {pct(r.距止損價)}）" for r in near.itertuples()))
-    show = df[["symbol", "name", "首批價", "現價", "距首批價", "止損價", "距止損價", "已觸發止損", "已買批數",
-               "下一批加碼價", "下一批金額NT$", "報酬率", "現值NT$", "備註"]].copy()
+    with_fund = st.checkbox("附上基本面判定（要抓財報，第一次約半分鐘，之後快取 12 小時）", key="hold_fund")
+    cols = ["symbol", "name", "首批價", "現價", "距首批價", "止損價", "距止損價", "已觸發止損", "已買批數",
+            "下一批加碼價", "下一批金額NT$", "報酬率", "現值NT$", "備註"]
+    if with_fund:
+        fr = pd.DataFrame([fund_row(sy) for sy in df["symbol"]])
+        df = pd.concat([df.reset_index(drop=True), fr], axis=1)
+        df["對照"] = [hold_hint(bool(r["已觸發止損"]), r["基本面"], r["下一批加碼價"] is not None and r["下一批加碼價"] == r["下一批加碼價"])
+                    for _, r in df.iterrows()]
+        cols = ["symbol", "name", "類型", "基本面", "對照", "首批價", "現價", "距首批價", "止損價", "距止損價", "已觸發止損",
+                "已買批數", "下一批加碼價", "報酬率", "現值NT$", "基本面原因", "備註"]
+    show = df[cols].copy()
     show["距首批價"] = show["距首批價"].map(pct)
     show["距止損價"] = show["距止損價"].map(pct)
     show["報酬率"] = show["報酬率"].map(lambda x: f"{x:+.1f}%" if x is not None else "-")
@@ -120,29 +153,34 @@ with tab_scan:
         if out:
             sc = pd.DataFrame(out).sort_values("距高點")
             n_in = int(sc["進場區"].sum())
-            st.metric("進場區（距高點回檔達標）", n_in)
+            with_fund_s = st.checkbox("對進場區的標的附上基本面判定", key="scan_fund")
+            if with_fund_s:
+                fr = {s_: fund_row(s_) for s_ in sc.loc[sc["進場區"], "代號"]}
+                sc["類型"] = sc["代號"].map(lambda x: fr[x]["類型"] if x in fr else "")
+                sc["基本面"] = sc["代號"].map(lambda x: fr[x]["基本面"] if x in fr else "")
+                sc["結論"] = [entry_hint(bool(r["進場區"]), r["基本面"]) for _, r in sc.iterrows()]
+                sc["基本面原因"] = sc["代號"].map(lambda x: fr[x]["基本面原因"] if x in fr else "")
+                ok = int((sc["基本面"] == "通過").sum())
+                m1, m2 = st.columns(2)
+                m1.metric("進場區（距高點回檔達標）", n_in)
+                m2.metric("進場區且基本面通過", ok)
+                lead = ["代號", "結論", "類型", "基本面", "進場區", "現價", "52週高點", "距高點"]
+                sc = sc[lead + [c for c in sc.columns if c not in lead]]
+            else:
+                st.metric("進場區（距高點回檔達標）", n_in)
             view = sc.copy()
             view["距高點"] = view["距高點"].map(pct)
             st.dataframe(view, hide_index=True, use_container_width=True)
             st.caption("加碼價、止損價以「現價當第 1 批」估算；實際以你真正買進的價格為準。")
 
 # ── 基本面 ───────────────────────────────────────────────
-@st.cache_data(ttl=3600 * 12)
-def load_fund(sym: str) -> dict:
-    try:
-        return fetch_quarterly(sym)
-    except Exception:
-        return {}
-
-
 with tab_fund:
     st.markdown("""
 **兩條軌道**：近四季營業利益為正走「已獲利型」（看營收是否成長、利益率有沒有惡化）；
 為負走「成長虧損型」（不因虧損排除，改看營收年增率、毛利率、虧損有沒有收斂、現金可撐多久、股本稀釋）。
 **巨頭合作**記在 `data/partnerships.json`（人工維護、附出處），現金撐不夠久時可把「排除」降成「警示」。不看估值。
 """)
-    partners = load_partnerships()
-    profiles = load_profiles()
+    partners = partners_all
     fin = st.text_input("分析的代號（空白或逗號分隔）", " ".join(sorted(set(json.loads((ROOT / "data" / "watchlist.json").read_text(encoding="utf-8"))))))
     fsyms = sorted({x.strip().upper() for x in fin.replace(",", " ").split() if x.strip()})
     if st.button("分析基本面", type="primary"):

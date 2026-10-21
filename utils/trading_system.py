@@ -224,3 +224,29 @@ def summarize(trades: list[Trade]) -> dict:
         "總投入NT$": sum(t.invested for t in allt),
         "最大單筆虧損NT$": min(t.pnl for t in allt),
     }
+
+
+# ── 價格訊號 × 基本面判定 ─────────────────────────────────────
+def hold_hint(stop_hit: bool, verdict: str, adds_left: bool) -> str:
+    """持股：價格止損 + 基本面判定的對照。系統只提示，止盈與最後決定仍由阿紘判斷。"""
+    if stop_hit:
+        if verdict == "通過":
+            return "已觸發止損：規則是出清；基本面仍通過，可列入重新進場觀察"
+        if verdict in ("警示", "排除"):
+            return f"已觸發止損：規則是出清；基本面也{verdict}"
+        return "已觸發止損：規則是出清"
+    if verdict == "排除":
+        return "基本面排除：不再加碼"
+    if verdict == "警示":
+        return "基本面警示：加碼前先複查" if adds_left else "基本面警示"
+    if verdict == "通過":
+        return "可依規則加碼" if adds_left else "批數已滿，不再加碼"
+    return "基本面資料不足" if verdict == "資料不足" else ""
+
+
+def entry_hint(in_zone: bool, verdict: str) -> str:
+    """進場掃描：價格進場區 × 基本面。"""
+    if not in_zone:
+        return ""
+    return {"通過": "符合進場（價格 + 基本面）", "警示": "價格到位，基本面警示：小心", "排除": "價格到位，但基本面排除：不進",
+            "資料不足": "價格到位，基本面資料不足", "不適用": "價格到位（ETF，無基本面）"}.get(verdict, "")
