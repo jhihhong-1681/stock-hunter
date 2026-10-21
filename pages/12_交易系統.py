@@ -11,7 +11,7 @@ from utils.styles import load_css
 load_css()
 from utils.fundamentals import FundRules, evaluate, fetch_quarterly, load_partnerships, load_profiles
 from utils.trading_system import (OptionRules, Rules, backtest, check_option, check_position, entry_hint, hold_hint,
-                                  read_positions, read_totals, read_trades, scan_symbol, summarize)
+                                  option_dte, read_positions, read_totals, read_trades, scan_symbol, summarize)
 
 st.title("🧭 交易系統")
 st.markdown("下跌才買、金字塔加碼、首批價再跌 50% 止損。止盈由阿紘自己判斷，系統不代替決定。價格訊號 + 基本面（成長／獲利／財務體質）。")
@@ -35,14 +35,12 @@ with st.sidebar:
         f_runway_x = st.slider("現金可撐月數：排除線", 3, 24, 12, 3)
         f_dil = st.slider("年化股本稀釋上限", 5, 100, 30, 5, format="%d%%") / 100
 
-    with st.expander("期權規則（草案，待阿紘確認數字）"):
-        o_dte = st.slider("買進時距到期至少（天）", 7, 120, 30, 1)
-        o_otm = st.slider("行使價高於現價最多", 0, 30, 10, 1, format="%d%%") / 100
-        o_cap = st.number_input("單筆權利金成本上限 NT$", 1000, 200000, 15000, 1000)
-        o_total = st.slider("期權總成本占總資產上限", 5, 50, 20, 1, format="%d%%") / 100
+    with st.expander("期權規則"):
+        o_dte = st.slider("買進時距到期至少（天）", 7, 120, 14, 1)
         o_names = st.slider("期權同時持有檔數上限", 3, 30, 10, 1)
+        o_exit = st.slider("權利金虧損達多少出場", 30, 90, 60, 5, format="%d%%") / 100
 
-orules = OptionRules(min_dte=o_dte, max_otm=o_otm, per_trade_cap_ntd=float(o_cap), total_cap_pct=o_total, max_names=o_names)
+orules = OptionRules(min_dte=o_dte, max_names=o_names, exit_loss=o_exit)
 frules = FundRules(min_rev_yoy_growth=f_growth, min_gross_margin=f_gm, runway_pass_months=f_runway,
                    runway_exclude_months=f_runway_x, max_annual_dilution=f_dil)
 rules = Rules(entry_drop=entry_drop, tranches_ntd=(t1, t2, t3), add_step=add_step,
@@ -96,6 +94,11 @@ with tab_rule:
 **止盈**：阿紘自己判斷。
 **檔數目標**：正股、期權各同時持有 5–10 檔。
 
+**期權**（獨立的短線工具，一樣建立在「再跌深」的前提上）：
+標的要在進場區（距 52 週高點回檔 ≥ {rules.entry_drop:.0%}）、基本面不是「排除」；買進時距到期至少 {orules.min_dte} 天；
+價外程度、單筆金額、期權總成本占比**不設上限**（價外樂透可以）；同時最多 {orules.max_names} 檔；
+**權利金虧損達 {orules.exit_loss:.0%} 就出場**。現有的期權部位照阿紘的意思不處理。
+
 **單一標的最大虧損（三批都買、跌到止損價）**：約 NT${max_loss:,.0f}（投入 NT${total:,} 的 {max_loss / total:.0%}）。
 每一檔最多虧這個數字，所以檔數、總風險都可以事先算出來。
 """)
@@ -133,6 +136,14 @@ with tab_hold:
     show["距止損價"] = show["距止損價"].map(pct)
     show["報酬率"] = show["報酬率"].map(lambda x: f"{x:+.1f}%" if x is not None else "-")
     st.dataframe(show.sort_values("現值NT$", ascending=False), hide_index=True, use_container_width=True)
+    opts = [p for p in read_positions() if p.get("type") == "option"]
+    if opts:
+        with st.expander(f"期權持倉（{len(opts)} 檔，提示用）"):
+            otable = pd.DataFrame([{"合約": p["name"], "距到期(天)": option_dte(p["name"], date.today()), "權利金損益": f"{p['pct']:+.1f}%",
+                                    "已達出場線": "是" if p["pct"] <= -orules.exit_loss * 100 else "", "現值NT$": p["value"]} for p in opts])
+            n_hit = int((otable["已達出場線"] == "是").sum())
+            st.caption(f"權利金虧損達 {orules.exit_loss:.0%} 就出場；目前 {n_hit} 檔已達。現有期權部位照阿紘的意思不處理，這裡只是提示。")
+            st.dataframe(otable.sort_values("距到期(天)"), hide_index=True, use_container_width=True)
     st.caption("首批價、已買批數完全來自成交紀錄（portfolio-calendar/trades.js）。"
                "「一輪」= 上次全部賣光之後重新買進的第一批；同一天買進合併成一批。")
 
@@ -275,7 +286,7 @@ with tab_bt:
 with tab_opt:
     st.markdown("""
 收到報牌資訊時填在這裡，系統對照規則逐項檢查：標的是不是已經跌深、基本面有沒有被排除、到期日夠不夠遠、
-價外程度、單筆金額、期權總成本占比、檔數。期權規則目前是**草案**，數字在側邊欄「期權規則」可調，確認後我再寫死。
+檔數；價外程度與金額只顯示、不設上限（價外樂透可以）。規則在「📐 規則」分頁，數字在側邊欄「期權規則」可調。
 """)
     o1, o2, o3, o4, o5 = st.columns(5)
     o_sym = o1.text_input("標的代號", "", key="o_sym").strip().upper()
@@ -314,13 +325,14 @@ with tab_opt:
                 else:
                     st.error(f"不符合 {res['n_bad']} 項" + (f"，另有 {res['n_unknown']} 項資料不足" if res["n_unknown"] else ""))
                 for name, ok, detail in res["checks"]:
-                    st.markdown(f"{'✅' if ok else '❌' if ok is False else '❓'} **{name}**：{detail}")
+                    st.markdown(f"{'✅' if ok is True else '❌' if ok is False else 'ℹ️' if ok == 'note' else '❓'} **{name}**：{detail}")
                 i = res["info"]
-                mm = st.columns(4)
-                mm[0].metric("成本 NT$", f"{i['成本NT$']:,.0f}", help="這筆最大虧損 = 全部權利金")
-                mm[1].metric("損益兩平價", f"${i['損益兩平價']:.2f}", f"{i['損益兩平距現價']:+.1%} 距現價")
-                mm[2].metric("權利金占股價", f"{i['權利金占股價']:.1%}")
-                mm[3].metric("現價 / 52週高點", f"${spot:.2f}", f"{(spot / high52 - 1):+.1%}" if high52 else "")
+                mm = st.columns(5)
+                mm[0].metric("成本 NT$", f"{i['成本NT$']:,.0f}", f"占總資產 {i['占總資產']:.1%}" if i["占總資產"] else "", help="這筆最大虧損 = 全部權利金")
+                mm[1].metric("價外程度", i["價外程度"])
+                mm[2].metric("損益兩平價", f"${i['損益兩平價']:.2f}", f"{i['損益兩平距現價']:+.1%} 距現價")
+                mm[3].metric(f"出場權利金（虧 {orules.exit_loss:.0%}）", f"${i['出場權利金']:.2f}", help="權利金跌到這個價就出場")
+                mm[4].metric("現價 / 52週高點", f"${spot:.2f}", f"{(spot / high52 - 1):+.1%}" if high52 else "")
                 if fr["基本面原因"] and fr["基本面原因"] != "-":
                     st.caption("基本面：" + fr["基本面原因"])
 

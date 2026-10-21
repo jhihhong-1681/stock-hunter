@@ -279,14 +279,13 @@ def entry_hint(in_zone: bool, verdict: str) -> str:
             "資料不足": "價格到位，基本面資料不足", "不適用": "價格到位（ETF，無基本面）"}.get(verdict, "")
 
 
-# ── 期權檢查（草案，數字等阿紘確認） ──────────────────────────
+# ── 期權檢查（阿紘 2026-10 定案） ─────────────────────────
 @dataclass
 class OptionRules:
-    min_dte: int = 30              # 買進時離到期至少幾天（<=14 天的歷史勝率只有 25%）
-    max_otm: float = 0.10          # 行使價高於現價最多幾 %（草案，待確認）
-    per_trade_cap_ntd: float = 15000.0   # 單筆權利金成本上限（草案，約過去平均每批 NT$1.2 萬）
-    total_cap_pct: float = 0.20    # 期權總成本占總資產上限（草案）
-    max_names: int = 10            # 期權同時持有檔數上限（阿紘：5–10 檔）
+    min_dte: int = 14                    # 買進時離到期至少幾天（14 天內歷史勝率僅 25%）
+    max_names: int = 10                  # 期權同時持有檔數上限（阿紘：5–10 檔）；現有部位超過時只提示、不擋
+    exit_loss: float = 0.60              # 權利金虧損達這個比例就出場
+    # 價外程度、單筆成本、總成本占比：阿紘定案「不設上限」（價外樂透也可以），只顯示不檢查
 
 
 def read_totals() -> dict:
@@ -297,11 +296,22 @@ def read_totals() -> dict:
     return {}
 
 
+def moneyness(strike: float, spot: float, kind: str = "Call") -> str:
+    otm = strike / spot - 1 if kind == "Call" else 1 - strike / spot
+    if otm < -0.03:
+        return "價內"
+    if otm <= 0.03:
+        return "價平"
+    if otm <= 0.10:
+        return "輕微價外"
+    return "價外樂透"
+
+
 def check_option(*, spot: float, high52: float | None, strike: float, dte: int, premium: float, qty: int,
                  total_assets: float, option_cost_now: float, option_names_now: int, is_new_name: bool,
                  verdict: str | None, rules: Rules, orules: OptionRules, kind: str = "Call") -> dict:
-    """報牌檢查：標的是否符合「再跌深」前提、基本面、到期日、價外程度、金額與檔數。
-    每項回 (名稱, ok: True/False/None, 說明)。ok=None 表示資料不足、無法判斷。"""
+    """報牌檢查：標的是否符合「再跌深」前提、基本面、到期日、檔數；價外程度與金額只顯示不檢查。
+    每項回 (名稱, ok, 說明)。ok：True 通過／False 不符／None 資料不足／"note" 僅提示（不計入通過與否）。"""
     cost_ntd = premium * 100 * qty * rules.usd_twd
     checks = []
     if high52:
@@ -317,19 +327,33 @@ def check_option(*, spot: float, high52: float | None, strike: float, dte: int, 
     else:
         checks.append(("基本面判定不是「排除」", verdict != "排除", f"基本面判定：{verdict}"))
     checks.append(("到期日夠遠", dte >= orules.min_dte,
-                   f"買進時距到期 {dte} 天，至少 {orules.min_dte} 天" + ("（14 天內歷史勝率僅 25%）" if dte <= 14 else "")))
-    otm = strike / spot - 1 if kind == "Call" else 1 - strike / spot
-    checks.append(("價外程度", otm <= orules.max_otm,
-                   f"行使價{'高' if kind == 'Call' else '低'}於現價 {otm:+.1%}，上限 {orules.max_otm:.0%}"))
-    checks.append(("單筆成本", cost_ntd <= orules.per_trade_cap_ntd, f"NT${cost_ntd:,.0f}，上限 NT${orules.per_trade_cap_ntd:,.0f}"))
-    after = option_cost_now + cost_ntd
-    checks.append(("期權總成本占比", after / total_assets <= orules.total_cap_pct,
-                   f"買進後期權總成本 NT${after:,.0f}，占總資產 {after / total_assets:.1%}，上限 {orules.total_cap_pct:.0%}"))
+                   f"買進時距到期 {dte} 天，至少 {orules.min_dte} 天"))
     names_after = option_names_now + (1 if is_new_name else 0)
-    checks.append(("期權檔數", names_after <= orules.max_names, f"買進後 {names_after} 檔，上限 {orules.max_names} 檔"))
+    if option_names_now > orules.max_names:
+        checks.append(("期權檔數", "note", f"現有 {option_names_now} 檔已超過上限 {orules.max_names} 檔，舊部位不處理，這項僅提示"))
+    else:
+        checks.append(("期權檔數", names_after <= orules.max_names, f"買進後 {names_after} 檔，上限 {orules.max_names} 檔"))
     be = strike + premium if kind == "Call" else strike - premium
+    after = option_cost_now + cost_ntd
     info = {"成本NT$": cost_ntd, "最大虧損NT$": cost_ntd, "損益兩平價": be,
-            "損益兩平距現價": be / spot - 1, "權利金占股價": premium / spot}
-    bad = [c for c in checks if c[1] is False]
-    unk = [c for c in checks if c[1] is None]
+            "損益兩平距現價": be / spot - 1, "權利金占股價": premium / spot,
+            "價外程度": moneyness(strike, spot, kind), "出場權利金": premium * (1 - orules.exit_loss),
+            "占總資產": cost_ntd / total_assets if total_assets else None, "買進後期權總成本占比": after / total_assets if total_assets else None}
+    hard = [c for c in checks if c[1] != "note"]
+    bad = [c for c in hard if c[1] is False]
+    unk = [c for c in hard if c[1] is None]
     return {"checks": checks, "info": info, "pass": not bad and not unk, "n_bad": len(bad), "n_unknown": len(unk)}
+
+
+_OPT_NAME = re.compile(r"^([A-Z.\-]+)\s+(\d{2})/(\d{2})/(\d{2,4})\s+([\d.]+)\s+(Call|Put|C|P)$", re.I)
+
+
+def option_dte(name: str, today) -> int | None:
+    """持股名稱（例如 XOM 11/20/26 160 Call）算到期天數。"""
+    from datetime import date
+    m = _OPT_NAME.match(name.strip())
+    if not m:
+        return None
+    y = int(m.group(4))
+    y += 2000 if y < 100 else 0
+    return (date(y, int(m.group(2)), int(m.group(3))) - today).days
