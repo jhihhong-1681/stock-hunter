@@ -176,10 +176,13 @@ def candidate_card(c: dict) -> str:
         facts.append(f'毛利率 {m["毛利率"]:.0%}')
     if m.get("營業利益率") is not None:
         facts.append(f'營業利益率 {m["營業利益率"]:.0%}')
-    if m.get("不燒錢"):
-        facts.append("不燒錢")
-    elif m.get("可撐月數") is not None:
-        facts.append(f'現金可撐 {m["可撐月數"]:.0f} 個月')
+    if c.get("track") == "成長虧損型":      # 現金可撐月數只對虧損中的公司有意義
+        if m.get("不燒錢"):
+            facts.append("不燒錢")
+        elif m.get("可撐月數") is not None:
+            facts.append(f'現金可撐 {m["可撐月數"]:.0f} 個月')
+    elif c.get("track") == "已獲利型":
+        facts.append("已獲利")
     if m.get("年化股本稀釋") is not None and m["年化股本稀釋"] > 0.05:
         facts.append(f'稀釋 {m["年化股本稀釋"]:+.0%}/年')
     if c.get("partners"):

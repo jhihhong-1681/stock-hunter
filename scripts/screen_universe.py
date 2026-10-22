@@ -28,7 +28,7 @@ MIN_DOLLAR_VOL = 5e6         # 近 50 日平均成交額下限（US$）
 MIN_HISTORY = 250            # 至少一年日線（排除剛上市、財報不足的）
 FUND_TTL_DAYS = 7
 MAX_FUND_FETCH = 1200        # 單日最多抓幾檔財報（大盤大跌時訊號暴增，按最超跌的優先）
-TOP_N = 150                  # 輸出最多幾檔候選
+TOP_N = 100                  # 每個類型（成長型／成熟型）輸出最多幾檔候選
 LISTS = [("https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt", "Symbol"),
          ("https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt", "ACT Symbol")]
 _NON_COMMON = re.compile(r"\b(warrants?|rights?|units?|preferred|notes?|debentures?|acquisition corp\w*|blank check|trust preferred)\b", re.I)
@@ -61,7 +61,9 @@ def load_universe() -> dict:
                 continue
             if _NON_COMMON.search(name):
                 continue
-            out[sym.replace(".", "-")] = name.split(" - ")[0].strip()
+            name = name.split(" - ")[0].strip()
+            name = re.sub(r"\s+(Class [A-Z]\s+)?(Common Stock|Ordinary Shares?|American Depositary (Shares|Receipts?)|Common Shares|Shares of Beneficial Interest|Capital Stock).*$", "", name, flags=re.I)
+            out[sym.replace(".", "-")] = name.strip()
     if len(out) < 2000:
         raise RuntimeError(f"股票名單異常：只有 {len(out)} 檔")
     return out
@@ -198,13 +200,20 @@ def main():
                      "第3批價": round(p1 * (1 - rules.add_step) ** 2, 2), "止損價": round(p1 * (1 - rules.stop_from_first), 2)}
         c["is_new"] = c["symbol"] not in prev
     cands.sort(key=lambda c: (order[c["verdict"]], c["dd_vol"] or 0))
+    by_kind = {}
+    for c in cands:
+        by_kind.setdefault(c["kind"], []).append(c)
+    kept = [c for lst in by_kind.values() for c in lst[:TOP_N]]
+    kept.sort(key=lambda c: (order[c["verdict"]], c["dd_vol"] or 0))
+    kind_counts = {k: {v: sum(1 for c in lst if c["verdict"] == v) for v in order} for k, lst in by_kind.items()}
     out = {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "price_date": max((c["last_date"] for c in cands), default=None),
            "filters": {"最低股價": MIN_PRICE, "最低日均成交額US$": MIN_DOLLAR_VOL, "最少日線數": MIN_HISTORY, "進場回檔": rules.entry_drop,
                        "參考高點交易日": rules.high_window},
-           "stats": {**stats, "fund_fetched": n_fetch, "fund_failed": n_failed, "verdicts": counts, "capped": len(cands) > TOP_N},
-           "candidates": cands[:TOP_N]}
+           "stats": {**stats, "fund_fetched": n_fetch, "fund_failed": n_failed, "verdicts": counts, "by_kind": kind_counts,
+                     "capped": len(kept) < len(cands)},
+           "candidates": kept}
     OUT.write_text(json.dumps(clean(out), ensure_ascii=False, indent=1), encoding="utf-8")
-    print(f"完成：進場區候選 {len(cands)} 檔（輸出前 {min(len(cands), TOP_N)}），基本面 {counts}", flush=True)
+    print(f"完成：進場區候選 {len(cands)} 檔（輸出 {len(kept)}），基本面 {counts}，類型 {kind_counts}", flush=True)
 
 
 if __name__ == "__main__":

@@ -106,9 +106,9 @@ with tab_today:
             st.subheader(title)
             grid([action_card(a, by_sym.get(a["symbol"], {}).get("verdict")) for a in items], 2)
     if scr and scr["candidates"]:
-        top = [x for x in scr["candidates"] if x["verdict"] == "通過"][:4]
+        top = [x for x in scr["candidates"] if x["verdict"] == "通過" and x["kind"] == "成長型"][:4]
         if top:
-            st.subheader("選股雷達：今日前幾名（基本面通過）")
+            st.subheader("選股雷達：成長型前幾名（基本面通過）")
             grid([candidate_card(x) for x in top], 2)
             st.caption(f"全美股掃描 {scr['stats']['universe']:,} 檔 → 流動性通過 {scr['stats']['liquid']:,} 檔 → 進入進場區且還沒持有 {scr['stats']['in_zone']:,} 檔；完整名單在「🔭 選股」。")
     st.caption("規則：距 26 週高點回檔 ≥ 20% 進場 → 金字塔三批 → 首批價再跌 50% 全出 → 止損價再跌 30% 且基本面沒大變就開新一輪。"
@@ -142,9 +142,14 @@ with tab_pick:
                     f"距 26 週高點回檔 ≥ {flt['進場回檔']:.0%} 且**還沒持有**的 **{stt['in_zone']:,}** 檔。")
         st.caption(f"價格資料日期 {scr['price_date']}　·　基本面：通過 {v['通過']}、警示 {v['警示']}、排除 {v['排除']}、資料不足 {v['資料不足']}"
                    + (f"　·　已持有且在進場區 {stt['held_in_zone']} 檔（不列入）" if stt.get("held_in_zone") else ""))
-        mode = st.radio("顯示", ["基本面通過", "通過＋警示", "全部"], horizontal=True, label_visibility="collapsed", key="pick_mode")
-        allowed = {"基本面通過": ("通過",), "通過＋警示": ("通過", "警示"), "全部": ("通過", "警示", "排除", "資料不足")}[mode]
-        lst = [x for x in scr["candidates"] if x["verdict"] in allowed]
+        mode = st.radio("顯示", ["成長型・基本面通過", "成熟型・基本面通過", "通過＋警示", "全部"], horizontal=True, label_visibility="collapsed", key="pick_mode")
+        pick = {"成長型・基本面通過": lambda x: x["kind"] == "成長型" and x["verdict"] == "通過",
+                "成熟型・基本面通過": lambda x: x["kind"] == "成熟型" and x["verdict"] == "通過",
+                "通過＋警示": lambda x: x["verdict"] in ("通過", "警示"), "全部": lambda x: True}[mode]
+        lst = [x for x in scr["candidates"] if pick(x)]
+        bk = stt.get("by_kind", {})
+        if bk:
+            st.caption("　".join(f"{k}：通過 {d['通過']}・警示 {d['警示']}・排除 {d['排除']}・資料不足 {d['資料不足']}" for k, d in bk.items() if k in ("成長型", "成熟型")))
         if not lst:
             st.markdown('<div class="empty">目前沒有符合的候選。</div>', unsafe_allow_html=True)
         else:
@@ -154,7 +159,7 @@ with tab_pick:
                 with st.expander(f"更多候選（第 21–{len(lst)} 檔）"):
                     grid([candidate_card(x) for x in lst[20:]], 2)
         if stt.get("capped"):
-            st.caption(f"進場區候選超過 {len(scr['candidates'])} 檔，只保留排序最前面的（大盤大跌時訊號會暴增，這是設計上的上限）。")
+            st.caption("進場區候選很多，成長型、成熟型各只保留排序最前面的 100 檔（大盤大跌時訊號會暴增，這是設計上的上限）。")
         st.caption("進場計畫照你的規則：第 1 批 NT\\$2 萬、第 2 批現價 −20%、第 3 批再 −20%、止損為首批價 −50%。"
                    "沒登記過的標的，成長／成熟類型是系統用營收年增率自動推定（卡片註明「自動推定」）；巨頭合作要你指定後我再查證。")
 
