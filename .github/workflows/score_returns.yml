@@ -1,0 +1,44 @@
+name: Score Returns
+
+on:
+  schedule:
+    # 台北 16:30（UTC 08:30），週一到週五：選股與新聞評分都跑完之後
+    - cron: '30 8 * * 1-5'
+  push:
+    paths:
+      - 'scripts/score_returns.py'
+      - 'utils/score_history.py'
+  workflow_dispatch:
+
+concurrency:
+  group: score-returns
+  cancel-in-progress: true
+
+jobs:
+  returns:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install yfinance pandas numpy
+
+      - name: Compute forward returns
+        run: python scripts/score_returns.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/score_returns.json
+          git diff --staged --quiet || git commit -m "chore: score returns $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do git pull --rebase origin main && git push && break || sleep 5; done

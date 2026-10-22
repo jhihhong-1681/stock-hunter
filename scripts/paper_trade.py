@@ -14,7 +14,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.fundamentals import FundRules, evaluate, fetch_quarterly, load_partnerships  # noqa: E402
-from utils.paper_trading import (add_journal, fresh_news, health, new_state, rank_candidates, rebalance, snapshot, step_day)  # noqa: E402
+from utils.paper_trading import (VERSION, add_journal, execute_pending, fresh_news, health, new_state, rank_candidates, rebalance, snapshot, step_day)  # noqa: E402
+from utils.score_history import attach_news  # noqa: E402
 from utils.scoring import score_fundamental, score_news  # noqa: E402
 from utils.trading_system import Rules  # noqa: E402
 
@@ -32,14 +33,16 @@ def load_json(p, default):
 
 
 def download(symbols):
+    """回傳 (收盤價, 開盤價)。收盤價前值填補；開盤價不填補（NaN = 那天沒成交）。"""
     import yfinance as yf
     raw = yf.download(symbols, period="3mo", auto_adjust=True, progress=False, threads=True)
     if raw is None or raw.empty:
-        raise RuntimeError("抓不到收盤價")
-    close = raw["Close"]
-    if not hasattr(close, "columns"):
-        close = close.to_frame(symbols[0])
-    return close.ffill()
+        raise RuntimeError("抓不到價格")
+    out = []
+    for k in ("Close", "Open"):
+        df = raw[k]
+        out.append(df if hasattr(df, "columns") else df.to_frame(symbols[0]))
+    return out[0].ffill(), out[1]
 
 
 def held_info(state, ranked, news, close, today):
@@ -72,6 +75,11 @@ def held_info(state, ranked, news, close, today):
     return info
 
 
+def row_dict(df, d, skip=("SPY",)):
+    r = df.loc[d]
+    return {c: float(r[c]) for c in df.columns if c not in skip and r[c] == r[c]}
+
+
 def main():
     rules = Rules()
     scr = load_json(SCR, {})
@@ -80,43 +88,42 @@ def main():
     news = load_json(NEWS, {})
     price_date, today = scr["price_date"], date.today()
     ranked = rank_candidates(scr["candidates"], news, today)
+    attach_news(price_date, {k: v for k, v in (news.get("scores") or {}).items() if fresh_news(news, k, today)})                    # 新聞分補進當天的歷史檔（供日後驗證新聞有沒有用）
     state = load_json(OUT, None)
-    if state is not None and state.get("version") != 2:
-        state = None                                   # 舊版（固定 2/3/4 萬）重建
-    names = list(state["positions"]) + list(state["reentry"]) if state else []
-    close = download(sorted(set(["SPY"] + names)))
+    if state is not None and state.get("version") != VERSION:
+        state = None                                   # 舊版（成交假設不同）重建
+    names = (list(state["positions"]) + list(state["reentry"]) + [o["sym"] for o in state["pending"]]) if state else []
+    close, opn = download(sorted(set(["SPY"] + names)))
     spy = lambda d: float(close["SPY"].dropna().loc[:d].iloc[-1])  # noqa: E731
     fresh = state is None
     if fresh:
         state = new_state(price_date, spy(price_date))
-    info = held_info(state, ranked, news, close, today)
-    add_ok = {s for s, h in info.items() if h["verdict"] == "通過" and not h["veto"]}
-    if not fresh:
-        dates = [str(i.date()) for i in close.index if state["last_date"] < str(i.date()) < price_date]
-        for d in dates:
-            row = close.loc[d]
-            closes = {s: float(row[s]) for s in close.columns if s != "SPY" and row[s] == row[s]}
-            step_day(state, d, closes, rules, add_ok)
-            r = snapshot(state, d, closes, float(row["SPY"]))
-            add_journal(state, d, [t["side"] + " " + t["symbol"] + "：" + t["why"] for t in state["trades"] if t["date"] == d], r)
-    # 最新一天：價格規則（止損、加碼）用最新收盤，再做滾動調整
-    last_row = close.loc[:price_date].iloc[-1] if len(close) else None
-    closes = {}
-    if last_row is not None:
-        closes = {s: float(last_row[s]) for s in close.columns if s != "SPY" and last_row[s] == last_row[s]}
-    if not fresh and state["last_date"] < price_date:
-        step_day(state, price_date, closes, rules, add_ok)
-    lines = [t["side"] + " " + t["symbol"] + "：" + t["why"] for t in state["trades"] if t["date"] == price_date]
+    dates = [] if fresh else [str(i.date()) for i in close.index if state["last_date"] < str(i.date()) <= price_date]
     n_before = len(state["trades"])
-    lines += rebalance(state, price_date, ranked, {s: {**h, "price": closes.get(s, h["price"])} for s, h in info.items()}, rules)
-    for c in ranked:                                      # 新買進的用 screener 現價
-        if c["symbol"] in state["positions"]:
-            closes.setdefault(c["symbol"], c["price"])
-    row = snapshot(state, price_date, closes, spy(price_date))
-    add_journal(state, price_date, ([f"建倉：NT${state['capital']:,.0f}，成長型約 70%／成熟型約 30%，依排行與評分決定金額"] if fresh else []) + lines, row)
+    info = held_info(state, ranked, news, close, today)
+    add_ok = {s: h for s, h in info.items() if h["verdict"] == "通過" and not h["veto"]}
+    for d in dates:
+        lines = []
+        execute_pending(state, d, row_dict(opn, d), lines)
+        closes = row_dict(close, d)
+        step_day(state, d, closes, rules, set(add_ok), lines)
+        if d == price_date:
+            info = held_info(state, ranked, news, close, today)
+            lines += rebalance(state, d, ranked, {s: {**h, "price": closes.get(s, h["price"])} for s, h in info.items()}, rules)
+        row = snapshot(state, d, closes, float(close.loc[d, "SPY"]))
+        add_journal(state, d, lines, row)
+    if not dates:                                      # 第一次建倉，或同一天重跑
+        closes = row_dict(close, close.loc[:price_date].index[-1]) if len(close) else {}
+        prev = [j for j in state["journal"] if j["date"] == price_date]
+        keep = [a for a in (prev[0]["actions"] if prev else []) if not a.startswith("[調整]") and a != "今天沒有調整"]
+        state["pending"] = [o for o in state["pending"] if not (o["origin"] == "rebalance" and o["created"] == price_date)]
+        lines = rebalance(state, price_date, ranked, {s: {**h, "price": closes.get(s, h["price"])} for s, h in info.items()}, rules)
+        row = snapshot(state, price_date, closes, spy(price_date))
+        head = [f"建倉：NT${state['capital']:,.0f}，成長型約 70%／成熟型約 30%，依排行與評分決定金額；收盤後預約、隔日開盤成交"] if fresh else []
+        add_journal(state, price_date, head + keep + lines, row)
     state["generated"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
     OUT.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
-    print(f"完成 {price_date}：持股 {len(state['positions'])} 檔，新增交易 {len(state['trades']) - n_before} 筆，淨值 {row}", flush=True)
+    print(f"完成 {price_date}：持股 {len(state['positions'])} 檔，預約 {len(state['pending'])} 張，新增成交 {len(state['trades']) - n_before} 筆，淨值 {row}", flush=True)
 
 
 if __name__ == "__main__":

@@ -404,7 +404,7 @@ with tab_opt:
 
 # ── 進階 ─────────────────────────────────────────────────
 with tab_adv:
-    t_rule, t_fund, t_hist, t_bt = st.tabs(["規則說明", "基本面明細", "歷史回測結果", "現場回測"])
+    t_rule, t_fund, t_hist, t_bt, t_val = st.tabs(["規則說明", "基本面明細", "歷史回測結果", "現場回測", "分數驗證"])
     with t_rule:
         total = sum(rules.tranches_ntd)
         p_ = [1, 1 - rules.add_step, (1 - rules.add_step) ** 2]
@@ -512,3 +512,25 @@ with tab_adv:
                         "pnl": "損益NT$", "days": "天數", "first_price": "首批價", "exit_price": "出場價", "ret": "報酬率"})
                     tdf["報酬率"] = tdf["報酬率"].map(lambda x: f"{x:+.1%}")
                     st.dataframe(tdf.sort_values("進場"), hide_index=True, use_container_width=True)
+
+    with t_val:
+        st.markdown("驗證評分有沒有預測力：每天完整保存所有進場區候選的分項分數（`data/score_history/`），之後補算後續報酬（對 SPY 的超額報酬），"
+                    "比較各種評分版本（消融）。每個快照日、每個類型把候選依分數分 5 組，看**最高分組 vs 最低分組**的差距。")
+        rf = ROOT / "data" / "score_returns.json"
+        if not rf.exists():
+            st.info("還沒有結果。每天選股掃描會存一份完整候選，累積幾天後 Score Returns 才算得出後續報酬。")
+        else:
+            sr_ = json.loads(rf.read_text(encoding="utf-8"))
+            st.caption(f"快照 {sr_['snapshots']} 天（{sr_['first']} ～ {sr_['last']}），共 {sr_['rows']} 筆　·　更新 {sr_['generated'][:16].replace('T', ' ')} UTC")
+            for h, res in sr_["horizons"].items():
+                days = res.get("snapshot_days", 0)
+                st.markdown(f"**後續 {h} 個交易日**（有結果的快照日：{days}）" + ("　⚠️ 不到 10 個快照日，只能參考" if days < 10 else ""))
+                if not res.get("variants"):
+                    st.caption("樣本還不夠（需要快照日之後再過 " + h + " 個交易日）。")
+                    continue
+                vt = pd.DataFrame([{"版本": k, "最高分組超額報酬": v["top"], "最低分組超額報酬": v["bottom"], "高−低": v["spread"], "高分組勝率": v["top_win"], "等級相關(IC)": v["ic"], "組數": v["n_groups"]}
+                                   for k, v in res["variants"].items()])
+                st.dataframe(vt.style.format({"最高分組超額報酬": "{:+.1%}", "最低分組超額報酬": "{:+.1%}", "高−低": "{:+.1%}", "高分組勝率": "{:.0%}", "等級相關(IC)": "{:+.3f}"}),
+                             hide_index=True, use_container_width=True)
+            st.caption("判讀：「高−低」穩定為正、IC 穩定大於 0，才代表分數有排序力；複雜版本如果沒有比「只有價格」更好，就該考慮拿掉那個模組。")
+

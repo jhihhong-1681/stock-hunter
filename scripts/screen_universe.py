@@ -21,6 +21,7 @@ sys.path.insert(0, str(ROOT))
 from utils.fundamentals import FundRules, evaluate, fetch_quarterly, load_partnerships, load_profiles  # noqa: E402
 from utils.classify import classify  # noqa: E402
 from utils.scoring import WEIGHTS, score_fundamental, score_flow, score_price  # noqa: E402
+from utils.score_history import save_day  # noqa: E402
 from utils.trading_system import Rules, read_positions, scan_symbol  # noqa: E402
 
 OUT = ROOT / "data" / "screener.json"
@@ -434,6 +435,7 @@ def main():
     hist.append({"date": out["price_date"], "top": [{"symbol": c["symbol"], "kind": c["kind"], "price": round(c["price"], 2), "score": c["quant_score"]}
                                                     for c in kept if c["veto"] is None][:30]})
     HISTORY.write_text(json.dumps(clean(hist[-400:]), ensure_ascii=False), encoding="utf-8")
+    save_day(out["price_date"], cands, {"generated": out["generated"], "stats": stats})      # 完整候選（含沒進前 100 名的）
     print(f"完成：進場區候選 {len(cands)} 檔（輸出 {len(kept)}），基本面 {counts}", flush=True)
 
 

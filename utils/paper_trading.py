@@ -1,18 +1,23 @@
-"""模擬帳戶（紙上交易）v2：滾動式調整、依評分決定投入金額、每天如實記錄損益與每筆交易的理由。純函式，不依賴網路。
+"""模擬帳戶（紙上交易）v3：滾動式調整、依評分決定投入金額、每天如實記錄損益與每筆交易的理由。純函式，不依賴網路。
 
 設定（阿紘 2026-10-22 定）：資金 NT$100 萬；成長型約 70%、成熟型約 30%；依選股雷達的排行買進，之後每天依價格、基本面、新聞滾動調整，不必死守 2/3/4 萬。
 
+【成交假設（v3，比 v2 保守）】訊號都在收盤後產生，**隔個交易日開盤價成交**，買進加 0.3%、賣出減 0.3% 滑價（約略反映跳空與買賣價差），
+不含手續費。止損也是收盤跌破才預約、隔日開盤出場，所以跳空時出場價可能比止損價差很多——這是刻意的，比較貼近實際。
+
 【每天做什麼】（scripts/paper_trade.py 呼叫；價格規則會補算每個交易日，基本面／新聞／排行的判斷在最新一天做）
-1. 止損（硬規則）：收盤 ≤ 首批價 × 50% → 全出；跌到「止損價再跌 30%」且基本面通過、無紅線 → 開新一輪。
-2. 汰弱：基本面「排除」或新聞紅線 → 全出；體質分 < 45 → 全出；基本面「警示」且新聞偏空（新聞分 ≤ 30）→ 減碼一半（每檔一次）；
-   單檔市值 > 總資產 30% → 減到 25%。
-3. 加碼：(a) 價格規則照舊（上一批價再跌 20%，或上漲後回落 25%），但基本面要是「通過」才加；
-   (b) 評分加碼：總分升到 72 以上、還有批數、現價不比上一批高 10% 以上（不追高）、距上次買進 ≥ 10 天 → 加下一批。
-4. 補位：成長型最多 7 檔、成熟型最多 3 檔；空出來的名額，由該類型排行（總分 ≥ 60、基本面通過、無紅線）由高到低補。
-5. 金額依評分：每類型預算 = 類型比重 × 目前總資產；各檔「目標總額」∝ max(總分 − 55, 5)，單檔不超過等權的 2 倍；
+1. 當天開盤：執行前一個交易日收盤後預約的單（先賣後買）。
+2. 當天收盤：止損（硬規則）：收盤 ≤ 首批價 × 50% → 預約全出；跌到「止損價再跌 30%」且基本面通過、無紅線 → 預約開新一輪。
+3. 汰弱：基本面「排除」或新聞紅線 → 全出；體質分 < 45 → 全出；基本面「警示」且新聞偏空（新聞分 ≤ 30）→ 減碼一半（每檔一次）；
+   單檔市值 > 總資產 30% → 減到 25%。非止損的全出，30 天內不買回。
+4. 加碼：(a) 價格規則（上一批價再跌 20%，或上漲後回落 25%），基本面要「通過」才加；
+   (b) 評分加碼：總分 ≥ 72、還有批數、現價不比上一批高 10% 以上（不追高）、距上次買進 ≥ 10 天 → 加下一批。
+5. 補位：成長型最多 7 檔、成熟型最多 3 檔；空出來的名額，由該類型排行（總分 ≥ 60、基本面通過、無紅線）由高到低補；
+   **同一產業（Yahoo sector）最多 2 檔**（兩個類型合計，產業未知不限）。
+6. 金額依評分：每類型預算 = 類型比重 × 目前總資產；各檔「目標總額」∝ max(總分 − 55, 5)，單檔不超過等權的 2 倍；
    每檔仍分三批（2:3:4），第一批 = 目標 × 2/9。分數越高買越多，分數降了之後的加碼會變小。
-6. 止盈不做（阿紘自己判斷）；收盤價成交、整股、不含手續費；匯率固定 31。對照組：同一天 100 萬全買 SPY 不動。
-7. 每天寫進 state：淨值與當日損益、每檔持股當日漲跌、每筆交易的理由、當天的操作日誌。
+7. 止盈不做（阿紘自己判斷）。對照組：同一天 100 萬全買 SPY 不動。
+8. 每天寫進 state：淨值與當日損益、每檔持股當日漲跌、每筆交易的理由（含訊號日與開盤價）、當天操作日誌。
 """
 from __future__ import annotations
 
@@ -24,17 +29,22 @@ from utils.trading_system import Rules
 CAPITAL_NTD = 1_000_000
 SLEEVES = {"成長型": 0.70, "成熟型": 0.30}
 MAX_NAMES = {"成長型": 7, "成熟型": 3}
+MAX_PER_SECTOR = 2
 RATIO = (2, 3, 4)                # 三批比例（原 2/3/4 萬）
 BASE_SCORE, MIN_W = 55, 5        # 目標金額 ∝ max(總分 − 55, 5)
 MIN_ENTRY_SCORE = 60
 CONVICTION_ADD_SCORE = 72
 EXIT_HEALTH = 45
 CONC_TRIGGER, CONC_TARGET = 0.30, 0.25
+SLIP = 0.003                     # 單邊滑價
+COOLDOWN_DAYS = 30               # 非止損出清後多久不買回
+MAX_WAIT = 5                     # 預約單等不到開盤價（停牌、資料缺）最多等幾個交易日
+VERSION = 3
 
 
 def new_state(start_date: str, spy_px: float, capital: float = CAPITAL_NTD) -> dict:
-    return {"version": 2, "start_date": start_date, "capital": capital, "fx": Rules().usd_twd, "cash": capital,
-            "positions": {}, "reentry": {}, "trades": [], "equity": [], "daily": [], "journal": [],
+    return {"version": VERSION, "start_date": start_date, "capital": capital, "fx": Rules().usd_twd, "cash": capital,
+            "positions": {}, "reentry": {}, "cooldown": {}, "pending": [], "trades": [], "equity": [], "daily": [], "journal": [],
             "spy_start": spy_px, "last_date": start_date}
 
 
@@ -82,8 +92,8 @@ def equity_now(state: dict) -> float:
     return state["cash"] + sum(p["shares"] * (p.get("last_px") or p["tranches"][-1]["price"]) * state["fx"] for p in state["positions"].values())
 
 
-# ── 買賣 ─────────────────────────────────────────────────
-def _buy(state: dict, kind: str, sym: str, d: str, px: float, ntd: float, why: str) -> bool:
+# ── 買賣（實際成交） ───────────────────────────────────────
+def _buy(state: dict, kind: str, sym: str, d: str, px: float, ntd: float, why: str, extra: dict | None = None) -> bool:
     fx = state["fx"]
     shares = int(ntd / fx / px)
     cost = shares * px * fx
@@ -95,18 +105,18 @@ def _buy(state: dict, kind: str, sym: str, d: str, px: float, ntd: float, why: s
     p["shares"] += shares
     p["cost_ntd"] += cost
     p["last_px"] = px
-    state["trades"].append({"date": d, "symbol": sym, "side": "買", "price": round(px, 4), "shares": shares, "ntd": round(cost), "why": why})
+    state["trades"].append({"date": d, "symbol": sym, "side": "買", "price": round(px, 4), "shares": shares, "ntd": round(cost), "why": why, **(extra or {})})
     return True
 
 
-def _sell(state: dict, sym: str, d: str, px: float, why: str, frac: float = 1.0) -> dict:
+def _sell(state: dict, sym: str, d: str, px: float, why: str, frac: float = 1.0, extra: dict | None = None) -> dict:
     p = state["positions"][sym]
     shares = p["shares"] if frac >= 1 else max(int(p["shares"] * frac), 1)
     cost_part = p["cost_ntd"] * shares / p["shares"]
     proceeds = shares * px * state["fx"]
     state["cash"] += proceeds
-    state["trades"].append({"date": d, "symbol": sym, "side": "賣" if frac >= 1 else "減碼", "price": round(px, 4), "shares": shares,
-                            "ntd": round(proceeds), "why": why, "pnl": round(proceeds - cost_part)})
+    state["trades"].append({"date": d, "symbol": sym, "side": "賣" if frac >= 1 or shares >= p["shares"] else "減碼", "price": round(px, 4), "shares": shares,
+                            "ntd": round(proceeds), "why": why, "pnl": round(proceeds - cost_part), **(extra or {})})
     p["shares"] -= shares
     p["cost_ntd"] -= cost_part
     if p["shares"] <= 0:
@@ -114,9 +124,63 @@ def _sell(state: dict, sym: str, d: str, px: float, why: str, frac: float = 1.0)
     return p
 
 
-# ── 每個交易日的價格規則（止損、加碼） ─────────────────────
-def step_day(state: dict, d: str, closes: dict, rules: Rules, add_ok: set):
-    """closes = {代號: 收盤價}。止損一律執行；加碼只對 add_ok（基本面通過、無紅線）裡的代號。"""
+# ── 預約單（收盤後產生，隔個交易日開盤成交） ────────────────
+def queue(state: dict, d: str, sym: str, kind: str, side: str, why: str, origin: str, ntd: float | None = None, frac: float = 1.0,
+          meta: dict | None = None, lines: list | None = None) -> bool:
+    """每檔同時最多一張預約單（有賣單等著就不再下加碼單）。"""
+    if any(o["sym"] == sym for o in state["pending"]):
+        return False
+    state["pending"].append({"sym": sym, "kind": kind, "side": side, "ntd": ntd, "frac": frac, "why": why, "origin": origin, "created": d, "meta": meta or {}})
+    if lines is not None:
+        amt = f"NT${ntd:,.0f}" if side == "buy" else ("全部" if frac >= 1 else f"{frac:.0%}")
+        lines.append(f"預約 {'買進' if side == 'buy' else '賣出'} {sym}（{amt}，隔日開盤）：{why}")
+    return True
+
+
+def execute_pending(state: dict, d: str, opens: dict, lines: list):
+    """d 這個交易日開盤：成交 created < d 的預約單，先賣後買。價格 = 開盤價 ± 滑價。"""
+    due = [o for o in state["pending"] if o["created"] < d]
+    keep = [o for o in state["pending"] if o["created"] >= d]
+    for o in sorted(due, key=lambda o: o["side"] != "sell"):
+        op = opens.get(o["sym"])
+        if op is None or op != op:
+            o["wait"] = o.get("wait", 0) + 1
+            if o["wait"] < MAX_WAIT:
+                keep.append(o)
+            else:
+                lines.append(f"取消 {o['sym']} 預約單：等不到開盤價")
+            continue
+        sym, extra = o["sym"], {"signal": o["created"], "open": round(float(op), 4)}
+        if o["side"] == "sell":
+            if sym not in state["positions"]:
+                continue
+            px = op * (1 - SLIP)
+            old = _sell(state, sym, d, px, o["why"], o["frac"], extra)
+            if o["meta"].get("reentry"):
+                state["reentry"][sym] = o["meta"]["reentry"]
+            elif sym not in state["positions"]:
+                state["cooldown"][sym] = d
+            if o["meta"].get("mark_trimmed") and sym in state["positions"]:
+                state["positions"][sym]["trimmed"] = True
+            lines.append(f"成交 賣出 {sym} @ ${px:g}（開盤 ${op:g}）：{o['why']}")
+        else:
+            px = op * (1 + SLIP)
+            new = sym not in state["positions"]
+            if _buy(state, o["kind"], sym, d, px, o["ntd"], o["why"], extra):
+                p = state["positions"][sym]
+                if new:
+                    p.update({k: v for k, v in o["meta"].items() if k != "reentry_sym"})
+                    state["reentry"].pop(sym, None)
+                p["peak"] = px
+                lines.append(f"成交 買進 {sym} @ ${px:g}（開盤 ${op:g}）：{o['why']}")
+            else:
+                lines.append(f"未成交 {sym}：現金不足或金額不足一股")
+    state["pending"] = keep
+
+
+# ── 每個交易日收盤的價格規則（止損、加碼） ───────────────────
+def step_day(state: dict, d: str, closes: dict, rules: Rules, add_ok: set, lines: list):
+    """closes = {代號: 收盤價}。止損一律預約；加碼只對 add_ok（基本面通過、無紅線）裡的代號。"""
     for sym in list(state["positions"]):
         px = closes.get(sym)
         if px is None:
@@ -127,8 +191,9 @@ def step_day(state: dict, d: str, closes: dict, rules: Rules, add_ok: set):
         p["peak"] = max(p.get("peak", last), px)
         avg = p["cost_ntd"] / state["fx"] / p["shares"]
         if px <= first * (1 - rules.stop_from_first):
-            old = _sell(state, sym, d, px, f"止損：收盤 ${px:g} ≤ 首批價 ${first:g} 的 50%")
-            state["reentry"][sym] = {"kind": old["kind"], "px": round(first * (1 - rules.stop_from_first) * (1 - rules.reentry_drop), 4), "stop_date": d}
+            re_px = round(first * (1 - rules.stop_from_first) * (1 - rules.reentry_drop), 4)
+            queue(state, d, sym, p["kind"], "sell", f"止損：收盤 ${px:g} ≤ 首批價 ${first:g} 的 50%", "close",
+                  meta={"reentry": {"kind": p["kind"], "px": re_px, "stop_date": d}}, lines=lines)
             continue
         n = len(p["tranches"])
         if n < len(RATIO) and sym in add_ok and p.get("target"):
@@ -137,98 +202,107 @@ def step_day(state: dict, d: str, closes: dict, rules: Rules, add_ok: set):
             if by_step or by_rebound:
                 why = (f"加碼第 {n + 1} 批：收盤 ${px:g} 較上一批價 ${last:g} 再跌 {1 - px / last:.0%}" if by_step
                        else f"加碼第 {n + 1} 批：上漲後從高點 ${p['peak']:g} 回落 {1 - px / p['peak']:.0%}")
-                if _buy(state, p["kind"], sym, d, px, tranche_ntd(p, n), why):
-                    p["peak"] = px
+                queue(state, d, sym, p["kind"], "buy", why, "close", ntd=tranche_ntd(p, n), lines=lines)
 
 
-# ── 最新一天的滾動調整 ──────────────────────────────────
+# ── 最新一天收盤後的滾動調整（產生預約單） ──────────────────
 def rebalance(state: dict, d: str, ranked: list, info: dict, rules: Rules) -> list:
-    """info = {持股代號: {verdict, veto, news_pct, fund, health, total(可無), price}}。回傳當天操作日誌（文字列表）。"""
+    """info = {持股代號: {verdict, veto, news_pct, fund, health, price}}。回傳操作日誌（以 [調整] 開頭）。"""
     lines = []
     by_sym = {c["symbol"]: c for c in ranked}
-    # 1. 汰弱（今天賣出的不會當天又買回）
-    for sym in list(state["positions"]):
-        p, h = state["positions"][sym], info.get(sym)
+    # 1. 汰弱
+    for sym, p in list(state["positions"].items()):
+        h = info.get(sym)
         if not h:
             continue
-        px = h["price"]
-        p["last_px"] = px
+        p["last_px"] = h["price"]
         if h.get("veto") or h["verdict"] == "排除":
-            why = f"紅線出場：{h['veto']}" if h.get("veto") else "基本面判定「排除」，出清"
-            _sell(state, sym, d, px, why)
-            lines.append(f"賣出 {sym}：{why}")
+            queue(state, d, sym, p["kind"], "sell", f"紅線出場：{h['veto']}" if h.get("veto") else "基本面判定「排除」，出清", "rebalance", lines=lines)
         elif h.get("health") is not None and h["health"] < EXIT_HEALTH:
-            why = f"體質分 {h['health']} < {EXIT_HEALTH}，出清"
-            _sell(state, sym, d, px, why)
-            lines.append(f"賣出 {sym}：{why}")
+            queue(state, d, sym, p["kind"], "sell", f"體質分 {h['health']} < {EXIT_HEALTH}，出清", "rebalance", lines=lines)
         elif h["verdict"] == "警示" and h["news_pct"] <= 30 and not p.get("trimmed"):
-            why = f"基本面警示且新聞偏空（新聞分 {h['news_pct']:.0f}），減碼一半"
-            _sell(state, sym, d, px, why, 0.5)
-            state["positions"][sym]["trimmed"] = True
-            lines.append(f"減碼 {sym}：{why}")
+            queue(state, d, sym, p["kind"], "sell", f"基本面警示且新聞偏空（新聞分 {h['news_pct']:.0f}），減碼一半", "rebalance",
+                  frac=0.5, meta={"mark_trimmed": True}, lines=lines)
+    exiting = {o["sym"] for o in state["pending"] if o["side"] == "sell" and o["frac"] >= 1}
     eq = equity_now(state)
-    for sym in list(state["positions"]):                 # 集中度
-        p = state["positions"][sym]
+    for sym, p in list(state["positions"].items()):                 # 集中度
         val = p["shares"] * p["last_px"] * state["fx"]
-        if val > CONC_TRIGGER * eq:
-            frac = 1 - CONC_TARGET * eq / val
-            why = f"單檔占總資產 {val / eq:.0%} > {CONC_TRIGGER:.0%}，減到 {CONC_TARGET:.0%}"
-            _sell(state, sym, d, p["last_px"], why, frac)
-            lines.append(f"減碼 {sym}：{why}")
-    # 2. 分數與目標金額（每類型：持有的 + 補位候選）
-    eq = equity_now(state)
-    sold_today = {t["symbol"] for t in state["trades"] if t["date"] == d and t["side"] != "買"}
-    held_by_kind = {k: [s for s, p in state["positions"].items() if p["kind"] == k] for k in SLEEVES}
+        if sym not in exiting and val > CONC_TRIGGER * eq:
+            queue(state, d, sym, p["kind"], "sell", f"單檔占總資產 {val / eq:.0%} > {CONC_TRIGGER:.0%}，減到 {CONC_TARGET:.0%}", "rebalance",
+                  frac=1 - CONC_TARGET * eq / val, lines=lines)
+    # 2. 分數、目標金額、補位候選（每類型：留下的 + 補位）
+    staying = {s: p for s, p in state["positions"].items() if s not in exiting}
+    sectors: dict = {}
+    for s, p in staying.items():
+        if p.get("sector"):
+            sectors[p["sector"]] = sectors.get(p["sector"], 0) + 1
     plan = {}
     for kind, w in SLEEVES.items():
-        for s in held_by_kind[kind]:
+        held = [s for s, p in staying.items() if p["kind"] == kind]
+        for s in held:
             c = by_sym.get(s)
             if c:
-                state["positions"][s]["score"] = c["total"]
-                state["positions"][s]["name"] = c.get("name", s)
-        items = [(s, state["positions"][s].get("score", 65.0)) for s in held_by_kind[kind]]
+                staying[s]["score"] = c["total"]
+                staying[s]["name"] = c.get("name", s)
+                staying[s].setdefault("sector", c.get("sector"))
+        items = [(s, staying[s].get("score", 65.0)) for s in held]
         free = MAX_NAMES[kind] - len(items)
-        picks = []
+        picks, skipped = [], []
+
+        def ok_sector(c):
+            sec = c.get("sector")
+            return not sec or sectors.get(sec, 0) < MAX_PER_SECTOR
+
+        def take(c):
+            picks.append(c)
+            if c.get("sector"):
+                sectors[c["sector"]] = sectors.get(c["sector"], 0) + 1
+
+        for s, r in list(state["reentry"].items()):              # 止損後再進場優先
+            c = by_sym.get(s)
+            if r["kind"] == kind and c and len(picks) < free and c["price"] <= r["px"] and c["verdict"] == "通過" and not c["veto_final"] \
+                    and s not in state["positions"] and ok_sector(c):
+                take({**c, "_reentry": True})
         for c in ranked:
             if len(picks) >= free:
                 break
-            if c["kind"] == kind and c["verdict"] == "通過" and not c["veto_final"] and c["total"] >= MIN_ENTRY_SCORE \
-                    and c["symbol"] not in state["positions"] and c["symbol"] not in state["reentry"] and c["symbol"] not in sold_today:
-                picks.append(c)
-        # 止損後再進場（價格到再進場價、基本面通過）
-        for s, r in list(state["reentry"].items()):
-            c = by_sym.get(s)
-            if r["kind"] == kind and c and len(picks) < free and c["price"] <= r["px"] and c["verdict"] == "通過" and not c["veto_final"]:
-                picks.append({**c, "_reentry": True})
+            if c["kind"] != kind or c["verdict"] != "通過" or c["veto_final"] or c["total"] < MIN_ENTRY_SCORE:
+                continue
+            if c["symbol"] in state["positions"] or c["symbol"] in state["reentry"] or any(o["sym"] == c["symbol"] for o in state["pending"]):
+                continue
+            cd = state["cooldown"].get(c["symbol"])
+            if cd and (date.fromisoformat(d) - date.fromisoformat(cd)).days < COOLDOWN_DAYS:
+                continue
+            if not ok_sector(c):
+                skipped.append(f"{c['symbol']}（{c['sector']} 已滿 {MAX_PER_SECTOR} 檔）")
+                continue
+            take(c)
+        if skipped:
+            lines.append(f"[調整] {kind}跳過：" + "、".join(skipped[:6]))
         wts = weights(items + [(c["symbol"], c["total"]) for c in picks])
         for s, _ in items:
-            state["positions"][s]["target"] = round(w * eq * wts[s])
+            staying[s]["target"] = round(w * eq * wts[s])
         plan[kind] = (picks, wts, w * eq)
     # 3. 評分加碼
-    for sym, p in list(state["positions"].items()):
+    for sym, p in staying.items():
         c = by_sym.get(sym)
         n = len(p["tranches"])
-        if not c or n >= len(RATIO) or c["verdict"] != "通過" or c["veto_final"] or c["total"] < CONVICTION_ADD_SCORE:
+        if not c or n >= len(RATIO) or c["verdict"] != "通過" or c["veto_final"] or c["total"] < CONVICTION_ADD_SCORE or not p.get("target"):
             continue
         last_buy = date.fromisoformat(p["tranches"][-1]["date"])
         if (date.fromisoformat(d) - last_buy).days < 10 or c["price"] > p["tranches"][-1]["price"] * 1.10:
             continue
-        why = f"評分加碼第 {n + 1} 批：總分 {c['total']} ≥ {CONVICTION_ADD_SCORE}，現價未追高"
-        if _buy(state, p["kind"], sym, d, c["price"], tranche_ntd(p, n), why):
-            lines.append(f"買進 {sym}：{why}")
+        queue(state, d, sym, p["kind"], "buy", f"評分加碼第 {n + 1} 批：總分 {c['total']} ≥ {CONVICTION_ADD_SCORE}，現價未追高", "rebalance",
+              ntd=tranche_ntd(p, n), lines=lines)
     # 4. 補位
     for kind, (picks, wts, budget) in plan.items():
         for c in picks:
             target = round(budget * wts[c["symbol"]])
-            p_tmp = {"target": target}
             why = (f"止損後再進場：價格 ${c['price']:g} 已到再進場價，基本面通過" if c.get("_reentry")
                    else f"依{kind}排行補位：總分 {c['total']}，目標總額 NT${target:,}（占{kind}預算 {wts[c['symbol']]:.0%}）")
-            if _buy(state, kind, c["symbol"], d, c["price"], tranche_ntd(p_tmp, 0), why):
-                p = state["positions"][c["symbol"]]
-                p.update(name=c.get("name", c["symbol"]), score=c["total"], target=target, opened=d)
-                state["reentry"].pop(c["symbol"], None)
-                lines.append(f"買進 {c['symbol']}：{why}")
-    return lines
+            queue(state, d, c["symbol"], kind, "buy", why, "rebalance", ntd=tranche_ntd({"target": target}, 0),
+                  meta={"name": c.get("name", c["symbol"]), "score": c["total"], "target": target, "sector": c.get("sector"), "opened": d}, lines=lines)
+    return [l if l.startswith("[調整]") else "[調整] " + l for l in lines]
 
 
 # ── 淨值與每日損益 ──────────────────────────────────────
