@@ -74,7 +74,7 @@ def main():
             ser = prices[sym].dropna()
             sc = scan_symbol(ser, rules)
             if sc:
-                rec.update(price=sc["現價"], high52=sc["52週高點"], dd=sc["距高點"], vol=sc["年化波動率"], dd_vol=sc["回檔/波動率"],
+                rec.update(price=sc["現價"], high_ref=sc["區間高點"], dd=sc["距高點"], vol=sc["年化波動率"], dd_vol=sc["回檔/波動率"],
                            in_zone=bool(sc["進場區"]), spark=[round(float(x), 2) for x in ser.iloc[-90:].values])
                 last_dates.append(str(ser.index[-1].date()))
         # 基本面
@@ -136,7 +136,7 @@ def main():
     cands.sort(key=lambda r: (order.get(r.get("verdict"), 3), r["dd"]))
     for i, r in enumerate(cands, 1):
         actions.append({"kind": "entry", "prio": 3, "symbol": r["symbol"], "title": f"{r['symbol']} 進入進場區（優先序 {i}）",
-                        "detail": f"距 52 週高點 {r['dd']:+.0%}，波動率 {r['vol']:.0%}；基本面：{r['verdict']}"})
+                        "detail": f"距 26 週高點 {r['dd']:+.0%}，波動率 {r['vol']:.0%}；基本面：{r['verdict']}"})
 
     actions.sort(key=lambda a: a["prio"])
     out = {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),

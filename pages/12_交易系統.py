@@ -97,7 +97,7 @@ with tab_today:
         if items:
             st.subheader(title)
             grid([action_card(a, by_sym.get(a["symbol"], {}).get("verdict")) for a in items], 2)
-    st.caption("規則：距 52 週高點回檔 ≥ 20% 進場 → 金字塔三批 → 首批價再跌 50% 全出 → 止損價再跌 30% 且基本面沒大變就開新一輪。"
+    st.caption("規則：距 26 週高點回檔 ≥ 20% 進場 → 金字塔三批 → 首批價再跌 50% 全出 → 止損價再跌 30% 且基本面沒大變就開新一輪。"
                "止盈由你自己判斷。進場優先序：基本面通過 > 跌幅更深。")
 
 # ── 持股 ─────────────────────────────────────────────────
@@ -135,9 +135,9 @@ with tab_scan:
     fig.add_vline(x=-rules.entry_drop * 100, line_dash="dash", line_color="#5aa9ff",
                   annotation_text=f"進場線 -{rules.entry_drop:.0%}", annotation_position="top")
     fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=max(360, 26 * len(sc) + 80),
-                      margin=dict(l=10, r=40, t=30, b=10), xaxis=dict(title="距 52 週高點（%）", zeroline=False), yaxis=dict(autorange="reversed"),
+                      margin=dict(l=10, r=40, t=30, b=10), xaxis=dict(title="距 26 週高點（%）", zeroline=False), yaxis=dict(autorange="reversed"),
                       showlegend=False)
-    st.markdown("**距 52 週高點的回檔**　藍＝進場區且基本面通過、琥珀＝基本面警示、紫＝基本面排除、灰＝還沒到進場區　（★ 已持有）")
+    st.markdown("**距 26 週高點的回檔**　藍＝進場區且基本面通過、琥珀＝基本面警示、紫＝基本面排除、灰＝還沒到進場區　（★ 已持有）")
     st.plotly_chart(fig, use_container_width=True)
     zone = [s for s in sc if s["in_zone"]]
     zone.sort(key=lambda s: (s["held"], vorder.get(s["verdict"], 3), s["dd"]))   # 還沒持有的候選排前面
@@ -204,20 +204,20 @@ with tab_opt:
         o_qty = a6.number_input("口數", 1, 1000, key="o_qty")
         b1, b2 = st.columns(2)
         o_spot_m = b1.number_input("現價（解析或抓價失敗時才需要）", 0.0, 100000.0, 0.0, 0.5, key="o_spot")
-        o_high_m = b2.number_input("52 週高點（同上）", 0.0, 100000.0, 0.0, 0.5, key="o_high")
+        o_high_m = b2.number_input("26 週高點（同上）", 0.0, 100000.0, 0.0, 0.5, key="o_high")
     if o_sym and o_strike > 0 and o_prem > 0:
         known = by_sym.get(o_sym)
-        spot, high52, verdict, why, src = o_spot_m or None, o_high_m or None, None, "", ""
+        spot, high_ref, verdict, why, src = o_spot_m or None, o_high_m or None, None, "", ""
         if known and known.get("price"):
             spot = spot or known["price"]
-            high52 = high52 or known["high52"]
+            high_ref = high_ref or known.get("high_ref") or known.get("high52")
             verdict, why, src = known["verdict"], "；".join(known.get("reasons") or []), f"股價與基本面取自每日計算（{sig['price_date']} 收盤）"
-        if spot is None or high52 is None:
+        if spot is None or high_ref is None:
             cl = load_closes((o_sym,), "2y")
             if not cl.empty and o_sym in cl.columns:
                 ser = cl[o_sym].dropna()
                 spot = spot or float(ser.iloc[-1])
-                high52 = high52 or float(ser.iloc[-252:].max())
+                high_ref = high_ref or float(ser.iloc[-rules.high_window:].max())
                 src = "股價取自 Yahoo Finance"
         if verdict is None:
             d = load_fund(o_sym)
@@ -227,11 +227,11 @@ with tab_opt:
             else:
                 verdict = "資料不足"
         if spot is None:
-            st.error("抓不到這檔的股價，請在上面「解析結果」裡手動填現價（和 52 週高點）。")
+            st.error("抓不到這檔的股價，請在上面「解析結果」裡手動填現價（和 26 週高點）。")
         else:
             tot = read_totals()
             opts_now = [p for p in read_positions() if p.get("type") == "option"]
-            res = check_option(spot=spot, high52=high52, strike=o_strike, dte=(o_exp - date.today()).days, premium=o_prem, qty=int(o_qty),
+            res = check_option(spot=spot, high_ref=high_ref, strike=o_strike, dte=(o_exp - date.today()).days, premium=o_prem, qty=int(o_qty),
                                total_assets=tot.get("totalAssets", 1), option_cost_now=sum(p["invested"] for p in opts_now),
                                option_names_now=len({p["symbol"] for p in opts_now}), is_new_name=o_sym not in {p["symbol"] for p in opts_now},
                                verdict=verdict, rules=rules, orules=orules, kind=o_kind)
@@ -257,7 +257,7 @@ with tab_opt:
                 st.write("")
                 k3, k4 = st.columns(2)
                 k3.markdown(kpi(f"出場權利金（虧 {orules.exit_loss:.0%}）", f"${i['出場權利金']:.2f}", "權利金跌到這裡就出場"), unsafe_allow_html=True)
-                k4.markdown(kpi("現價 / 52 週高點", f"${spot:.2f}", f"{spot / high52 - 1:+.1%}" if high52 else ""), unsafe_allow_html=True)
+                k4.markdown(kpi("現價 / 26 週高點", f"${spot:.2f}", f"{spot / high_ref - 1:+.1%}" if high_ref else ""), unsafe_allow_html=True)
             st.plotly_chart(payoff_chart(o_kind, o_strike, o_prem, int(o_qty), spot), use_container_width=True)
             st.caption("上圖是「到期當天」的損益：紅＝賺、綠＝賠（台股慣例）。到期前的損益還會受時間價值與波動率影響。")
     elif text.strip():
@@ -273,7 +273,7 @@ with tab_adv:
         max_loss = total - shares * (1 - rules.stop_from_first)
         st.markdown(f"""
 **正股**
-- **進場**：現價距 52 週高點回檔 ≥ {rules.entry_drop:.0%}（可依個股波動率自行判斷），買第 1 批 NT\\${rules.tranches_ntd[0]:,}。
+- **進場**：現價距 26 週高點回檔 ≥ {rules.entry_drop:.0%}（可依個股波動率自行判斷），買第 1 批 NT\\${rules.tranches_ntd[0]:,}。
 - **加碼（最多 3 批，金字塔）**：第 2 批 NT\\${rules.tranches_ntd[1]:,}、第 3 批 NT\\${rules.tranches_ntd[2]:,}。下一批在「上一批價再跌 {rules.add_step:.0%}」，或「首批後上漲、再從高點回落 {rules.rebound_pullback:.0%}」時買。
 - **止損**：現價 ≤ 首批買入價 × {1 - rules.stop_from_first:.0%}，全部出清。
 - **止損後重新進場**：從止損價再跌 {rules.reentry_drop:.0%}，且基本面沒有太大改變，就當作新一輪。

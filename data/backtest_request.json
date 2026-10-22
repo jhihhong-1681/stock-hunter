@@ -1,9 +1,9 @@
 {
-  "_說明": "推到 main 會觸發 .github/workflows/run_backtest.yml，在 GitHub 上抓股價、跑 scripts/run_backtest.py，結果寫進各 job 的 output。symbols=\"from_trades\" 是阿紘成交紀錄裡出現過的所有正股；\"sp500\" 是 S&P 500 成分股（對照組）。這份只留最近要跑的 job；先前的 backtest_results.json（加碼間距 12%）與 backtest_results_sp500.json 已存在，不會被覆寫。",
+  "_說明": "推到 main 會觸發 .github/workflows/run_backtest.yml，在 GitHub 上抓股價、跑 scripts/run_backtest.py，結果寫進各 job 的 output。symbols=\"from_trades\" 是阿紘成交紀錄裡出現過的所有正股；\"sp500\" 是 S&P 500 成分股（對照組）。這份只留最近要跑的 job；先前產生的 backtest_*.json 已存在，不會被覆寫。",
   "jobs": [
-    {"symbols": "from_trades", "period": "10y", "output": "backtest_add_step.json",
-     "grid": {"take_profit": [null, 0.5, 1.0], "entry_drop": [0.2], "stop": [0.5], "add_step": [0.12, 0.2], "detail_tp": null}},
-    {"symbols": "sp500", "period": "10y", "output": "backtest_add_step_sp500.json",
-     "grid": {"take_profit": [0.5, 1.0], "entry_drop": [0.2], "stop": [0.5], "add_step": [0.12, 0.2], "detail_tp": null}}
+    {"symbols": "from_trades", "period": "10y", "output": "backtest_high_window.json",
+     "grid": {"take_profit": [0.5, 1.0], "entry_drop": [0.2], "stop": [0.5], "add_step": [0.2], "high_window": [252, 130], "detail_tp": null}},
+    {"symbols": "sp500", "period": "10y", "output": "backtest_high_window_sp500.json",
+     "grid": {"take_profit": [0.5, 1.0], "entry_drop": [0.2], "stop": [0.5], "add_step": [0.2], "high_window": [252, 130], "detail_tp": null}}
   ]
 }

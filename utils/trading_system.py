@@ -1,7 +1,7 @@
 """阿紘的交易系統（v0）：下跌才買、金字塔加碼、首批價再跌 50% 止損。
 
 規則（阿紘 2026-10 對話定案）：
-- 進場：股價從 52 週高點回檔 ≥ 20%（原 30%，阿紘改 20% 並依個股波動率自行判斷），買第一批。
+- 進場：股價從 26 週高點（130 個交易日，原 52 週）回檔 ≥ 20%（原 30%，阿紘改 20% 並依個股波動率自行判斷），買第一批。
 - 加碼：金字塔往下，第 1/2/3 批各 NT$2 萬 / 3 萬 / 4 萬，最多 3 批；
   下一批在「上一批價再跌 20%」（原 12%，阿紘 2026-10-22 改），或「首批後上漲、再從高點回落 20–30%」時買。
 - 止損：現價 ≤ 首批買入價 × 50% 就全部出清（中間不論加碼幾次）。
@@ -42,7 +42,8 @@ def read_trades() -> list[dict]:
 
 @dataclass
 class Rules:
-    entry_drop: float = 0.20         # 距 52 週高點回檔多少算進場區（阿紘 2026-10-21 由 30% 改 20%，並依個股波動率自行判斷）
+    entry_drop: float = 0.20         # 距參考高點回檔多少算進場區（阿紘 2026-10-21 由 30% 改 20%，並依個股波動率自行判斷）
+    high_window: int = 130           # 參考高點的區間：26 週 = 130 個交易日（阿紘 2026-10-22 由 52 週 / 252 日改）
     tranches_ntd: tuple = (20000, 30000, 40000)
     add_step: float = 0.20           # 上一批價再跌多少加碼（阿紘 2026-10-22 由 12% 改 20%）
     rebound_pullback: float = 0.25   # 上漲後從高點回落多少加碼（阿紘說 20–30%）
@@ -120,20 +121,20 @@ def check_position(pos: dict, trades: list[dict], rules: Rules) -> dict:
 
 # ── 進場掃描 ───────────────────────────────────────────────
 def scan_symbol(close: list[float] | "pd.Series", rules: Rules) -> dict | None:
-    """最新收盤價相對近 252 個交易日高點的回檔、年化波動率、回檔是波動率的幾倍，與三批的建議買進價位（以首批 = 現價估算）。
+    """最新收盤價相對近 high_window（26 週）個交易日高點的回檔、年化波動率、回檔是波動率的幾倍，與三批的建議買進價位（以首批 = 現價估算）。
     門檻只是參考：阿紘依個股波動率自己決定要不要進場，所以一併給波動率。"""
     vals = [float(x) for x in close if x == x]
     if len(vals) < 60:
         return None
-    window = vals[-252:]
-    high, last = max(window), vals[-1]
+    window = vals[-252:]                      # 波動率用一年資料，比較穩
+    high, last = max(vals[-rules.high_window:]), vals[-1]
     dd = last / high - 1
     rets = [window[i] / window[i - 1] - 1 for i in range(1, len(window))]
     mean = sum(rets) / len(rets)
     vol = (sum((r - mean) ** 2 for r in rets) / (len(rets) - 1)) ** 0.5 * (252 ** 0.5) if len(rets) > 2 else None
     first = last
     return {
-        "現價": last, "52週高點": high, "距高點": dd, "進場區": dd <= -rules.entry_drop,
+        "現價": last, "區間高點": high, "距高點": dd, "進場區": dd <= -rules.entry_drop,
         "年化波動率": vol, "回檔/波動率": (dd / vol) if vol else None,
         "進場價(距高點-%d%%)" % round(rules.entry_drop * 100): round(high * (1 - rules.entry_drop), 2),
         "加碼價2(再-%d%%)" % round(rules.add_step * 100): round(first * (1 - rules.add_step), 2),
@@ -161,7 +162,7 @@ class Trade:
         self.ret = self.pnl / self.invested if self.invested else 0.0
 
 
-def _rolling_high(close: list[float], window: int = 252) -> list[float]:
+def _rolling_high(close: list[float], window: int = 130) -> list[float]:
     """每一天的近 window 個交易日最高收盤（單調佇列，O(n)）。"""
     from collections import deque
     dq, out = deque(), []
@@ -183,7 +184,7 @@ def backtest(symbol: str, dates: list, close: list[float], rules: Rules) -> list
     回傳已結束的交易；回測終點仍持有的以最後收盤價結算，reason 標「持有中」。"""
     trades: list[Trade] = []
     n = len(close)
-    highs = _rolling_high(close)
+    highs = _rolling_high(close, rules.high_window)
     state = None
     cool_until = -1
     reentry_px = None
@@ -312,19 +313,20 @@ def moneyness(strike: float, spot: float, kind: str = "Call") -> str:
     return "價外樂透"
 
 
-def check_option(*, spot: float, high52: float | None, strike: float, dte: int, premium: float, qty: int,
+def check_option(*, spot: float, high_ref: float | None, strike: float, dte: int, premium: float, qty: int,
                  total_assets: float, option_cost_now: float, option_names_now: int, is_new_name: bool,
                  verdict: str | None, rules: Rules, orules: OptionRules, kind: str = "Call") -> dict:
     """報牌檢查：標的是否符合「再跌深」前提、基本面、到期日、檔數；價外程度與金額只顯示不檢查。
     每項回 (名稱, ok, 說明)。ok：True 通過／False 不符／None 資料不足／"note" 僅提示（不計入通過與否）。"""
     cost_ntd = premium * 100 * qty * rules.usd_twd
     checks = []
-    if high52:
-        dd = spot / high52 - 1
-        checks.append(("標的在進場區（距 52 週高點回檔）", dd <= -rules.entry_drop,
+    wk = round(rules.high_window / 5)
+    if high_ref:
+        dd = spot / high_ref - 1
+        checks.append((f"標的在進場區（距 {wk} 週高點回檔）", dd <= -rules.entry_drop,
                        f"距高點 {dd:+.1%}，門檻 ≤ -{rules.entry_drop:.0%}"))
     else:
-        checks.append(("標的在進場區（距 52 週高點回檔）", None, "沒有 52 週高點資料"))
+        checks.append((f"標的在進場區（距 {wk} 週高點回檔）", None, f"沒有 {wk} 週高點資料"))
     if verdict in (None, "資料不足"):
         checks.append(("基本面判定不是「排除」", None, "基本面資料不足，請自行確認"))
     elif verdict == "不適用":
