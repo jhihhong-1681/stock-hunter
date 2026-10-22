@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.fundamentals import FundRules, evaluate, fetch_quarterly, load_partnerships, load_profiles  # noqa: E402
 from utils.classify import classify  # noqa: E402
+from utils.market_clock import drop_partial_bar  # noqa: E402
 from utils.scoring import WEIGHTS, score_fundamental, score_flow, score_price  # noqa: E402
 from utils.score_history import save_day  # noqa: E402
 from utils.trading_system import Rules, read_positions, scan_symbol  # noqa: E402
@@ -122,6 +123,7 @@ def scan_prices(universe: dict, rules: Rules, held: set):
         if raw is None:
             stats["failed_chunks"] += 1
             continue
+        raw = drop_partial_bar(raw)                       # 盤中跑的話，今天那根未收盤的日線不用
         close = raw["Close"] if "Close" in raw else None
         vol = raw["Volume"] if "Volume" in raw else None
         if close is None:

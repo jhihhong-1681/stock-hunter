@@ -14,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.fundamentals import FundRules, evaluate, fetch_quarterly, load_partnerships  # noqa: E402
+from utils.market_clock import drop_partial_bar  # noqa: E402
 from utils.paper_trading import (VERSION, add_journal, execute_pending, fresh_news, health, new_state, rank_candidates, rebalance, snapshot, step_day)  # noqa: E402
 from utils.score_history import attach_news  # noqa: E402
 from utils.scoring import score_fundamental, score_news  # noqa: E402
@@ -38,6 +39,7 @@ def download(symbols):
     raw = yf.download(symbols, period="3mo", auto_adjust=True, progress=False, threads=True)
     if raw is None or raw.empty:
         raise RuntimeError("抓不到價格")
+    raw = drop_partial_bar(raw)
     out = []
     for k in ("Close", "Open"):
         df = raw[k]
