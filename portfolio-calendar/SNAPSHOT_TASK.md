@@ -127,7 +127,7 @@ push 被拒（remote 有新 commit，例如 ETF 持股、法人資料、本機 F
 
 1. **等 GitHub 的選股掃描跑完**：第 12 步把快照推上去後，GitHub Actions 的「Daily Screener」會自動啟動（約 10–15 分鐘）。先記下推上去的時間 T0（UTC），之後每 60 秒 `git fetch origin main`，檢查 `origin/main:data/screener.json` 裡的 `generated`（UTC 時間字串）是否比 T0 晚；最多等 25 分鐘，晚了就用手上現有的 `data/screener.json`（上一次的結果）繼續。確認後 `git pull --rebase origin main`。
 2. **選出要評的標的**：從 `data/screener.json` 的 `candidates`（已依總分排序）取「`veto` 是 null 且 `verdict` 不是「排除」」的，**成長型前 14 檔 + 成熟型前 6 檔**，共 20 檔。
-3. **逐檔搜尋近兩週新聞**：用 WebSearch 查「{代號} {公司名} stock news」，必要時再查一次「{代號} earnings guidance contract」。只採用**日期在近 14 天內、有明確出處網址**的消息；查不到可靠消息就是 0 分，不要猜、不要用舊新聞湊。
+3. **逐檔搜尋近兩週新聞**：WebSearch 一律用 `mode: "extended"`，**每檔至少用 3 種不同查詢**：「{公司名} {代號} news October 2026」（月份用當月）、「{公司名} announces」或「{公司名} press release {當月} 2026」、「{代號} analyst price target upgrade downgrade {當月} 2026」；必要時再查「{公司名} 8-K」或「{公司名} investigation lawsuit」。只查一次「stock news」或用標準模式常只找到沒日期的報價頁、漏掉近期消息（實測用上面的查法找得到）。公司 IR 新聞稿、GlobeNewswire／Business Wire／PR Newswire、SEC 8-K、主流財經媒體都可採用。只採用**日期在近 14 天內、有明確出處網址**的消息；查不到可靠消息就是 0 分，不要猜、不要用舊新聞湊。「只是宣布財報日期」不算消息（0 分，財報日頁面已另外標示）。
 4. **評分（−10 ~ +10）與紅線**：
    - +8 ~ +10：與大型企業或政府簽署重大合約／合作（有金額或量產訂單）、財報大幅超預期並上調指引、重大正面核准。
    - +4 ~ +7：財報小幅超預期、較小的新合約、分析師大幅升評、內部人大額買進。
@@ -137,6 +137,7 @@ push 被拒（remote 有新 commit，例如 ETF 持股、法人資料、本機 F
    - −4 ~ −7：財報不如預期、下修指引、主要客戶流失、高層離職、產品延遲。
    - −8 ~ −10：重大利空（造假、重大訴訟敗訴、核准被撤銷、重大召回）。
    - **紅線（`veto` 寫一句原因，且 score ≤ −8）**：going concern 警語、公告大量稀釋性增資或可轉債（約占市值 10％ 以上）、SEC／司法部調查或被控詐欺、收到退市通知、聲請破產保護。
+   - 律師事務所（如 Pomerantz、Rosen）「代表投資人調查」的通告**不是** SEC 調查，不構成紅線，記 −3 ~ −5 並在 summary 說明；已正式提起的證券集體訴訟記 −4 ~ −6（不是紅線，除非同時有 SEC／司法部調查）。
 5. **寫入 `data/news_scores.json`**（照該檔現有格式、保持合法 JSON）：`generated` 填現在的 UTC 時間（ISO 格式）；`scores` 裡每檔 `{"score": 數字, "label": "利多／中性／利空", "summary": 繁體中文一句話（60 字內）, "events": [最多 3 筆 {"type": "合約／合作／財報／指引／增資／訴訟／降評／其他", "date": "YYYY-MM-DD", "text": 一句話, "source": 出處網址}], "veto": null 或原因, "asof": 今天的台北日期}`。今天沒評到的標的，若舊條目的 `asof` 在 14 天內就保留，更舊的刪掉。寫完用 node 或 python 驗證是合法 JSON。
 6. **推上 GitHub**：`git add data/news_scores.json`，commit 訊息「選股新聞評分 <台北日期>」，`git push origin HEAD:main`（被拒的處理方式同第 12 步）。**只改這個檔案**，不要動其他檔案，也不要問問題。
 7. 任何一步失敗（等不到掃描結果以外的錯誤、搜尋全部失敗、push 失敗），就跳過這一步並在第 14 步摘要裡說明，**不要影響已經完成的快照**。
