@@ -53,3 +53,5 @@
 - 消息面 20% 由雲端 13:30 排程 step 12b（SNAPSHOT_TASK.md）寫 `data/news_scores.json`：WebSearch 一律 `mode: "extended"`、每檔至少 3 種查詢、只採近 14 天有出處的消息；頁面只採 14 天內的評分。
 - **Actions 上 Yahoo `.info` 會回 401 "Invalid Crumb"**：`fetch_profile` 已降併發、重試、用 `fast_info` 備援；看 log 的「市值取得 N/總數」確認。
 - **新增任何 workflow 輸出檔時，要同步加進該 workflow 的 `git add`**（歷史上漏過多次；screener 用 `data/*_cache.json`）。
+
+**模擬帳戶（`utils/paper_trading.py` + `scripts/paper_trade.py` → `data/paper_portfolio.json`，頁面「🧪 模擬帳戶」）**：NT$100 萬、成長型 70%／成熟型 30%，依選股排行買進，每天滾動調整（止損、汰弱、減碼、評分加碼、補位），金額依評分決定，不做止盈，每天記錄損益與每筆交易理由，對照 SPY。細節見 `docs/交易系統架構.md` 第 17 節；改這裡的規則前先問阿紘。
