@@ -156,13 +156,26 @@ def scan_prices(universe: dict, rules: Rules, held: set):
 def fetch_profile(sym):
     """市值與產業（Yahoo info）；取不到就回空 dict。"""
     import yfinance as yf
-    try:
-        info = yf.Ticker(sym).info or {}
-    except Exception:
-        return {}
+    t = yf.Ticker(sym)
+    info = {}
+    for attempt in range(3):           # Actions 上多執行緒常撞 "Invalid Crumb" 401，重試幾次
+        try:
+            info = t.info or {}
+        except Exception:
+            info = {}
+        if info.get("marketCap") or info.get("sector"):
+            break
+        time.sleep(1.5 * (attempt + 1))
     out = {}
     if info.get("marketCap"):
         out["marketCap"] = float(info["marketCap"])
+    else:
+        try:                            # fast_info 走行情 API、不需 crumb；至少拿得到市值
+            mc = t.fast_info.get("marketCap")
+            if mc:
+                out["marketCap"] = float(mc)
+        except Exception:
+            pass
     for k in ("sector", "industry"):
         if info.get(k):
             out[k] = info[k]
@@ -185,7 +198,7 @@ def get_profiles(symbols, today):
         time.sleep(0.2)
         return sym, d
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
         for k, (sym, d) in enumerate(ex.map(one, need), 1):
             old = cache.get(sym, {})
             cache[sym] = {"asof": str(today), "data": d or old.get("data", {}), "type": old.get("type")}
@@ -331,6 +344,8 @@ def main():
     cands.sort(key=lambda c: (c["dd_vol"] or 0))          # 最超跌的先抓財報
     cache, n_fetch, n_failed = get_fundamentals(cands, today)
     pcache = get_profiles([c["symbol"] for c in cands], today)
+    got = sum(1 for c in cands if ((pcache.get(c["symbol"]) or {}).get("data") or {}).get("marketCap"))
+    print(f"市值取得 {got}/{len(cands)}，產業取得 {sum(1 for c in cands if ((pcache.get(c['symbol']) or {}).get('data') or {}).get('sector'))}", flush=True)
     order = {"通過": 0, "警示": 1, "排除": 2, "資料不足": 3}
     counts = {"通過": 0, "警示": 0, "排除": 0, "資料不足": 0}
     new_types = {}
