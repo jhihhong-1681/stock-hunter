@@ -52,6 +52,10 @@ CSS = """
 .chk .ic{width:1.6em;text-align:center;}
 .chk .nm{font-weight:600;flex:0 0 17em;}
 .chk .dt{color:rgba(250,250,250,.7);flex:1;}
+.b-new{color:#0e1117;background:#ffd666;border-color:#ffd666;}
+.plan{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.plan span{font-size:.78rem;padding:3px 9px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);}
+.plan b{font-weight:700;}
 .empty{padding:26px;text-align:center;color:rgba(250,250,250,.55);border:1px dashed rgba(255,255,255,.18);border-radius:12px;}
 </style>
 """
@@ -158,3 +162,40 @@ def action_card(a: dict, verdict: str | None = None) -> str:
 def check_row(ok, name: str, detail: str) -> str:
     ic = "✅" if ok is True else "❌" if ok is False else "ℹ️" if ok == "note" else "❓"
     return f'<div class="chk"><div class="ic">{ic}</div><div class="nm">{esc(name)}</div><div class="dt">{esc(detail)}</div></div>'
+
+
+def candidate_card(c: dict) -> str:
+    """選股雷達的候選卡：價格訊號、基本面燈號、關鍵財務數字、依規則算出的進場計畫。"""
+    m = c.get("metrics") or {}
+    pl = c.get("plan") or {}
+    why = "；".join((c.get("reasons") or [])[:2]) or "；".join((c.get("notes") or [])[:1])
+    facts = []
+    if m.get("營收年增率") is not None:
+        facts.append(f'營收年增 {signed(m["營收年增率"], 0)}')
+    if m.get("毛利率") is not None:
+        facts.append(f'毛利率 {m["毛利率"]:.0%}')
+    if m.get("營業利益率") is not None:
+        facts.append(f'營業利益率 {m["營業利益率"]:.0%}')
+    if m.get("不燒錢"):
+        facts.append("不燒錢")
+    elif m.get("可撐月數") is not None:
+        facts.append(f'現金可撐 {m["可撐月數"]:.0f} 個月')
+    if m.get("年化股本稀釋") is not None and m["年化股本稀釋"] > 0.05:
+        facts.append(f'稀釋 {m["年化股本稀釋"]:+.0%}/年')
+    if c.get("partners"):
+        facts.append("巨頭合作：" + "、".join(c["partners"]))
+    new = '<span class="b b-new">NEW</span>' if c.get("is_new") else ""
+    dv = c.get("dollar_vol") or 0
+    return (f'<div class="tcard entry"><div class="th"><span class="sym">{esc(c["symbol"])}</span><span class="nm">{esc(c.get("name", ""))}</span>'
+            f'{kind_badge(c.get("kind"))}{verdict_badge(c.get("verdict"))}{new}</div>'
+            f'<div class="stats"><div class="st"><div class="l">現價</div><div class="v big">${c["price"]:.2f}</div></div>'
+            f'<div class="st"><div class="l">距 26 週高點</div><div class="v">{signed(c["dd"], 0)}</div></div>'
+            f'<div class="st"><div class="l">年化波動率</div><div class="v">{c["vol"]:.0%}</div></div>'
+            f'<div class="st"><div class="l">回檔÷波動率</div><div class="v">{(c.get("dd_vol") or 0):.1f}</div></div>'
+            f'<div class="st sp">{sparkline(c.get("spark") or [])}</div></div>'
+            + (f'<div class="facts">{"　·　".join(facts)}</div>' if facts else "")
+            + (f'<div class="plan"><span>首批 NT${pl.get("首批NT$", 0):,} ≈ <b>{pl.get("首批股數", 0)}</b> 股</span>'
+               f'<span>第 2 批 <b>${pl.get("第2批價", 0):g}</b></span><span>第 3 批 <b>${pl.get("第3批價", 0):g}</b></span>'
+               f'<span style="border-color:rgba(255,112,67,.5)">止損 <b>${pl.get("止損價", 0):g}</b></span>'
+               f'<span>日均成交 ${dv / 1e6:.0f}M</span></div>' if pl else "")
+            + (f'<div class="why">{esc(why)}</div>' if why else "") + '</div>')

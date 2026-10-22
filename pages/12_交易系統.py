@@ -23,11 +23,12 @@ for _m in (_fund_mod, _parse_mod, _ts_mod, _ui_mod):
 from utils.fundamentals import FundRules, evaluate, fetch_quarterly, load_partnerships, load_profiles
 from utils.option_parse import parse_option_text
 from utils.trading_system import OptionRules, Rules, backtest, check_option, entry_hint, read_positions, read_totals, summarize
-from utils.trading_ui import CSS, action_card, check_row, holding_card, kpi
+from utils.trading_ui import CSS, action_card, candidate_card, check_row, holding_card, kpi
 
 st.markdown(CSS, unsafe_allow_html=True)
 ROOT = Path(__file__).resolve().parent.parent
 SIG_FILE = ROOT / "data" / "trading_signals.json"
+SCR_FILE = ROOT / "data" / "screener.json"
 rules, orules, frules = Rules(), OptionRules(), FundRules()
 USD_TWD = rules.usd_twd
 
@@ -35,6 +36,11 @@ USD_TWD = rules.usd_twd
 @st.cache_data(ttl=600)
 def load_signals(mtime: float) -> dict:
     return json.loads(SIG_FILE.read_text(encoding="utf-8"))
+
+
+@st.cache_data(ttl=600)
+def load_screener(mtime: float) -> dict:
+    return json.loads(SCR_FILE.read_text(encoding="utf-8"))
 
 
 @st.cache_data(ttl=3600)
@@ -65,6 +71,7 @@ stocks = sig["stocks"]
 by_sym = {s["symbol"]: s for s in stocks}
 held = [s for s in stocks if s.get("held")]
 actions = sig["actions"]
+scr = load_screener(SCR_FILE.stat().st_mtime) if SCR_FILE.exists() else None
 st.caption(f"價格資料日期 {sig['price_date']}（前一個美股收盤）　·　每天雲端快照後自動更新　·　最後計算 {sig['generated'][:16].replace('T', ' ')} UTC")
 
 n_stop = sum(1 for a in actions if a["kind"] == "stop")
@@ -75,11 +82,12 @@ c = st.columns(5)
 c[0].markdown(kpi("正股檔數", f"{len(held)}", "目標 5–10 檔"), unsafe_allow_html=True)
 c[1].markdown(kpi("已觸發止損", f'<span style="color:#ff7043">{n_stop}</span>' if n_stop else "0", "規則：出清"), unsafe_allow_html=True)
 c[2].markdown(kpi("接近止損價", f"{n_near}", "距止損價 15% 內"), unsafe_allow_html=True)
-c[3].markdown(kpi("可加碼／進場", f"{n_add} / {n_entry}", "加碼提示 / 進場候選"), unsafe_allow_html=True)
+n_pick = scr["stats"]["verdicts"]["通過"] if scr else 0
+c[3].markdown(kpi("可加碼 / 選股雷達", f"{n_add} / {n_pick}", "加碼提示 / 雷達（基本面通過）"), unsafe_allow_html=True)
 c[4].markdown(kpi("期權檔數", f"{len(sig['options'])}", "目標 5–10 檔，現有不處理"), unsafe_allow_html=True)
 st.write("")
 
-tab_today, tab_hold, tab_scan, tab_opt, tab_adv = st.tabs(["🎯 今日", "📋 持股", "🔍 掃描", "💹 期權檢查", "⚙️ 進階"])
+tab_today, tab_hold, tab_pick, tab_scan, tab_opt, tab_adv = st.tabs(["🎯 今日", "📋 持股", "🔭 選股", "🔍 自選股", "💹 期權檢查", "⚙️ 進階"])
 
 
 def grid(cards: list, ncol: int = 2):
@@ -97,6 +105,12 @@ with tab_today:
         if items:
             st.subheader(title)
             grid([action_card(a, by_sym.get(a["symbol"], {}).get("verdict")) for a in items], 2)
+    if scr and scr["candidates"]:
+        top = [x for x in scr["candidates"] if x["verdict"] == "通過"][:4]
+        if top:
+            st.subheader("選股雷達：今日前幾名（基本面通過）")
+            grid([candidate_card(x) for x in top], 2)
+            st.caption(f"全美股掃描 {scr['stats']['universe']:,} 檔 → 流動性通過 {scr['stats']['liquid']:,} 檔 → 進入進場區且還沒持有 {scr['stats']['in_zone']:,} 檔；完整名單在「🔭 選股」。")
     st.caption("規則：距 26 週高點回檔 ≥ 20% 進場 → 金字塔三批 → 首批價再跌 50% 全出 → 止損價再跌 30% 且基本面沒大變就開新一輪。"
                "止盈由你自己判斷。進場優先序：基本面通過 > 跌幅更深。")
 
@@ -116,7 +130,35 @@ with tab_hold:
                                   "現值NT$": o["value"]} for o in opts]).sort_values("距到期(天)")
             st.dataframe(otab, hide_index=True, use_container_width=True)
 
-# ── 掃描 ─────────────────────────────────────────────────
+# ── 選股雷達 ─────────────────────────────────────────────
+with tab_pick:
+    if not scr:
+        st.markdown('<div class="empty">選股雷達的第一次掃描還在進行中（GitHub Actions 約 10–20 分鐘），稍後重新整理。</div>', unsafe_allow_html=True)
+    else:
+        stt, flt = scr["stats"], scr["filters"]
+        v = stt["verdicts"]
+        st.markdown(f"掃描美股普通股 **{stt['universe']:,}** 檔（排除 ETF、權證、特別股、SPAC）→ 流動性通過 **{stt['liquid']:,}** 檔"
+                    f"（股價 ≥ \\${flt['最低股價']:g}、日均成交額 ≥ US\\${flt['最低日均成交額US$'] / 1e6:g}M、日線 ≥ 1 年）→ "
+                    f"距 26 週高點回檔 ≥ {flt['進場回檔']:.0%} 且**還沒持有**的 **{stt['in_zone']:,}** 檔。")
+        st.caption(f"價格資料日期 {scr['price_date']}　·　基本面：通過 {v['通過']}、警示 {v['警示']}、排除 {v['排除']}、資料不足 {v['資料不足']}"
+                   + (f"　·　已持有且在進場區 {stt['held_in_zone']} 檔（不列入）" if stt.get("held_in_zone") else ""))
+        mode = st.radio("顯示", ["基本面通過", "通過＋警示", "全部"], horizontal=True, label_visibility="collapsed", key="pick_mode")
+        allowed = {"基本面通過": ("通過",), "通過＋警示": ("通過", "警示"), "全部": ("通過", "警示", "排除", "資料不足")}[mode]
+        lst = [x for x in scr["candidates"] if x["verdict"] in allowed]
+        if not lst:
+            st.markdown('<div class="empty">目前沒有符合的候選。</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(f"**{len(lst)} 檔**（排序：基本面通過 > 警示，同級依「回檔 ÷ 波動率」越負越前面；NEW＝昨天還不在名單裡）")
+            grid([candidate_card(x) for x in lst[:20]], 2)
+            if len(lst) > 20:
+                with st.expander(f"更多候選（第 21–{len(lst)} 檔）"):
+                    grid([candidate_card(x) for x in lst[20:]], 2)
+        if stt.get("capped"):
+            st.caption(f"進場區候選超過 {len(scr['candidates'])} 檔，只保留排序最前面的（大盤大跌時訊號會暴增，這是設計上的上限）。")
+        st.caption("進場計畫照你的規則：第 1 批 NT\\$2 萬、第 2 批現價 −20%、第 3 批再 −20%、止損為首批價 −50%。"
+                   "沒登記過的標的，成長／成熟類型是系統用營收年增率自動推定（卡片註明「自動推定」）；巨頭合作要你指定後我再查證。")
+
+# ── 自選股掃描 ───────────────────────────────────────────
 with tab_scan:
     sc = [s for s in stocks if s.get("dd") is not None]
     vorder = {"通過": 0, "警示": 1, "排除": 2}
