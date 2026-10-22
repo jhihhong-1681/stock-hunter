@@ -501,5 +501,7 @@ window.TRADES = [
   { date: "2026-10-19", time: null, side: "賣出", symbol: "ET", type: "stock", description: null, qty: 30, price: 20.25 },
   { date: "2026-10-19", time: "10:38:40", side: "Buy Open", symbol: "INTC", type: "option", description: "INTC 10/23/2026 100.00 Call", qty: 2, price: 0.75 },
   { date: "2026-10-19", time: "12:40:51", side: "Sell Close", symbol: "CLF", type: "option", description: "CLF 11/20/2026 10.00 Call", qty: 1, price: 4.2 },
-  { date: "2026-10-20", time: "14:00:26", side: "Sell Close", symbol: "AEO", type: "option", description: "AEO 11/20/2026 15.00 Call", qty: 1, price: 3.1 }
+  { date: "2026-10-20", time: "14:00:26", side: "Sell Close", symbol: "AEO", type: "option", description: "AEO 11/20/2026 15.00 Call", qty: 1, price: 3.1 },
+  { date: "2026-10-21", time: "12:00:40", side: "Buy Open", symbol: "FLEX", type: "option", description: "FLEX 11/20/2026 100.00 Call", qty: 1, price: 3.6 },
+  { date: "2026-10-21", time: "12:07:38", side: "買進", symbol: "SOXL", type: "stock", description: null, qty: 8, price: 103 }
 ];
