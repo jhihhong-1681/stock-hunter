@@ -1,0 +1,46 @@
+name: Daily Screener
+
+on:
+  # 雲端每日快照（台北 13:30）把 holdings.js 推上 main 後接著跑
+  push:
+    paths:
+      - 'portfolio-calendar/holdings.js'
+      - 'scripts/screen_universe.py'
+  schedule:
+    # 備援：台北 14:40（UTC 06:40），週一到週五
+    - cron: '40 6 * * 1-5'
+  workflow_dispatch:
+
+concurrency:
+  group: screener
+  cancel-in-progress: true
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install yfinance pandas numpy lxml
+
+      - name: Run screener
+        run: python scripts/screen_universe.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/screener.json data/fundamentals_cache.json
+          git diff --staged --quiet || git commit -m "chore: screener $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do git pull --rebase origin main && git push && break || sleep 5; done
