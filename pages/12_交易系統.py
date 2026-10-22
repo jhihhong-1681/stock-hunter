@@ -115,7 +115,7 @@ c[3].markdown(kpi("可加碼 / 選股雷達", f"{n_add} / {n_pick}", "加碼提�
 c[4].markdown(kpi("期權檔數", f"{len(sig['options'])}", "目標 5–10 檔，現有不處理"), unsafe_allow_html=True)
 st.write("")
 
-tab_today, tab_hold, tab_pick, tab_scan, tab_opt, tab_adv = st.tabs(["🎯 今日", "📋 持股", "🔭 選股", "🔍 自選股", "💹 期權檢查", "⚙️ 進階"])
+tab_today, tab_hold, tab_pick, tab_paper, tab_scan, tab_opt, tab_adv = st.tabs(["🎯 今日", "📋 持股", "🔭 選股", "🧪 模擬帳戶", "🔍 自選股", "💹 期權檢查", "⚙️ 進階"])
 
 
 def grid(cards: list, ncol: int = 2):
@@ -200,6 +200,44 @@ with tab_pick:
             st.caption("進場區候選很多，成長型、成熟型各只保留排序最前面的 100 檔（大盤大跌時訊號會暴增，這是設計上的上限）。")
         st.caption("進場計畫照你的規則：第 1 批 NT\\$2 萬、第 2 批現價 −20%、第 3 批再 −20%、止損為首批價 −50%。"
                    "沒登記過的標的，成長／成熟類型是系統用營收年增率自動推定（卡片註明「自動推定」）；巨頭合作要你指定後我再查證。")
+
+# ── 模擬帳戶 ─────────────────────────────────────────────
+with tab_paper:
+    PAPER_FILE = ROOT / "data" / "paper_portfolio.json"
+    if not PAPER_FILE.exists():
+        st.info("模擬帳戶還沒建立。到 GitHub Actions 執行 Paper Trade 後，會依選股排行用 NT$100 萬建倉。")
+    else:
+        pp = json.loads(PAPER_FILE.read_text(encoding="utf-8"))
+        eq = pd.DataFrame(pp["equity"])
+        cur, spy_v, cap = eq.iloc[-1], eq.iloc[-1]["spy"], pp["capital"]
+        st.caption(f"起始日 {pp['start_date']}　·　本金 NT\\${cap:,.0f}（成長型 70%／成熟型 30%）　·　最新 {cur['date']}　·　依選股排行買進、照交易系統規則加碼與止損、**不做止盈**、收盤價成交、不含手續費")
+        k = st.columns(4)
+        k[0].markdown(kpi("淨值", f"NT${cur['equity']:,.0f}", f"{cur['equity'] / cap - 1:+.1%}"), unsafe_allow_html=True)
+        k[1].markdown(kpi("對照：全買 SPY", f"NT${spy_v:,.0f}", f"{spy_v / cap - 1:+.1%}"), unsafe_allow_html=True)
+        k[2].markdown(kpi("贏過 SPY", f"{(cur['equity'] - spy_v) / cap:+.1%}", "淨值報酬 − SPY 報酬"), unsafe_allow_html=True)
+        k[3].markdown(kpi("持股 / 現金", f"{len(pp['positions'])} 檔", f"現金 NT${cur['cash']:,.0f}"), unsafe_allow_html=True)
+        if len(eq) >= 2:
+            fig = go.Figure()
+            fig.add_scatter(x=eq["date"], y=eq["equity"], name="模擬帳戶", line=dict(color="#ff7043"))
+            fig.add_scatter(x=eq["date"], y=eq["spy"], name="SPY", line=dict(color="#90a4ae", dash="dot"))
+            fig.update_layout(height=320, margin=dict(l=10, r=10, t=10, b=10), legend=dict(orientation="h"))
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.caption("才剛建倉，淨值曲線要累積幾天才畫得出來。")
+        rows = []
+        for sym, p in pp["positions"].items():
+            px_ = p.get("last_px") or p["tranches"][-1]["price"]
+            rows.append({"代號": sym, "名稱": p.get("name", sym), "類型": p["kind"], "批數": len(p["tranches"]), "首批價": p["tranches"][0]["price"],
+                         "現價": px_, "報酬": px_ * p["shares"] * pp["fx"] / p["cost_ntd"] - 1, "市值NT$": round(px_ * p["shares"] * pp["fx"]),
+                         "止損價": round(p["tranches"][0]["price"] * 0.5, 2), "進場總分": p.get("score_at_entry")})
+        if rows:
+            st.dataframe(pd.DataFrame(rows).style.format({"報酬": "{:+.1%}", "首批價": "{:.2f}", "現價": "{:.2f}", "市值NT$": "{:,.0f}"}), hide_index=True, use_container_width=True)
+        if pp["reentry"]:
+            st.write("止損後等待再進場：" + "、".join(f"{s}（≤ ${r['px']:g}）" for s, r in pp["reentry"].items()))
+        with st.expander("交易紀錄"):
+            st.dataframe(pd.DataFrame(pp["trades"][::-1]), hide_index=True, use_container_width=True)
+        st.caption("注意：績效只反映這一批排行的表現，樣本小、時間短，且沒有止盈；要累積幾個月、經歷不同行情才有參考價值。")
+
 
 # ── 自選股掃描 ───────────────────────────────────────────
 with tab_scan:

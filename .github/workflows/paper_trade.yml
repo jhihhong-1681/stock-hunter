@@ -1,0 +1,46 @@
+name: Paper Trade
+
+on:
+  # 雲端 13:30 排程的新聞評分（push news_scores.json）之後接著更新模擬帳戶
+  push:
+    paths:
+      - 'data/news_scores.json'
+      - 'scripts/paper_trade.py'
+      - 'utils/paper_trading.py'
+  schedule:
+    # 備援：台北 15:15（UTC 07:15），週一到週五
+    - cron: '15 7 * * 1-5'
+  workflow_dispatch:
+
+concurrency:
+  group: paper-trade
+  cancel-in-progress: false
+
+jobs:
+  paper:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install yfinance pandas numpy
+
+      - name: Update paper portfolio
+        run: python scripts/paper_trade.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/paper_portfolio.json
+          git diff --staged --quiet || git commit -m "chore: paper portfolio $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do git pull --rebase origin main && git push && break || sleep 5; done
