@@ -134,11 +134,13 @@ with tab_today:
             st.subheader(title)
             grid([action_card(a, by_sym.get(a["symbol"], {}).get("verdict")) for a in items], 2)
     if scr and scr["candidates"]:
-        top = [x for x in picks if x["kind"] == "成長型" and not x.get("veto_final") and x["verdict"] != "排除"][:4]
-        if top:
-            st.subheader("選股雷達：成長型前幾名（依總分）")
-            grid([candidate_card(x) for x in top], 2)
-            st.caption(f"全美股掃描 {scr['stats']['universe']:,} 檔 → 流動性通過 {scr['stats']['liquid']:,} 檔 → 進入進場區且還沒持有 {scr['stats']['in_zone']:,} 檔；完整名單在「🔭 選股」。")
+        okp = [x for x in picks if not x.get("veto_final") and x["verdict"] in ("通過", "警示")]
+        for kd, ttl in (("成長型", "選股雷達：成長型前 3 名"), ("成熟型", "選股雷達：成熟型（被錯殺）前 3 名")):
+            top = [x for x in okp if x["kind"] == kd][:3]
+            if top:
+                st.subheader(ttl)
+                grid([candidate_card(x) for x in top], 2)
+        st.caption(f"全美股掃描 {scr['stats']['universe']:,} 檔 → 流動性通過 {scr['stats']['liquid']:,} 檔 → 進入進場區且還沒持有 {scr['stats']['in_zone']:,} 檔；完整名單在「🔭 選股」。")
     st.caption("規則：距 26 週高點回檔 ≥ 20% 進場 → 金字塔三批 → 首批價再跌 50% 全出 → 止損價再跌 30% 且基本面沒大變就開新一輪。"
                "止盈由你自己判斷。進場優先序：基本面通過 > 跌幅更深。")
 
@@ -170,23 +172,30 @@ with tab_pick:
                     f"距 26 週高點回檔 ≥ {flt['進場回檔']:.0%} 且**還沒持有**的 **{stt['in_zone']:,}** 檔。")
         st.caption(f"價格資料日期 {scr['price_date']}　·　基本面：通過 {v['通過']}、警示 {v['警示']}、排除 {v['排除']}、資料不足 {v['資料不足']}"
                    + (f"　·　已持有且在進場區 {stt['held_in_zone']} 檔（不列入）" if stt.get("held_in_zone") else ""))
-        mode = st.radio("顯示", ["成長型", "成熟型", "全部（含警示、紅線）"], horizontal=True, label_visibility="collapsed", key="pick_mode")
-        if mode == "全部（含警示、紅線）":
-            lst = picks
-        else:
-            lst = [x for x in picks if x["kind"] == mode and not x.get("veto_final") and x["verdict"] in ("通過", "警示")]
         n_news = sum(1 for x in picks if x.get("news"))
         gen = (news_all.get("generated") or "")[:10]
         st.caption(f"總分 ＝ 基本面 {WEIGHTS['基本面']:.0%} ＋ 價格位置與止跌 {WEIGHTS['價格']:.0%} ＋ 預期與資金 {WEIGHTS['預期資金']:.0%} ＋ 消息 {WEIGHTS['消息']:.0%}"
                    f"　·　消息面已評 {n_news} 檔" + (f"（更新 {gen}）" if gen else "（雲端排程尚未寫入新聞評分，先以中性分計算）"))
-        if not lst:
-            st.markdown('<div class="empty">目前沒有符合的候選。</div>', unsafe_allow_html=True)
-        else:
-            st.markdown(f"**{len(lst)} 檔**，依總分排序，先看前 10 名　（NEW＝昨天還不在名單裡；財報 N 天後只標示、不扣分）")
-            grid([candidate_card(x) for x in lst[:10]], 2)
-            if len(lst) > 10:
-                with st.expander(f"更多候選（第 11–{len(lst)} 檔）"):
-                    grid([candidate_card(x) for x in lst[10:]], 2)
+        ok = [x for x in picks if not x.get("veto_final") and x["verdict"] in ("通過", "警示")]
+        growth = [x for x in ok if x["kind"] == "成長型"]
+        mature = [x for x in ok if x["kind"] == "成熟型"]
+        t_g, t_m, t_v = st.tabs([f"🚀 成長型（{len(growth)}）", f"🛡️ 成熟型・被錯殺（{len(mature)}）", f"⛔ 紅線與排除（{len(picks) - len(ok)}）"])
+        for tab_, lst, hint in ((t_g, growth, "營收高成長、規模或估值還在成長階段的公司；基本面要求營收年增率 ≥ 40%"),
+                                (t_m, mature, "規模大或營收穩定的公司被一併拋售，不要求高成長，但營收不衰退、利益率不惡化")):
+            with tab_:
+                st.caption(hint + "。兩種類型各自排名，分數不跨類型比較。")
+                if not lst:
+                    st.markdown('<div class="empty">目前沒有符合的候選。</div>', unsafe_allow_html=True)
+                    continue
+                st.markdown(f"**{len(lst)} 檔**，依總分排序，先看前 10 名　（NEW＝昨天還不在名單裡；財報 N 天後只標示、不扣分）")
+                grid([candidate_card(x) for x in lst[:10]], 2)
+                if len(lst) > 10:
+                    with st.expander(f"更多候選（第 11–{len(lst)} 檔）"):
+                        grid([candidate_card(x) for x in lst[10:]], 2)
+        with t_v:
+            st.caption("基本面被排除，或消息面掃描發現紅線（going concern、大量稀釋性增資、SEC 調查等）的標的，僅供參考，不建議進場。")
+            bad = [x for x in picks if x.get("veto_final") or x["verdict"] not in ("通過", "警示")]
+            grid([candidate_card(x) for x in bad[:20]], 2)
         if stt.get("capped"):
             st.caption("進場區候選很多，成長型、成熟型各只保留排序最前面的 100 檔（大盤大跌時訊號會暴增，這是設計上的上限）。")
         st.caption("進場計畫照你的規則：第 1 批 NT\\$2 萬、第 2 批現價 −20%、第 3 批再 −20%、止損為首批價 −50%。"

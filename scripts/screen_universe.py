@@ -19,17 +19,20 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.fundamentals import FundRules, evaluate, fetch_quarterly, load_partnerships, load_profiles  # noqa: E402
+from utils.classify import classify  # noqa: E402
 from utils.scoring import WEIGHTS, score_fundamental, score_flow, score_price  # noqa: E402
 from utils.trading_system import Rules, read_positions, scan_symbol  # noqa: E402
 
 OUT = ROOT / "data" / "screener.json"
 CACHE = ROOT / "data" / "fundamentals_cache.json"
 FLOW_CACHE = ROOT / "data" / "flow_cache.json"
+PROFILE_CACHE = ROOT / "data" / "profile_cache.json"
 HISTORY = ROOT / "data" / "score_history.json"
 MIN_PRICE = 3.0              # 股價下限
 MIN_DOLLAR_VOL = 5e6         # 近 50 日平均成交額下限（US$）
 MIN_HISTORY = 250            # 至少一年日線（排除剛上市、財報不足的）
 FUND_TTL_DAYS = 7
+PROFILE_TTL_DAYS = 30        # 市值、產業變動慢，一個月抓一次
 FLOW_TTL_DAYS = 3
 FLOW_TOP = 80                # 只對預評分前 80 名抓分析師／內部人／空單／財報日（每檔要多打幾次 Yahoo）
 MAX_FUND_FETCH = 1200        # 單日最多抓幾檔財報（大盤大跌時訊號暴增，按最超跌的優先）
@@ -148,6 +151,55 @@ def scan_prices(universe: dict, rules: Rules, held: set):
                           "spark": [round(float(x), 2) for x in ser.iloc[-60:].values], "last_date": str(ser.index[-1].date())})
         print(f"  價格 {min(i + 150, len(syms))}/{len(syms)}，候選累計 {len(cands)}", flush=True)
     return cands, stats
+
+
+def fetch_profile(sym):
+    """市值與產業（Yahoo info）；取不到就回空 dict。"""
+    import yfinance as yf
+    try:
+        info = yf.Ticker(sym).info or {}
+    except Exception:
+        return {}
+    out = {}
+    if info.get("marketCap"):
+        out["marketCap"] = float(info["marketCap"])
+    for k in ("sector", "industry"):
+        if info.get(k):
+            out[k] = info[k]
+    return out
+
+
+def get_profiles(symbols, today):
+    """回傳 ({代號: {marketCap, sector, industry}}, 上一次的分類 {代號: 類型})。分類結果另外存在快取裡做遲滯用。"""
+    cache = {}
+    if PROFILE_CACHE.exists():
+        try:
+            cache = json.loads(PROFILE_CACHE.read_text(encoding="utf-8"))
+        except ValueError:
+            cache = {}
+    need = [x for x in symbols if not (x in cache and cache[x].get("data") and (today - date.fromisoformat(cache[x]["asof"])).days <= PROFILE_TTL_DAYS)]
+    need = need[:MAX_FUND_FETCH]
+
+    def one(sym):
+        d = fetch_profile(sym)
+        time.sleep(0.2)
+        return sym, d
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
+        for k, (sym, d) in enumerate(ex.map(one, need), 1):
+            old = cache.get(sym, {})
+            cache[sym] = {"asof": str(today), "data": d or old.get("data", {}), "type": old.get("type")}
+            if k % 200 == 0:
+                print(f"  市值/產業 {k}/{len(need)}", flush=True)
+    return cache
+
+
+def save_profiles(cache, types, today):
+    for sym, t in types.items():
+        if sym in cache:
+            cache[sym]["type"] = t
+    keep = {k: v for k, v in cache.items() if (today - date.fromisoformat(v["asof"])).days <= 120}
+    PROFILE_CACHE.write_text(json.dumps(clean(keep), ensure_ascii=False), encoding="utf-8")
 
 
 def fetch_flow(sym):
@@ -278,24 +330,38 @@ def main():
         raise RuntimeError(f"價格資料太少（{stats['with_data']} 檔），不更新結果：{stats}")
     cands.sort(key=lambda c: (c["dd_vol"] or 0))          # 最超跌的先抓財報
     cache, n_fetch, n_failed = get_fundamentals(cands, today)
+    pcache = get_profiles([c["symbol"] for c in cands], today)
     order = {"通過": 0, "警示": 1, "排除": 2, "資料不足": 3}
     counts = {"通過": 0, "警示": 0, "排除": 0, "資料不足": 0}
+    new_types = {}
     for c in cands:
         ent = cache.get(c["symbol"])
         prof = profiles.get(c["symbol"], {})
+        pd_ = (pcache.get(c["symbol"]) or {}).get("data") or {}
+        c["mcap"], c["sector"] = pd_.get("marketCap"), pd_.get("sector")
         if ent and ent.get("data"):
-            e = evaluate(ent["data"], partners.get(c["symbol"]), frules, prof.get("type"))
+            e0 = evaluate(ent["data"], partners.get(c["symbol"]), frules, None)      # 先取指標（年增率、獲利狀態）
+            m0 = e0["metrics"]
+            rev = [x for x in (ent["data"].get("rev") or [])[-4:] if x is not None]
+            c["rev_ttm"] = sum(rev) if len(rev) == 4 else None
+            if prof.get("type") in ("成長型", "成熟型"):
+                kind, c["kind_source"], c["kind_conf"], c["kind_why"] = prof["type"], "已登記", "高", prof.get("reason", "")
+            else:
+                cl = classify(m0.get("營收年增率"), m0.get("近3季季增為正"), e0["track"], c["rev_ttm"], c["mcap"], c["sector"],
+                              prev=(pcache.get(c["symbol"]) or {}).get("type"))
+                kind, c["kind_source"], c["kind_conf"], c["kind_why"] = cl["kind"], "自動推定", cl["confidence"], cl["why"]
+                new_types[c["symbol"]] = kind
+            e = evaluate(ent["data"], partners.get(c["symbol"]), frules, kind)
             m = dict(e["metrics"])
             if m.get("可撐月數") == float("inf"):
                 m["不燒錢"] = True
             keep = {k: m.get(k) for k in ("營收年增率", "毛利率", "毛利率(一年前)", "營業利益率", "營業利益率(一年前)", "可撐月數", "不燒錢",
                                            "年化股本稀釋", "近3季季增為正")}
-            rev = [x for x in (ent["data"].get("rev") or [])[-4:] if x is not None]
-            c["rev_ttm"] = sum(rev) if len(rev) == 4 else None
             c.update(verdict=e["verdict"], kind=e["kind"], track=e["track"], reasons=e["reasons"], notes=e["notes"], metrics=keep,
                      partners=[p.get("partner") for p in e["partners"] if p.get("strength", "高") in ("高", "中")], fund_asof=ent["asof"])
         else:
-            c.update(verdict="資料不足", kind=prof.get("type", "-"), track="-", reasons=["Yahoo 沒有回財報"], notes=[], metrics={}, partners=[], fund_asof=None)
+            c.update(verdict="資料不足", kind=prof.get("type", "-"), track="-", reasons=["Yahoo 沒有回財報"], notes=[], metrics={}, partners=[], fund_asof=None,
+                     kind_source="-", kind_conf="低", kind_why="")
         counts[c["verdict"]] += 1
         # 基本面、價格兩個面向（不需要額外網路）
         a, aw = score_fundamental(c)
@@ -312,7 +378,7 @@ def main():
         c["pillars"]["預期資金"] = f_score
         c["why"]["預期資金"] = fw
         c["earnings_days"] = (fl or {}).get("earnings_days")
-        c["sector"] = (fl or {}).get("sector")
+        c["sector"] = c.get("sector") or (fl or {}).get("sector")
         if c["sector"]:                     # 知道產業後重算基本面分數（金融股的營收成長不可比，會保守）
             a2, aw2 = score_fundamental(c)
             c["pillars"]["基本面"], c["why"]["基本面"] = a2, aw2
@@ -341,6 +407,7 @@ def main():
                      "capped": len(kept) < len(cands)},
            "candidates": kept}
     OUT.write_text(json.dumps(clean(out), ensure_ascii=False, indent=1), encoding="utf-8")
+    save_profiles(pcache, new_types, today)
     # 逐日記錄前 30 名的量化分數與價格，之後用實際報酬檢驗分數有沒有用
     hist = []
     if HISTORY.exists():

@@ -209,9 +209,18 @@ def candidate_card(c: dict) -> str:
             facts.append(f'現金可撐 {m["可撐月數"]:.0f} 個月')
     elif c.get("track") == "已獲利型":
         facts.append("已獲利")
+    if c.get("mcap"):
+        mc = c["mcap"]
+        facts.append(f"市值 ${mc / 1e9:.1f}B" if mc >= 1e9 else f"市值 ${mc / 1e6:.0f}M")
     if c.get("partners"):
         facts.append("巨頭合作：" + "、".join(c["partners"]))
     badges = ""
+    src, conf = c.get("kind_source"), c.get("kind_conf")
+    if src == "已登記":
+        badges += '<span class="b b-ok" title="阿紘定的標準，人工登記">類型已登記</span>'
+    elif src == "自動推定":
+        cls = "b-warn" if conf == "低" else "b-na"
+        badges += f'<span class="b {cls}" title="依市值、營收規模、營收成長推定">自動推定・把握度{esc(conf)}</span>'
     if c.get("is_new"):
         badges += '<span class="b b-new">NEW</span>'
     ed = c.get("earnings_days")
@@ -226,6 +235,8 @@ def candidate_card(c: dict) -> str:
                       f'<div class="sl">{esc(c.get("score_label", ""))}</div></div>')
     news = c.get("news") or {}
     bullets = []
+    if c.get("kind_why") and c.get("kind_source") == "自動推定":
+        bullets.append(f'類型判斷：{esc(c["kind_why"])} → {esc(c.get("kind", ""))}')
     if veto:
         bullets.append(f'<span class="veto">⛔ 紅線：{esc(veto)}</span>')
     for k in ("基本面", "價格"):
