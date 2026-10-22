@@ -113,5 +113,11 @@
   "reason": "ProShares 2 倍每日做多黃金期貨 ETF，無公司財報，不適用基本面判定",
   "marketcap": "淨資產約 US$9 億",
   "asof": "2026-08"
+ },
+ "SOXL": {
+  "type": "ETF",
+  "reason": "Direxion 3 倍每日做多半導體指數 ETF，無公司財報，不適用基本面判定",
+  "marketcap": "未確認",
+  "asof": "2026-10"
  }
 }
