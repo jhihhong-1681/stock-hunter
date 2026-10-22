@@ -45,3 +45,11 @@
 - `data/company_profiles.json`（成長型/成熟型/ETF，新正股由每日快照自動登記）、`data/partnerships.json`（巨頭合作，附出處與實質程度，人工維護，只放公開資訊）、`data/conviction.json`（高信念，目前先不用）。
 - 股價與財報（yfinance）只有 Streamlit Cloud 和 GitHub Actions 抓得到，**Claude 雲端環境連不到 Yahoo/SEC**。回測因此跑在 GitHub Actions：改 `data/backtest_request.json` 推上 main 就會觸發 `.github/workflows/run_backtest.yml` → `scripts/run_backtest.py` → `data/backtest_results*.json`。回測只測價格規則，有倖存者偏差，絕對報酬偏樂觀，只有相對比較（止損 vs 不止損、止盈寬度、進場深度）比較可信。
 - 頁面開頭會 `importlib.reload` 兩個 utils 模組：Streamlit Cloud 部署後舊模組快取會造成 ImportError；若仍出現，請阿紘在 Manage app → Reboot app。
+
+**選股雷達與評分（詳細說明見 [`docs/交易系統架構.md`](docs/交易系統架構.md)，改規則或討論前先讀它）**
+- `scripts/screen_universe.py`（GitHub Actions，`screener.yml`，holdings.js 推上後自動跑）→ `data/screener.json`：NASDAQ Trader 名單 → 流動性（股價 ≥ \$3、日均成交額 ≥ \$500 萬）→ 距 26 週高點回檔 ≥ 20% → 財報／市值／產業 → 分類 → 基本面判定 → 評分。
+- 評分 `utils/scoring.py`：基本面 40／價格位置與止跌 35／預期與資金 5／消息 20；判定「排除」或新聞紅線一票否決排最後；財報日只標示。權重是判斷值、無法回測，用 `data/score_history.json` 日後檢驗。
+- 成長型／成熟型分兩個排行（`utils/classify.py`）：成長分（營收年增、連續季增…）減成熟分（市值、營收規模、防禦型產業）≥ 1 為成長型；市占無法自動化，龍頭請手動登記 `data/company_profiles.json`（登記優先）；把握度「低」沿用前次分類。
+- 消息面 20% 由雲端 13:30 排程 step 12b（SNAPSHOT_TASK.md）寫 `data/news_scores.json`：WebSearch 一律 `mode: "extended"`、每檔至少 3 種查詢、只採近 14 天有出處的消息；頁面只採 14 天內的評分。
+- **Actions 上 Yahoo `.info` 會回 401 "Invalid Crumb"**：`fetch_profile` 已降併發、重試、用 `fast_info` 備援；看 log 的「市值取得 N/總數」確認。
+- **新增任何 workflow 輸出檔時，要同步加進該 workflow 的 `git add`**（歷史上漏過多次；screener 用 `data/*_cache.json`）。
