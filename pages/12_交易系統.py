@@ -323,7 +323,8 @@ with tab_adv:
             for c_ in r["configs"]:
                 p, sm = c_["params"], c_["summary"]
                 rows.append({"止盈": "不止盈（抱到現在）" if p["take_profit"] is None else f"+{p['take_profit']:.0%}", "進場跌幅": f"-{p['entry_drop']:.0%}",
-                             "止損": "無" if p["stop"] >= 0.95 else f"首批價 -{p['stop']:.0%}", "交易數": sm["trades"], "已結束": sm["done"],
+                             "止損": "無" if p["stop"] >= 0.95 else f"首批價 -{p['stop']:.0%}",
+                             "加碼間距": f"-{p['add_step']:.0%}" if p.get("add_step") else "-12%（舊）", "交易數": sm["trades"], "已結束": sm["done"],
                              "勝率": "-" if sm["win_rate"] is None else f"{sm['win_rate']:.0%}", "止損次數": sm["stops"],
                              "平均賺NT$": round(sm["avg_win"]), "平均賠NT$": round(sm["avg_loss"]),
                              "報酬率(損益/投入)": f"{sm['pnl'] / sm['invested']:.0%}" if sm["invested"] else "-",
@@ -332,8 +333,10 @@ with tab_adv:
             st.caption(f"{r['symbols_with_data']}/{r['symbols_requested']} 檔有資料，期間 {r['period']}，更新 {r['generated'][:10]}")
             st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
 
-        hist_table("backtest_results.json", "你交易過的正股（約 100 檔）")
-        hist_table("backtest_results_sp500.json", "對照組：S&P 500 成分股")
+        hist_table("backtest_add_step.json", "加碼間距比較（12% vs 20%）：你交易過的正股")
+        hist_table("backtest_add_step_sp500.json", "加碼間距比較（12% vs 20%）：S&P 500")
+        hist_table("backtest_results.json", "較早的回測（加碼間距 12%）：你交易過的正股，含止損／進場深度比較")
+        hist_table("backtest_results_sp500.json", "較早的回測（加碼間距 12%）：S&P 500")
         st.caption("絕對報酬偏樂觀（倖存者偏差；你的標的集中在近年強勢族群），比較可信的是相對比較：止損 vs 不止損、止盈寬度、進場深度。"
                    "「同時最多檔數」代表訊號會在大盤大跌時集中出現，所以需要排序與檔數上限。")
     with t_bt:

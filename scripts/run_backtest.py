@@ -88,8 +88,9 @@ def run_job(req):
                 coverage[s] = {"from": str(ser.index[0].date()), "to": str(ser.index[-1].date()), "days": len(ser)}
     grid = req.get("grid", {})
     configs = []
-    for tp, ed, stop in product(grid.get("take_profit", [None, 0.5]), grid.get("entry_drop", [0.3]), grid.get("stop", [0.5])):
-        r = Rules(entry_drop=ed, stop_from_first=stop, take_profit=tp)
+    for tp, ed, stop, step in product(grid.get("take_profit", [None, 0.5]), grid.get("entry_drop", [0.3]), grid.get("stop", [0.5]),
+                                      grid.get("add_step", [Rules().add_step])):
+        r = Rules(entry_drop=ed, stop_from_first=stop, take_profit=tp, add_step=step)
         alltr, by = [], {}
         for s, (d, c) in series.items():
             tr = backtest(s, d, c, r)
@@ -97,7 +98,7 @@ def run_job(req):
             if tr:
                 sm = summarize(tr)
                 by[s] = {k: sm[k] for k in ("trades", "pnl", "stops", "win_rate", "worst")}
-        cfg = {"params": {"take_profit": tp, "entry_drop": ed, "stop": stop}, "summary": summarize(alltr), "by_symbol": by}
+        cfg = {"params": {"take_profit": tp, "entry_drop": ed, "stop": stop, "add_step": step}, "summary": summarize(alltr), "by_symbol": by}
         if tp == grid.get("detail_tp", "x") and ed == 0.3 and stop == 0.5:
             cfg["trades"] = [t.__dict__ for t in alltr]
         configs.append(cfg)
