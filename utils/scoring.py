@@ -88,6 +88,9 @@ def score_fundamental(c: dict) -> tuple[float, list[str]]:
     if score is None:
         score = 30.0
         why.append("財報資料不足")
+    if c.get("sector") == "Financial Services":
+        score = min(score, 60.0)     # 銀行、保險、房貸、信託：營收含投資收益，年增率與毛利率不可比
+        why.append("金融股：營收與毛利率不可比，基本面分數保守（封頂 60）")
     if verdict == "警示":
         score = min(score, 65.0)
     elif verdict == "排除":

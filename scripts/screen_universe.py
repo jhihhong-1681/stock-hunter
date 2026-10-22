@@ -179,9 +179,11 @@ def fetch_flow(sym):
     except Exception:
         pass
     try:
-        sp = (t.info or {}).get("shortPercentOfFloat")
-        if sp is not None:
-            out["short_pct"] = float(sp)
+        info = t.info or {}
+        if info.get("shortPercentOfFloat") is not None:
+            out["short_pct"] = float(info["shortPercentOfFloat"])
+        if info.get("sector"):
+            out["sector"] = info["sector"]
     except Exception:
         pass
     try:
@@ -310,6 +312,10 @@ def main():
         c["pillars"]["預期資金"] = f_score
         c["why"]["預期資金"] = fw
         c["earnings_days"] = (fl or {}).get("earnings_days")
+        c["sector"] = (fl or {}).get("sector")
+        if c["sector"]:                     # 知道產業後重算基本面分數（金融股的營收成長不可比，會保守）
+            a2, aw2 = score_fundamental(c)
+            c["pillars"]["基本面"], c["why"]["基本面"] = a2, aw2
         c["veto"] = "基本面排除" if c["verdict"] == "排除" else None
         # 量化分數：消息面先給中性 50，頁面再把雲端排程的新聞評分合併進去
         c["quant_score"] = round(WEIGHTS["基本面"] * c["pillars"]["基本面"] + WEIGHTS["價格"] * c["pillars"]["價格"]
