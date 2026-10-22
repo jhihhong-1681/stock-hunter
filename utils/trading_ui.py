@@ -56,6 +56,17 @@ CSS = """
 .plan{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
 .plan span{font-size:.78rem;padding:3px 9px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);}
 .plan b{font-weight:700;}
+.tcard .ch{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.tcard.veto{border-left-color:#b27aff;background:rgba(178,122,255,.07);opacity:.85;}
+.score{flex:0 0 auto;width:62px;height:62px;border:3px solid;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;}
+.score .sv{font-size:1.45rem;font-weight:800;} .score .sl{font-size:.62rem;color:rgba(250,250,250,.6);margin-top:3px;}
+.pbars{margin:6px 0 2px 0;display:grid;grid-template-columns:1fr 1fr;gap:3px 16px;}
+.pb{display:flex;align-items:center;gap:6px;font-size:.72rem;color:rgba(250,250,250,.65);}
+.pb .pn{width:5.6em;white-space:nowrap;} .pb .pn i{font-style:normal;opacity:.5;margin-left:3px;font-size:.62rem;}
+.pb .bar{flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.10);overflow:hidden;} .pb .bar span{display:block;height:100%;border-radius:3px;}
+.pb .pv{width:4.8em;text-align:right;white-space:nowrap;font-weight:600;}
+.whyl{margin:8px 0 0 0;padding-left:1.2em;font-size:.8rem;color:rgba(250,250,250,.72);line-height:1.5;} .whyl li{margin:1px 0;}
+.veto{color:#d3a8ff;font-weight:700;}
 .empty{padding:26px;text-align:center;color:rgba(250,250,250,.55);border:1px dashed rgba(255,255,255,.18);border-radius:12px;}
 </style>
 """
@@ -164,41 +175,81 @@ def check_row(ok, name: str, detail: str) -> str:
     return f'<div class="chk"><div class="ic">{ic}</div><div class="nm">{esc(name)}</div><div class="dt">{esc(detail)}</div></div>'
 
 
+def _score_color(score: float) -> str:
+    return "#5aa9ff" if score >= 80 else "#7ec0c8" if score >= 65 else "#9aa0a6" if score >= 50 else "#f5a623"
+
+
+def pillar_bars(pillars: dict, news_missing: bool) -> str:
+    rows = []
+    for name in ("基本面", "價格", "預期資金", "消息"):
+        v = pillars.get(name)
+        if v is None:
+            continue
+        w = {"基本面": 40, "價格": 35, "預期資金": 5, "消息": 20}[name]
+        col = _score_color(v)
+        tag = "（未評）" if name == "消息" and news_missing else ""
+        rows.append(f'<div class="pb"><span class="pn">{name}<i>{w}%</i></span><span class="bar"><span style="width:{v:.0f}%;background:{col}"></span></span>'
+                    f'<span class="pv">{v:.0f}{tag}</span></div>')
+    return '<div class="pbars">' + "".join(rows) + "</div>"
+
+
 def candidate_card(c: dict) -> str:
-    """選股雷達的候選卡：價格訊號、基本面燈號、關鍵財務數字、依規則算出的進場計畫。"""
+    """選股雷達的候選卡：總分與四面向分數、基本面燈號、進場計畫、為什麼（理由與新聞摘要）。
+    c 需要含 total / pillars / reasons_list 等（頁面合併新聞後傳入）；沒有 total 的舊資料就不畫分數。"""
     m = c.get("metrics") or {}
     pl = c.get("plan") or {}
-    why = "；".join((c.get("reasons") or [])[:2]) or "；".join((c.get("notes") or [])[:1])
+    total = c.get("total")
     facts = []
     if m.get("營收年增率") is not None:
         facts.append(f'營收年增 {signed(m["營收年增率"], 0)}')
-    if m.get("毛利率") is not None:
-        facts.append(f'毛利率 {m["毛利率"]:.0%}')
-    if m.get("營業利益率") is not None:
-        facts.append(f'營業利益率 {m["營業利益率"]:.0%}')
-    if c.get("track") == "成長虧損型":      # 現金可撐月數只對虧損中的公司有意義
+    if c.get("track") == "成長虧損型":
         if m.get("不燒錢"):
             facts.append("不燒錢")
         elif m.get("可撐月數") is not None:
             facts.append(f'現金可撐 {m["可撐月數"]:.0f} 個月')
     elif c.get("track") == "已獲利型":
         facts.append("已獲利")
-    if m.get("年化股本稀釋") is not None and m["年化股本稀釋"] > 0.05:
-        facts.append(f'稀釋 {m["年化股本稀釋"]:+.0%}/年')
     if c.get("partners"):
         facts.append("巨頭合作：" + "、".join(c["partners"]))
-    new = '<span class="b b-new">NEW</span>' if c.get("is_new") else ""
+    badges = ""
+    if c.get("is_new"):
+        badges += '<span class="b b-new">NEW</span>'
+    ed = c.get("earnings_days")
+    if ed is not None and 0 <= ed <= 14:
+        badges += f'<span class="b b-warn">財報 {ed} 天後</span>' if ed <= 7 else f'<span class="b b-na">財報 {ed} 天後</span>'
+    veto = c.get("veto_final")
     dv = c.get("dollar_vol") or 0
-    return (f'<div class="tcard entry"><div class="th"><span class="sym">{esc(c["symbol"])}</span><span class="nm">{esc(c.get("name", ""))}</span>'
-            f'{kind_badge(c.get("kind"))}{verdict_badge(c.get("verdict"))}{new}</div>'
-            f'<div class="stats"><div class="st"><div class="l">現價</div><div class="v big">${c["price"]:.2f}</div></div>'
+    score_html = ""
+    if total is not None:
+        col = _score_color(total)
+        score_html = (f'<div class="score" style="border-color:{col}"><div class="sv" style="color:{col}">{total:.0f}</div>'
+                      f'<div class="sl">{esc(c.get("score_label", ""))}</div></div>')
+    news = c.get("news") or {}
+    bullets = []
+    if veto:
+        bullets.append(f'<span class="veto">⛔ 紅線：{esc(veto)}</span>')
+    for k in ("基本面", "價格"):
+        bullets += [esc(x) for x in (c.get("why") or {}).get(k, [])[:2]]
+    bullets += [esc(x) for x in (c.get("why") or {}).get("預期資金", [])[:1]]
+    if news.get("summary"):
+        src = news.get("events") or []
+        link = next((e.get("source") for e in src if e.get("source")), None)
+        txt = esc(news["summary"]) + (f' <a href="{esc(link)}" target="_blank" style="color:#7ec0ff">出處</a>' if link else "")
+        bullets.append(f'📰 {txt}')
+    why_html = ('<ul class="whyl">' + "".join(f"<li>{b}</li>" for b in bullets) + "</ul>") if bullets else ""
+    plan_html = ""
+    if pl:
+        plan_html = (f'<div class="plan"><span>首批 NT${pl.get("首批NT$", 0):,} ≈ <b>{pl.get("首批股數", 0)}</b> 股</span>'
+                     f'<span>第 2 批 <b>${pl.get("第2批價", 0):g}</b></span><span>第 3 批 <b>${pl.get("第3批價", 0):g}</b></span>'
+                     f'<span style="border-color:rgba(255,112,67,.5)">止損 <b>${pl.get("止損價", 0):g}</b></span>'
+                     f'<span>日均成交 ${dv / 1e6:.0f}M</span></div>')
+    cls = "tcard entry" + (" veto" if veto else "")
+    return (f'<div class="{cls}"><div class="ch"><div class="th"><span class="sym">{esc(c["symbol"])}</span><span class="nm">{esc(c.get("name", ""))}</span>'
+            f'{kind_badge(c.get("kind"))}{verdict_badge(c.get("verdict"))}{badges}</div>{score_html}</div>'
+            + (pillar_bars(c["pillars"], not news) if c.get("pillars") else "")
+            + f'<div class="stats"><div class="st"><div class="l">現價</div><div class="v big">${c["price"]:.2f}</div></div>'
             f'<div class="st"><div class="l">距 26 週高點</div><div class="v">{signed(c["dd"], 0)}</div></div>'
             f'<div class="st"><div class="l">年化波動率</div><div class="v">{c["vol"]:.0%}</div></div>'
-            f'<div class="st"><div class="l">回檔÷波動率</div><div class="v">{(c.get("dd_vol") or 0):.1f}</div></div>'
             f'<div class="st sp">{sparkline(c.get("spark") or [])}</div></div>'
             + (f'<div class="facts">{"　·　".join(facts)}</div>' if facts else "")
-            + (f'<div class="plan"><span>首批 NT${pl.get("首批NT$", 0):,} ≈ <b>{pl.get("首批股數", 0)}</b> 股</span>'
-               f'<span>第 2 批 <b>${pl.get("第2批價", 0):g}</b></span><span>第 3 批 <b>${pl.get("第3批價", 0):g}</b></span>'
-               f'<span style="border-color:rgba(255,112,67,.5)">止損 <b>${pl.get("止損價", 0):g}</b></span>'
-               f'<span>日均成交 ${dv / 1e6:.0f}M</span></div>' if pl else "")
-            + (f'<div class="why">{esc(why)}</div>' if why else "") + '</div>')
+            + plan_html + why_html + '</div>')

@@ -14,13 +14,15 @@ from utils.styles import load_css
 load_css()
 
 import utils.fundamentals as _fund_mod
+import utils.scoring as _score_mod
 import utils.option_parse as _parse_mod
 import utils.trading_system as _ts_mod
 import utils.trading_ui as _ui_mod
 # Streamlit Cloud 部署新版後，行程裡的 utils 模組可能還是舊版快取，匯入新增的名稱會 ImportError；每次載入都重新載入
-for _m in (_fund_mod, _parse_mod, _ts_mod, _ui_mod):
+for _m in (_fund_mod, _score_mod, _parse_mod, _ts_mod, _ui_mod):
     importlib.reload(_m)
 from utils.fundamentals import FundRules, evaluate, fetch_quarterly, load_partnerships, load_profiles
+from utils.scoring import WEIGHTS, label as score_label, score_news, total_score
 from utils.option_parse import parse_option_text
 from utils.trading_system import OptionRules, Rules, backtest, check_option, entry_hint, read_positions, read_totals, summarize
 from utils.trading_ui import CSS, action_card, candidate_card, check_row, holding_card, kpi
@@ -29,6 +31,7 @@ st.markdown(CSS, unsafe_allow_html=True)
 ROOT = Path(__file__).resolve().parent.parent
 SIG_FILE = ROOT / "data" / "trading_signals.json"
 SCR_FILE = ROOT / "data" / "screener.json"
+NEWS_FILE = ROOT / "data" / "news_scores.json"
 rules, orules, frules = Rules(), OptionRules(), FundRules()
 USD_TWD = rules.usd_twd
 
@@ -41,6 +44,29 @@ def load_signals(mtime: float) -> dict:
 @st.cache_data(ttl=600)
 def load_screener(mtime: float) -> dict:
     return json.loads(SCR_FILE.read_text(encoding="utf-8"))
+
+
+@st.cache_data(ttl=600)
+def load_news(mtime: float) -> dict:
+    return json.loads(NEWS_FILE.read_text(encoding="utf-8"))
+
+
+def enrich(cands: list, news_all: dict) -> list:
+    """把消息面（雲端排程寫的 news_scores.json，14 天內有效）合併進每檔，算出總分並重新排序；紅線排最後。"""
+    out = []
+    for c in cands:
+        if "pillars" not in c:                       # 舊格式（還沒跑過評分的 screener.json）
+            out.append(c)
+            continue
+        n = (news_all.get("scores") or {}).get(c["symbol"])
+        if n and n.get("asof") and (date.today() - date.fromisoformat(n["asof"])).days > 14:
+            n = None
+        n_pct, _, n_veto = score_news(n)
+        pillars = {**c["pillars"], "消息": n_pct}
+        tot = total_score(pillars)
+        out.append({**c, "pillars": pillars, "total": tot, "score_label": score_label(tot), "news": n, "veto_final": c.get("veto") or n_veto})
+    out.sort(key=lambda c: (bool(c.get("veto_final")), -(c.get("total") or c.get("quant_score") or 0)))
+    return out
 
 
 @st.cache_data(ttl=3600)
@@ -72,6 +98,8 @@ by_sym = {s["symbol"]: s for s in stocks}
 held = [s for s in stocks if s.get("held")]
 actions = sig["actions"]
 scr = load_screener(SCR_FILE.stat().st_mtime) if SCR_FILE.exists() else None
+news_all = load_news(NEWS_FILE.stat().st_mtime) if NEWS_FILE.exists() else {}
+picks = enrich(scr["candidates"], news_all) if scr else []
 st.caption(f"價格資料日期 {sig['price_date']}（前一個美股收盤）　·　每天雲端快照後自動更新　·　最後計算 {sig['generated'][:16].replace('T', ' ')} UTC")
 
 n_stop = sum(1 for a in actions if a["kind"] == "stop")
@@ -106,9 +134,9 @@ with tab_today:
             st.subheader(title)
             grid([action_card(a, by_sym.get(a["symbol"], {}).get("verdict")) for a in items], 2)
     if scr and scr["candidates"]:
-        top = [x for x in scr["candidates"] if x["verdict"] == "通過" and x["kind"] == "成長型"][:4]
+        top = [x for x in picks if x["kind"] == "成長型" and not x.get("veto_final") and x["verdict"] != "排除"][:4]
         if top:
-            st.subheader("選股雷達：成長型前幾名（基本面通過）")
+            st.subheader("選股雷達：成長型前幾名（依總分）")
             grid([candidate_card(x) for x in top], 2)
             st.caption(f"全美股掃描 {scr['stats']['universe']:,} 檔 → 流動性通過 {scr['stats']['liquid']:,} 檔 → 進入進場區且還沒持有 {scr['stats']['in_zone']:,} 檔；完整名單在「🔭 選股」。")
     st.caption("規則：距 26 週高點回檔 ≥ 20% 進場 → 金字塔三批 → 首批價再跌 50% 全出 → 止損價再跌 30% 且基本面沒大變就開新一輪。"
@@ -142,22 +170,23 @@ with tab_pick:
                     f"距 26 週高點回檔 ≥ {flt['進場回檔']:.0%} 且**還沒持有**的 **{stt['in_zone']:,}** 檔。")
         st.caption(f"價格資料日期 {scr['price_date']}　·　基本面：通過 {v['通過']}、警示 {v['警示']}、排除 {v['排除']}、資料不足 {v['資料不足']}"
                    + (f"　·　已持有且在進場區 {stt['held_in_zone']} 檔（不列入）" if stt.get("held_in_zone") else ""))
-        mode = st.radio("顯示", ["成長型・基本面通過", "成熟型・基本面通過", "通過＋警示", "全部"], horizontal=True, label_visibility="collapsed", key="pick_mode")
-        pick = {"成長型・基本面通過": lambda x: x["kind"] == "成長型" and x["verdict"] == "通過",
-                "成熟型・基本面通過": lambda x: x["kind"] == "成熟型" and x["verdict"] == "通過",
-                "通過＋警示": lambda x: x["verdict"] in ("通過", "警示"), "全部": lambda x: True}[mode]
-        lst = [x for x in scr["candidates"] if pick(x)]
-        bk = stt.get("by_kind", {})
-        if bk:
-            st.caption("　".join(f"{k}：通過 {d['通過']}・警示 {d['警示']}・排除 {d['排除']}・資料不足 {d['資料不足']}" for k, d in bk.items() if k in ("成長型", "成熟型")))
+        mode = st.radio("顯示", ["成長型", "成熟型", "全部（含警示、紅線）"], horizontal=True, label_visibility="collapsed", key="pick_mode")
+        if mode == "全部（含警示、紅線）":
+            lst = picks
+        else:
+            lst = [x for x in picks if x["kind"] == mode and not x.get("veto_final") and x["verdict"] in ("通過", "警示")]
+        n_news = sum(1 for x in picks if x.get("news"))
+        gen = (news_all.get("generated") or "")[:10]
+        st.caption(f"總分 ＝ 基本面 {WEIGHTS['基本面']:.0%} ＋ 價格位置與止跌 {WEIGHTS['價格']:.0%} ＋ 預期與資金 {WEIGHTS['預期資金']:.0%} ＋ 消息 {WEIGHTS['消息']:.0%}"
+                   f"　·　消息面已評 {n_news} 檔" + (f"（更新 {gen}）" if gen else "（雲端排程尚未寫入新聞評分，先以中性分計算）"))
         if not lst:
             st.markdown('<div class="empty">目前沒有符合的候選。</div>', unsafe_allow_html=True)
         else:
-            st.markdown(f"**{len(lst)} 檔**（排序：基本面通過 > 警示，同級依「回檔 ÷ 波動率」越負越前面；NEW＝昨天還不在名單裡）")
-            grid([candidate_card(x) for x in lst[:20]], 2)
-            if len(lst) > 20:
-                with st.expander(f"更多候選（第 21–{len(lst)} 檔）"):
-                    grid([candidate_card(x) for x in lst[20:]], 2)
+            st.markdown(f"**{len(lst)} 檔**，依總分排序，先看前 10 名　（NEW＝昨天還不在名單裡；財報 N 天後只標示、不扣分）")
+            grid([candidate_card(x) for x in lst[:10]], 2)
+            if len(lst) > 10:
+                with st.expander(f"更多候選（第 11–{len(lst)} 檔）"):
+                    grid([candidate_card(x) for x in lst[10:]], 2)
         if stt.get("capped"):
             st.caption("進場區候選很多，成長型、成熟型各只保留排序最前面的 100 檔（大盤大跌時訊號會暴增，這是設計上的上限）。")
         st.caption("進場計畫照你的規則：第 1 批 NT\\$2 萬、第 2 批現價 −20%、第 3 批再 −20%、止損為首批價 −50%。"

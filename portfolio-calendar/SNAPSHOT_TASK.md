@@ -108,7 +108,7 @@ window.HOLDINGS = {
 
 ### 11. 只改這些檔案
 
-四個資料檔 `data.js`、`indices.js`、`holdings.js`、`positions_history.js`，加上新代號分類時的 `app.js`（**只能**在 `THEME_MAP` / `THEME_PARENT` 補條目，其他一行都不准動）。另外有新正股時可以新增 `data/company_profiles.json` 的條目（只新增，不改既有條目）。不要改 `index.html`、`style.css`、`pending_orders.js`，也不要改這份 SNAPSHOT_TASK.md。
+四個資料檔 `data.js`、`indices.js`、`holdings.js`、`positions_history.js`，加上新代號分類時的 `app.js`（**只能**在 `THEME_MAP` / `THEME_PARENT` 補條目，其他一行都不准動）。另外有新正股時可以新增 `data/company_profiles.json` 的條目（只新增，不改既有條目）。第 12b 步的新聞評分只寫 `data/news_scores.json`。不要改 `index.html`、`style.css`、`pending_orders.js`，也不要改這份 SNAPSHOT_TASK.md。
 
 ### 12. 推上 GitHub（直接推 main，不要開 PR、不要開新分支）
 
@@ -120,6 +120,26 @@ git push origin HEAD:main
 如果 git 還沒設定身分，用 `git -c user.name="jhihhong-1681" -c user.email="jhihhong0810@gmail.com" commit ...`。
 
 push 被拒（remote 有新 commit，例如 ETF 持股、法人資料、本機 Firstrade 排程的自動 commit）：`git fetch origin`，確認遠端新 commit 沒動到這四個檔案，就 `git pull --rebase origin main` 再 push，不要用 --force。rebase 真的衝突到這四個檔案就 `git rebase --abort`，放棄這次 push 並在結果摘要說明。驗證/權限類錯誤不要嘗試繞過，直接在結果摘要說明。
+
+### 12b. 選股雷達新聞評分（快照推上之後做；失敗或逾時不影響快照，跳過即可）
+
+背景：交易系統頁的「🔭 選股」每檔有 0–100 的總分（基本面 40％、價格位置與止跌 35％、預期與資金 5％、**消息 20％**）。前三項由 GitHub Actions 每天算好（`data/screener.json`），消息面要靠這一步：對量化分數前幾名搜尋近期新聞、評分，寫進 `data/news_scores.json`，頁面會自動合併。
+
+1. **等 GitHub 的選股掃描跑完**：第 12 步把快照推上去後，GitHub Actions 的「Daily Screener」會自動啟動（約 10–15 分鐘）。先記下推上去的時間 T0（UTC），之後每 60 秒 `git fetch origin main`，檢查 `origin/main:data/screener.json` 裡的 `generated`（UTC 時間字串）是否比 T0 晚；最多等 25 分鐘，晚了就用手上現有的 `data/screener.json`（上一次的結果）繼續。確認後 `git pull --rebase origin main`。
+2. **選出要評的標的**：從 `data/screener.json` 的 `candidates`（已依總分排序）取「`veto` 是 null 且 `verdict` 不是「排除」」的，**成長型前 14 檔 + 成熟型前 6 檔**，共 20 檔。
+3. **逐檔搜尋近兩週新聞**：用 WebSearch 查「{代號} {公司名} stock news」，必要時再查一次「{代號} earnings guidance contract」。只採用**日期在近 14 天內、有明確出處網址**的消息；查不到可靠消息就是 0 分，不要猜、不要用舊新聞湊。
+4. **評分（−10 ~ +10）與紅線**：
+   - +8 ~ +10：與大型企業或政府簽署重大合約／合作（有金額或量產訂單）、財報大幅超預期並上調指引、重大正面核准。
+   - +4 ~ +7：財報小幅超預期、較小的新合約、分析師大幅升評、內部人大額買進。
+   - +1 ~ +3：輕微利多。
+   - 0：近兩週無重大消息（summary 寫「近兩週無重大消息」）。
+   - −1 ~ −3：輕微利空（分析師降評、下修目標價）。
+   - −4 ~ −7：財報不如預期、下修指引、主要客戶流失、高層離職、產品延遲。
+   - −8 ~ −10：重大利空（造假、重大訴訟敗訴、核准被撤銷、重大召回）。
+   - **紅線（`veto` 寫一句原因，且 score ≤ −8）**：going concern 警語、公告大量稀釋性增資或可轉債（約占市值 10％ 以上）、SEC／司法部調查或被控詐欺、收到退市通知、聲請破產保護。
+5. **寫入 `data/news_scores.json`**（照該檔現有格式、保持合法 JSON）：`generated` 填現在的 UTC 時間（ISO 格式）；`scores` 裡每檔 `{"score": 數字, "label": "利多／中性／利空", "summary": 繁體中文一句話（60 字內）, "events": [最多 3 筆 {"type": "合約／合作／財報／指引／增資／訴訟／降評／其他", "date": "YYYY-MM-DD", "text": 一句話, "source": 出處網址}], "veto": null 或原因, "asof": 今天的台北日期}`。今天沒評到的標的，若舊條目的 `asof` 在 14 天內就保留，更舊的刪掉。寫完用 node 或 python 驗證是合法 JSON。
+6. **推上 GitHub**：`git add data/news_scores.json`，commit 訊息「選股新聞評分 <台北日期>」，`git push origin HEAD:main`（被拒的處理方式同第 12 步）。**只改這個檔案**，不要動其他檔案，也不要問問題。
+7. 任何一步失敗（等不到掃描結果以外的錯誤、搜尋全部失敗、push 失敗），就跳過這一步並在第 14 步摘要裡說明，**不要影響已經完成的快照**。
 
 ### 13. 讀不到資料就放棄
 
@@ -138,6 +158,8 @@ push 被拒（remote 有新 commit，例如 ETF 持股、法人資料、本機 F
 - (e) 有期權的 Sheet 現價欄空白、underlyingPrice 留 null（列出 symbol）
 - (f) positions + closedPositions 的 realized 加總跟 Sheet 已實現損益對不上（差額多少；截斷本身已經是常態，補回後對得上就不用通知）
 - (g) 第 2 步整個讀取失敗、這次沒有寫入
+
+- (h) 選股新聞評分：成功就一行帶過（「📰 新聞評分 N 檔：利多 a／利空 b」），有紅線的列出 symbol 與原因；失敗或跳過要說明原因。
 
 - 有新平倉或新開倉的部位，用一行帶過（例如「新平倉：MU、LPG；新部位：ET、SDGR 11/20 35C」）。
 - 最後一行附網站連結 https://jhihhong-stock-hunter-v2.streamlit.app/報酬日曆 。

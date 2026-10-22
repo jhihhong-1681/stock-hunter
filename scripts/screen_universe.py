@@ -19,14 +19,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from utils.fundamentals import FundRules, evaluate, fetch_quarterly, load_partnerships, load_profiles  # noqa: E402
+from utils.scoring import WEIGHTS, score_fundamental, score_flow, score_price  # noqa: E402
 from utils.trading_system import Rules, read_positions, scan_symbol  # noqa: E402
 
 OUT = ROOT / "data" / "screener.json"
 CACHE = ROOT / "data" / "fundamentals_cache.json"
+FLOW_CACHE = ROOT / "data" / "flow_cache.json"
+HISTORY = ROOT / "data" / "score_history.json"
 MIN_PRICE = 3.0              # 股價下限
 MIN_DOLLAR_VOL = 5e6         # 近 50 日平均成交額下限（US$）
 MIN_HISTORY = 250            # 至少一年日線（排除剛上市、財報不足的）
 FUND_TTL_DAYS = 7
+FLOW_TTL_DAYS = 3
+FLOW_TOP = 80                # 只對預評分前 80 名抓分析師／內部人／空單／財報日（每檔要多打幾次 Yahoo）
 MAX_FUND_FETCH = 1200        # 單日最多抓幾檔財報（大盤大跌時訊號暴增，按最超跌的優先）
 TOP_N = 100                  # 每個類型（成長型／成熟型）輸出最多幾檔候選
 LISTS = [("https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt", "Symbol"),
@@ -82,6 +87,26 @@ def download_chunk(tickers, tries=2):
     return None
 
 
+def _std(xs):
+    if len(xs) < 3:
+        return None
+    m = sum(xs) / len(xs)
+    return (sum((x - m) ** 2 for x in xs) / (len(xs) - 1)) ** 0.5
+
+
+def stab_metrics(vals):
+    """止跌跡象：近 10 日報酬、離近 20 日低點的反彈幅度、近 10 日 / 近 60 日波動比。"""
+    out = {"r10": None, "bounce20": None, "vol_ratio": None}
+    if len(vals) >= 61:
+        out["r10"] = vals[-1] / vals[-11] - 1
+        out["bounce20"] = vals[-1] / min(vals[-20:]) - 1
+        rets = [vals[i] / vals[i - 1] - 1 for i in range(len(vals) - 60, len(vals))]
+        v10, v60 = _std(rets[-10:]), _std(rets)
+        if v10 is not None and v60:
+            out["vol_ratio"] = v10 / v60
+    return out
+
+
 def scan_prices(universe: dict, rules: Rules, held: set):
     """回傳 (候選 dict 列表, 統計)。候選＝通過流動性門檻且進入進場區、尚未持有。"""
     syms = sorted(universe)
@@ -117,11 +142,84 @@ def scan_prices(universe: dict, rules: Rules, held: set):
                 stats["held_in_zone"] += 1
                 continue
             stats["in_zone"] += 1
-            cands.append({"symbol": sym, "name": universe.get(sym, sym), "price": last, "high_ref": sc["區間高點"], "dd": sc["距高點"],
+            vals = [float(x) for x in ser.values]
+            cands.append({"stab": stab_metrics(vals), "rev_ttm": None, "symbol": sym, "name": universe.get(sym, sym), "price": last, "high_ref": sc["區間高點"], "dd": sc["距高點"],
                           "vol": sc["年化波動率"], "dd_vol": sc["回檔/波動率"], "dollar_vol": dv,
                           "spark": [round(float(x), 2) for x in ser.iloc[-60:].values], "last_date": str(ser.index[-1].date())})
         print(f"  價格 {min(i + 150, len(syms))}/{len(syms)}，候選累計 {len(cands)}", flush=True)
     return cands, stats
+
+
+def fetch_flow(sym):
+    """分析師升降評（30 天）、內部人買賣（90 天）、空單比例、下次財報日。每項獨立 try，取不到就略過。"""
+    import yfinance as yf
+    import pandas as pd
+    t = yf.Ticker(sym)
+    out = {}
+    now = pd.Timestamp.now(tz="UTC").tz_localize(None)
+    try:
+        ud = t.upgrades_downgrades
+        if ud is not None and len(ud):
+            idx = pd.to_datetime(ud.index).tz_localize(None) if getattr(ud.index, "tz", None) is not None else pd.to_datetime(ud.index)
+            rec = ud[idx >= now - pd.Timedelta(days=30)]
+            act = rec["Action"].astype(str).str.lower() if "Action" in rec.columns else []
+            out["up30"] = int((act == "up").sum()) if len(rec) else 0
+            out["down30"] = int((act == "down").sum()) if len(rec) else 0
+    except Exception:
+        pass
+    try:
+        it = t.insider_transactions
+        if it is not None and len(it):
+            dcol = "Start Date" if "Start Date" in it.columns else it.columns[0]
+            d = pd.to_datetime(it[dcol], errors="coerce")
+            rec = it[d >= now - pd.Timedelta(days=90)]
+            txt = (rec["Transaction"] if "Transaction" in rec.columns else rec.get("Text", pd.Series([], dtype=str))).astype(str).str.lower()
+            out["insider_buy"] = int(txt.str.contains("purchase").sum())
+            out["insider_sell"] = int(txt.str.contains("sale").sum())
+    except Exception:
+        pass
+    try:
+        sp = (t.info or {}).get("shortPercentOfFloat")
+        if sp is not None:
+            out["short_pct"] = float(sp)
+    except Exception:
+        pass
+    try:
+        cal = t.calendar
+        ed = cal.get("Earnings Date") if isinstance(cal, dict) else None
+        if ed:
+            days = [(pd.Timestamp(x).tz_localize(None) - now).days for x in ed]
+            days = [x for x in days if x >= -1]
+            if days:
+                out["earnings_days"] = int(min(days))
+    except Exception:
+        pass
+    return out
+
+
+def get_flows(symbols, today):
+    cache = {}
+    if FLOW_CACHE.exists():
+        try:
+            cache = json.loads(FLOW_CACHE.read_text(encoding="utf-8"))
+        except ValueError:
+            cache = {}
+    need = [x for x in symbols if not (x in cache and (today - date.fromisoformat(cache[x]["asof"])).days <= FLOW_TTL_DAYS)]
+
+    def one(sym):
+        try:
+            d = fetch_flow(sym)
+        except Exception:
+            d = {}
+        time.sleep(0.3)
+        return sym, d
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
+        for sym, d in ex.map(one, need):
+            cache[sym] = {"asof": str(today), "data": d}
+    keep = {k: v for k, v in cache.items() if (today - date.fromisoformat(v["asof"])).days <= 14}
+    FLOW_CACHE.write_text(json.dumps(clean(keep), ensure_ascii=False), encoding="utf-8")
+    return {x: cache[x]["data"] for x in symbols if x in cache}
 
 
 def get_fundamentals(cands, today):
@@ -188,32 +286,67 @@ def main():
             m = dict(e["metrics"])
             if m.get("可撐月數") == float("inf"):
                 m["不燒錢"] = True
-            keep = {k: m.get(k) for k in ("營收年增率", "毛利率", "營業利益率", "可撐月數", "不燒錢", "年化股本稀釋")}
+            keep = {k: m.get(k) for k in ("營收年增率", "毛利率", "毛利率(一年前)", "營業利益率", "營業利益率(一年前)", "可撐月數", "不燒錢",
+                                           "年化股本稀釋", "近3季季增為正")}
+            rev = [x for x in (ent["data"].get("rev") or [])[-4:] if x is not None]
+            c["rev_ttm"] = sum(rev) if len(rev) == 4 else None
             c.update(verdict=e["verdict"], kind=e["kind"], track=e["track"], reasons=e["reasons"], notes=e["notes"], metrics=keep,
                      partners=[p.get("partner") for p in e["partners"] if p.get("strength", "高") in ("高", "中")], fund_asof=ent["asof"])
         else:
             c.update(verdict="資料不足", kind=prof.get("type", "-"), track="-", reasons=["Yahoo 沒有回財報"], notes=[], metrics={}, partners=[], fund_asof=None)
         counts[c["verdict"]] += 1
+        # 基本面、價格兩個面向（不需要額外網路）
+        a, aw = score_fundamental(c)
+        b, bw = score_price(c)
+        c["pillars"] = {"基本面": a, "價格": b}
+        c["why"] = {"基本面": aw, "價格": bw}
+        c["pre"] = WEIGHTS["基本面"] * a + WEIGHTS["價格"] * b + (WEIGHTS["預期資金"] + WEIGHTS["消息"]) * 50
+    # 預期與資金：只對預評分前 FLOW_TOP 名抓（分析師、內部人、空單、財報日）
+    top = sorted(cands, key=lambda c: -c["pre"])[:FLOW_TOP]
+    flows = get_flows([c["symbol"] for c in top], today)
+    for c in cands:
+        fl = flows.get(c["symbol"])
+        f_score, fw = score_flow(fl)
+        c["pillars"]["預期資金"] = f_score
+        c["why"]["預期資金"] = fw
+        c["earnings_days"] = (fl or {}).get("earnings_days")
+        c["veto"] = "基本面排除" if c["verdict"] == "排除" else None
+        # 量化分數：消息面先給中性 50，頁面再把雲端排程的新聞評分合併進去
+        c["quant_score"] = round(WEIGHTS["基本面"] * c["pillars"]["基本面"] + WEIGHTS["價格"] * c["pillars"]["價格"]
+                                 + WEIGHTS["預期資金"] * f_score + WEIGHTS["消息"] * 50, 1)
+        c.pop("pre", None)
         amt = rules.tranches_ntd[0]
         p1 = c["price"]
         c["plan"] = {"首批股數": int(amt / rules.usd_twd / p1), "首批NT$": amt, "第2批價": round(p1 * (1 - rules.add_step), 2),
                      "第3批價": round(p1 * (1 - rules.add_step) ** 2, 2), "止損價": round(p1 * (1 - rules.stop_from_first), 2)}
         c["is_new"] = c["symbol"] not in prev
-    cands.sort(key=lambda c: (order[c["verdict"]], c["dd_vol"] or 0))
+    cands.sort(key=lambda c: (c["veto"] is not None, -c["quant_score"]))
     by_kind = {}
     for c in cands:
         by_kind.setdefault(c["kind"], []).append(c)
-    kept = [c for lst in by_kind.values() for c in lst[:TOP_N]]
-    kept.sort(key=lambda c: (order[c["verdict"]], c["dd_vol"] or 0))
+    kept = [c for k, lst in by_kind.items() for c in lst[:(TOP_N if k in ("成長型", "成熟型") else 30)]]
+    kept.sort(key=lambda c: (c["veto"] is not None, -c["quant_score"]))
     kind_counts = {k: {v: sum(1 for c in lst if c["verdict"] == v) for v in order} for k, lst in by_kind.items()}
     out = {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "price_date": max((c["last_date"] for c in cands), default=None),
+           "weights": WEIGHTS,
            "filters": {"最低股價": MIN_PRICE, "最低日均成交額US$": MIN_DOLLAR_VOL, "最少日線數": MIN_HISTORY, "進場回檔": rules.entry_drop,
                        "參考高點交易日": rules.high_window},
            "stats": {**stats, "fund_fetched": n_fetch, "fund_failed": n_failed, "verdicts": counts, "by_kind": kind_counts,
                      "capped": len(kept) < len(cands)},
            "candidates": kept}
     OUT.write_text(json.dumps(clean(out), ensure_ascii=False, indent=1), encoding="utf-8")
-    print(f"完成：進場區候選 {len(cands)} 檔（輸出 {len(kept)}），基本面 {counts}，類型 {kind_counts}", flush=True)
+    # 逐日記錄前 30 名的量化分數與價格，之後用實際報酬檢驗分數有沒有用
+    hist = []
+    if HISTORY.exists():
+        try:
+            hist = json.loads(HISTORY.read_text(encoding="utf-8"))
+        except ValueError:
+            hist = []
+    hist = [h for h in hist if h.get("date") != out["price_date"]]
+    hist.append({"date": out["price_date"], "top": [{"symbol": c["symbol"], "kind": c["kind"], "price": round(c["price"], 2), "score": c["quant_score"]}
+                                                    for c in kept if c["veto"] is None][:30]})
+    HISTORY.write_text(json.dumps(clean(hist[-400:]), ensure_ascii=False), encoding="utf-8")
+    print(f"完成：進場區候選 {len(cands)} 檔（輸出 {len(kept)}），基本面 {counts}", flush=True)
 
 
 if __name__ == "__main__":
