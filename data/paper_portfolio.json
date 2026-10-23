@@ -3,183 +3,314 @@
  "start_date": "2026-10-21",
  "capital": 1000000,
  "fx": 31.0,
- "cash": 1000000,
- "positions": {},
+ "cash": 781064.550158503,
+ "positions": {
+  "KRMN": {
+   "kind": "成長型",
+   "tranches": [
+    {
+     "date": "2026-10-22",
+     "price": 35.777008163452145,
+     "shares": 28
+    }
+   ],
+   "shares": 28,
+   "cost_ntd": 31054.44308587646,
+   "last_px": 34.58000183105469,
+   "name": "Karman Holdings Inc.",
+   "score": 71.8,
+   "target": 151413,
+   "sector": "Industrials",
+   "opened": "2026-10-21",
+   "peak": 35.777008163452145
+  },
+  "ARVN": {
+   "kind": "成長型",
+   "tranches": [
+    {
+     "date": "2026-10-22",
+     "price": 7.552590210437774,
+     "shares": 117
+    }
+   ],
+   "shares": 117,
+   "cost_ntd": 27393.244693257806,
+   "last_px": 7.71999979019165,
+   "name": "Arvinas, Inc.",
+   "score": 67.9,
+   "target": 116264,
+   "sector": "Healthcare",
+   "opened": "2026-10-21",
+   "peak": 7.71999979019165
+  },
+  "LQDA": {
+   "kind": "成長型",
+   "tranches": [
+    {
+     "date": "2026-10-22",
+     "price": 38.866249999999994,
+     "shares": 19
+    }
+   ],
+   "shares": 19,
+   "cost_ntd": 22892.221249999995,
+   "last_px": 39.689998626708984,
+   "name": "Liquidia Corporation",
+   "score": 68.5,
+   "target": 121672,
+   "sector": "Healthcare",
+   "opened": "2026-10-21",
+   "peak": 39.689998626708984
+  },
+  "ADAM": {
+   "kind": "成長型",
+   "tranches": [
+    {
+     "date": "2026-10-22",
+     "price": 7.4522898278236385,
+     "shares": 86
+    }
+   ],
+   "shares": 86,
+   "cost_ntd": 19867.80468097782,
+   "last_px": 7.730000019073486,
+   "name": "Adamas Trust, Inc.",
+   "score": 68.0,
+   "target": 117165,
+   "sector": "Real Estate",
+   "opened": "2026-10-21",
+   "peak": 7.730000019073486
+  },
+  "EQX": {
+   "kind": "成長型",
+   "tranches": [
+    {
+     "date": "2026-10-22",
+     "price": 10.681949617385863,
+     "shares": 55
+    }
+   ],
+   "shares": 55,
+   "cost_ntd": 18212.724097642895,
+   "last_px": 10.359999656677246,
+   "name": "Equinox Gold Corp.",
+   "score": 60.3,
+   "target": 47767,
+   "sector": "Basic Materials",
+   "opened": "2026-10-21",
+   "peak": 10.681949617385863
+  },
+  "MRP": {
+   "kind": "成長型",
+   "tranches": [
+    {
+     "date": "2026-10-22",
+     "price": 23.058969770431517,
+     "shares": 25
+    }
+   ],
+   "shares": 25,
+   "cost_ntd": 17870.701572084425,
+   "last_px": 23.969999313354492,
+   "name": "Millrose Properties, Inc.",
+   "score": 65.1,
+   "target": 91028,
+   "sector": "Real Estate",
+   "opened": "2026-10-21",
+   "peak": 23.969999313354492
+  },
+  "AAUC": {
+   "kind": "成長型",
+   "tranches": [
+    {
+     "date": "2026-10-22",
+     "price": 20.150270153045653,
+     "shares": 25
+    }
+   ],
+   "shares": 25,
+   "cost_ntd": 15616.459368610382,
+   "last_px": 19.829999923706055,
+   "name": "Allied Gold Corporation",
+   "score": 61.3,
+   "target": 56780,
+   "sector": "Basic Materials",
+   "opened": "2026-10-21",
+   "peak": 20.150270153045653
+  },
+  "MNSO": {
+   "kind": "成熟型",
+   "tranches": [
+    {
+     "date": "2026-10-22",
+     "price": 9.829400191307068,
+     "shares": 83
+    }
+   ],
+   "shares": 83,
+   "cost_ntd": 25291.04669223308,
+   "last_px": 10.210000038146973,
+   "name": "MINISO Group Holding Limited",
+   "score": 71.9,
+   "target": 108889,
+   "sector": "Consumer Cyclical",
+   "opened": "2026-10-21",
+   "peak": 10.210000038146973
+  },
+  "CWEN": {
+   "kind": "成熟型",
+   "tranches": [
+    {
+     "date": "2026-10-22",
+     "price": 31.29360076522827,
+     "shares": 23
+    }
+   ],
+   "shares": 23,
+   "cost_ntd": 22312.337345607757,
+   "last_px": 31.43000030517578,
+   "name": "Clearway Energy, Inc.",
+   "score": 71.3,
+   "target": 105024,
+   "sector": "Utilities",
+   "opened": "2026-10-21",
+   "peak": 31.43000030517578
+  },
+  "GIS": {
+   "kind": "成熟型",
+   "tranches": [
+    {
+     "date": "2026-10-22",
+     "price": 33.01875816345215,
+     "shares": 18
+    }
+   ],
+   "shares": 18,
+   "cost_ntd": 18424.4670552063,
+   "last_px": 35.18000030517578,
+   "name": "General Mills, Inc.",
+   "score": 68.5,
+   "target": 86983,
+   "sector": "Consumer Defensive",
+   "opened": "2026-10-21",
+   "peak": 35.18000030517578
+  }
+ },
  "reentry": {},
  "cooldown": {},
- "pending": [
+ "pending": [],
+ "trades": [
   {
-   "sym": "KRMN",
-   "kind": "成長型",
-   "side": "buy",
-   "ntd": 31522.222222222223,
-   "frac": 1.0,
+   "date": "2026-10-22",
+   "symbol": "KRMN",
+   "side": "買",
+   "price": 35.777,
+   "shares": 28,
+   "ntd": 31054,
    "why": "依成長型排行補位：總分 73.4，目標總額 NT$141,850（占成長型預算 20%）",
-   "origin": "rebalance",
-   "created": "2026-10-21",
-   "meta": {
-    "name": "Karman Holdings Inc.",
-    "score": 73.4,
-    "target": 141850,
-    "sector": "Industrials",
-    "opened": "2026-10-21"
-   }
+   "signal": "2026-10-21",
+   "open": 35.67
   },
   {
-   "sym": "ARVN",
-   "kind": "成長型",
-   "side": "buy",
-   "ntd": 27582.0,
-   "frac": 1.0,
+   "date": "2026-10-22",
+   "symbol": "ARVN",
+   "side": "買",
+   "price": 7.5526,
+   "shares": 117,
+   "ntd": 27393,
    "why": "依成長型排行補位：總分 71.1，目標總額 NT$124,119（占成長型預算 18%）",
-   "origin": "rebalance",
-   "created": "2026-10-21",
-   "meta": {
-    "name": "Arvinas, Inc.",
-    "score": 71.1,
-    "target": 124119,
-    "sector": "Healthcare",
-    "opened": "2026-10-21"
-   }
+   "signal": "2026-10-21",
+   "open": 7.53
   },
   {
-   "sym": "LQDA",
-   "kind": "成長型",
-   "side": "buy",
-   "ntd": 23641.777777777777,
-   "frac": 1.0,
+   "date": "2026-10-22",
+   "symbol": "LQDA",
+   "side": "買",
+   "price": 38.8662,
+   "shares": 19,
+   "ntd": 22892,
    "why": "依成長型排行補位：總分 68.8，目標總額 NT$106,388（占成長型預算 15%）",
-   "origin": "rebalance",
-   "created": "2026-10-21",
-   "meta": {
-    "name": "Liquidia Corporation",
-    "score": 68.8,
-    "target": 106388,
-    "sector": "Healthcare",
-    "opened": "2026-10-21"
-   }
+   "signal": "2026-10-21",
+   "open": 38.75
   },
   {
-   "sym": "ADAM",
-   "kind": "成長型",
-   "side": "buy",
-   "ntd": 19872.666666666668,
-   "frac": 1.0,
+   "date": "2026-10-22",
+   "symbol": "ADAM",
+   "side": "買",
+   "price": 7.4523,
+   "shares": 86,
+   "ntd": 19868,
    "why": "依成長型排行補位：總分 66.6，目標總額 NT$89,427（占成長型預算 13%）",
-   "origin": "rebalance",
-   "created": "2026-10-21",
-   "meta": {
-    "name": "Adamas Trust, Inc.",
-    "score": 66.6,
-    "target": 89427,
-    "sector": "Real Estate",
-    "opened": "2026-10-21"
-   }
+   "signal": "2026-10-21",
+   "open": 7.43
   },
   {
-   "sym": "EQX",
-   "kind": "成長型",
-   "side": "buy",
-   "ntd": 18502.222222222223,
-   "frac": 1.0,
+   "date": "2026-10-22",
+   "symbol": "EQX",
+   "side": "買",
+   "price": 10.6819,
+   "shares": 55,
+   "ntd": 18213,
    "why": "依成長型排行補位：總分 65.8，目標總額 NT$83,260（占成長型預算 12%）",
-   "origin": "rebalance",
-   "created": "2026-10-21",
-   "meta": {
-    "name": "Equinox Gold Corp.",
-    "score": 65.8,
-    "target": 83260,
-    "sector": "Basic Materials",
-    "opened": "2026-10-21"
-   }
+   "signal": "2026-10-21",
+   "open": 10.65
   },
   {
-   "sym": "MRP",
-   "kind": "成長型",
-   "side": "buy",
-   "ntd": 18330.88888888889,
-   "frac": 1.0,
+   "date": "2026-10-22",
+   "symbol": "MRP",
+   "side": "買",
+   "price": 23.059,
+   "shares": 25,
+   "ntd": 17871,
    "why": "依成長型排行補位：總分 65.7，目標總額 NT$82,489（占成長型預算 12%）",
-   "origin": "rebalance",
-   "created": "2026-10-21",
-   "meta": {
-    "name": "Millrose Properties, Inc.",
-    "score": 65.7,
-    "target": 82489,
-    "sector": "Real Estate",
-    "opened": "2026-10-21"
-   }
+   "signal": "2026-10-21",
+   "open": 22.99
   },
   {
-   "sym": "AAUC",
-   "kind": "成長型",
-   "side": "buy",
-   "ntd": 16103.777777777777,
-   "frac": 1.0,
+   "date": "2026-10-22",
+   "symbol": "AAUC",
+   "side": "買",
+   "price": 20.1503,
+   "shares": 25,
+   "ntd": 15616,
    "why": "依成長型排行補位：總分 64.4，目標總額 NT$72,467（占成長型預算 10%）",
-   "origin": "rebalance",
-   "created": "2026-10-21",
-   "meta": {
-    "name": "Allied Gold Corporation",
-    "score": 64.4,
-    "target": 72467,
-    "sector": "Basic Materials",
-    "opened": "2026-10-21"
-   }
+   "signal": "2026-10-21",
+   "open": 20.09
   },
   {
-   "sym": "MNSO",
-   "kind": "成熟型",
-   "side": "buy",
-   "ntd": 25350.222222222223,
-   "frac": 1.0,
+   "date": "2026-10-22",
+   "symbol": "MNSO",
+   "side": "買",
+   "price": 9.8294,
+   "shares": 83,
+   "ntd": 25291,
    "why": "依成熟型排行補位：總分 73.1，目標總額 NT$114,076（占成熟型預算 38%）",
-   "origin": "rebalance",
-   "created": "2026-10-21",
-   "meta": {
-    "name": "MINISO Group Holding Limited",
-    "score": 73.1,
-    "target": 114076,
-    "sector": "Consumer Cyclical",
-    "opened": "2026-10-21"
-   }
+   "signal": "2026-10-21",
+   "open": 9.8
   },
   {
-   "sym": "CWEN",
-   "kind": "成熟型",
-   "side": "buy",
-   "ntd": 22408.88888888889,
-   "frac": 1.0,
+   "date": "2026-10-22",
+   "symbol": "CWEN",
+   "side": "買",
+   "price": 31.2936,
+   "shares": 23,
+   "ntd": 22312,
    "why": "依成熟型排行補位：總分 71.0，目標總額 NT$100,840（占成熟型預算 34%）",
-   "origin": "rebalance",
-   "created": "2026-10-21",
-   "meta": {
-    "name": "Clearway Energy, Inc.",
-    "score": 71.0,
-    "target": 100840,
-    "sector": "Utilities",
-    "opened": "2026-10-21"
-   }
+   "signal": "2026-10-21",
+   "open": 31.2
   },
   {
-   "sym": "GIS",
-   "kind": "成熟型",
-   "side": "buy",
-   "ntd": 18907.555555555555,
-   "frac": 1.0,
+   "date": "2026-10-22",
+   "symbol": "GIS",
+   "side": "買",
+   "price": 33.0188,
+   "shares": 18,
+   "ntd": 18424,
    "why": "依成熟型排行補位：總分 68.5，目標總額 NT$85,084（占成熟型預算 28%）",
-   "origin": "rebalance",
-   "created": "2026-10-21",
-   "meta": {
-    "name": "General Mills, Inc.",
-    "score": 68.5,
-    "target": 85084,
-    "sector": "Consumer Defensive",
-    "opened": "2026-10-21"
-   }
+   "signal": "2026-10-21",
+   "open": 32.92
   }
  ],
- "trades": [],
  "equity": [
   {
    "date": "2026-10-21",
@@ -192,12 +323,119 @@
    "spy_day_ret": 0.0,
    "unrealized": 0,
    "realized": 0
+  },
+  {
+   "date": "2026-10-22",
+   "equity": 1002985,
+   "cash": 781065,
+   "invested": 221921,
+   "day_pnl": 2985,
+   "day_ret": 0.00299,
+   "spy": 988190,
+   "spy_day_ret": -0.01181,
+   "unrealized": 2985,
+   "realized": 0
   }
  ],
  "daily": [
   {
    "date": "2026-10-21",
    "positions": []
+  },
+  {
+   "date": "2026-10-22",
+   "positions": [
+    {
+     "symbol": "KRMN",
+     "kind": "成長型",
+     "shares": 28,
+     "price": 34.58000183105469,
+     "value": 30015,
+     "ret": -0.0335,
+     "day_ret": null
+    },
+    {
+     "symbol": "ARVN",
+     "kind": "成長型",
+     "shares": 117,
+     "price": 7.71999979019165,
+     "value": 28000,
+     "ret": 0.0222,
+     "day_ret": null
+    },
+    {
+     "symbol": "LQDA",
+     "kind": "成長型",
+     "shares": 19,
+     "price": 39.689998626708984,
+     "value": 23377,
+     "ret": 0.0212,
+     "day_ret": null
+    },
+    {
+     "symbol": "ADAM",
+     "kind": "成長型",
+     "shares": 86,
+     "price": 7.730000019073486,
+     "value": 20608,
+     "ret": 0.0373,
+     "day_ret": null
+    },
+    {
+     "symbol": "EQX",
+     "kind": "成長型",
+     "shares": 55,
+     "price": 10.359999656677246,
+     "value": 17664,
+     "ret": -0.0301,
+     "day_ret": null
+    },
+    {
+     "symbol": "MRP",
+     "kind": "成長型",
+     "shares": 25,
+     "price": 23.969999313354492,
+     "value": 18577,
+     "ret": 0.0395,
+     "day_ret": null
+    },
+    {
+     "symbol": "AAUC",
+     "kind": "成長型",
+     "shares": 25,
+     "price": 19.829999923706055,
+     "value": 15368,
+     "ret": -0.0159,
+     "day_ret": null
+    },
+    {
+     "symbol": "MNSO",
+     "kind": "成熟型",
+     "shares": 83,
+     "price": 10.210000038146973,
+     "value": 26270,
+     "ret": 0.0387,
+     "day_ret": null
+    },
+    {
+     "symbol": "CWEN",
+     "kind": "成熟型",
+     "shares": 23,
+     "price": 31.43000030517578,
+     "value": 22410,
+     "ret": 0.0044,
+     "day_ret": null
+    },
+    {
+     "symbol": "GIS",
+     "kind": "成熟型",
+     "shares": 18,
+     "price": 35.18000030517578,
+     "value": 19630,
+     "ret": 0.0655,
+     "day_ret": null
+    }
+   ]
   }
  ],
  "journal": [
@@ -218,9 +456,25 @@
     "[調整] 預約 買進 CWEN（NT$22,409，隔日開盤）：依成熟型排行補位：總分 71.0，目標總額 NT$100,840（占成熟型預算 34%）",
     "[調整] 預約 買進 GIS（NT$18,908，隔日開盤）：依成熟型排行補位：總分 68.5，目標總額 NT$85,084（占成熟型預算 28%）"
    ]
+  },
+  {
+   "date": "2026-10-22",
+   "summary": "當日損益 NT$+2,985（+0.30%），SPY -1.18%；淨值 NT$1,002,985，持股 10 檔",
+   "actions": [
+    "成交 買進 KRMN @ $35.777（開盤 $35.67）：依成長型排行補位：總分 73.4，目標總額 NT$141,850（占成長型預算 20%）",
+    "成交 買進 ARVN @ $7.55259（開盤 $7.53）：依成長型排行補位：總分 71.1，目標總額 NT$124,119（占成長型預算 18%）",
+    "成交 買進 LQDA @ $38.8662（開盤 $38.75）：依成長型排行補位：總分 68.8，目標總額 NT$106,388（占成長型預算 15%）",
+    "成交 買進 ADAM @ $7.45229（開盤 $7.43）：依成長型排行補位：總分 66.6，目標總額 NT$89,427（占成長型預算 13%）",
+    "成交 買進 EQX @ $10.6819（開盤 $10.65）：依成長型排行補位：總分 65.8，目標總額 NT$83,260（占成長型預算 12%）",
+    "成交 買進 MRP @ $23.059（開盤 $22.99）：依成長型排行補位：總分 65.7，目標總額 NT$82,489（占成長型預算 12%）",
+    "成交 買進 AAUC @ $20.1503（開盤 $20.09）：依成長型排行補位：總分 64.4，目標總額 NT$72,467（占成長型預算 10%）",
+    "成交 買進 MNSO @ $9.8294（開盤 $9.8）：依成熟型排行補位：總分 73.1，目標總額 NT$114,076（占成熟型預算 38%）",
+    "成交 買進 CWEN @ $31.2936（開盤 $31.2）：依成熟型排行補位：總分 71.0，目標總額 NT$100,840（占成熟型預算 34%）",
+    "成交 買進 GIS @ $33.0188（開盤 $32.92）：依成熟型排行補位：總分 68.5，目標總額 NT$85,084（占成熟型預算 28%）"
+   ]
   }
  ],
  "spy_start": 773.0900268554688,
- "last_date": "2026-10-21",
- "generated": "2026-10-22T14:52:56+00:00"
+ "last_date": "2026-10-22",
+ "generated": "2026-10-23T05:47:09+00:00"
 }
