@@ -1,191 +1,330 @@
 {
  "_說明": "選股雷達的消息面評分（−10 ~ +10），由雲端每日排程（SNAPSHOT_TASK.md 的第 12b 步新聞評分）對量化分數前 20 名搜尋近期新聞後寫入。每筆附出處；沒評到的標的在頁面上顯示「消息面未評」，以中性分計算。veto 有值代表紅線（going concern、大量稀釋性增資、SEC 調查等），該檔會被排到最後。",
- "generated": "2026-10-22T08:56:24+00:00",
+ "generated": "2026-10-23T06:00:00+00:00",
  "scores": {
-  "MRP": {
-   "score": -5,
-   "label": "利空",
-   "summary": "10/2 Hunterbrook 報告指其向 Lennar 買屋出租虧損、股價大跌；10/9 已有證券集體訴訟提起（領導原告期限 12/8）。",
-   "events": [
-    {
-     "type": "訴訟",
-     "date": "2026-10-09",
-     "text": "Rubenstein v. Millrose 證券集體訴訟在佛州南區聯邦法院提起，涵蓋 2025/2/7 至 2026/10/2 買進者",
-     "source": "https://www.globenewswire.com/news-release/2026/10/16/3382224/32719/en/mrp-class-action-reminder-robbins-llp-reminds-investors-of-the-lead-plaintiff-deadline-in-the-millrose-properties-inc-securities-fraud-class-action-lawsuit.html"
-    },
-    {
-     "type": "其他",
-     "date": "2026-10-02",
-     "text": "Hunterbrook 報告指控約 2 億美元 Lennar 房屋以虧損出租，股價單日跌約 8.5%",
-     "source": "https://www.businesswire.com/news/home/20261015589457/en/Deadline-Soon-Millrose-Properties-Inc.-MRP-Shareholders-Who-Lost-Money-Urged-To-Contact-The-Law-Offices-of-Frank-R.-Cruz-About-Securities-Fraud-Lawsuit"
-    }
-   ],
-   "veto": null,
-   "asof": "2026-10-22"
-  },
-  "ARVN": {
-   "score": 3,
-   "label": "利多",
-   "summary": "10/7 公布 ARV-102 帕金森氏症 Phase 1 眼動與腦脊髓液生物標記有劑量相關改善，屬探索性（24 人），尚無療效結論。",
-   "events": [
-    {
-     "type": "臨床",
-     "date": "2026-10-07",
-     "text": "ARV-102 Phase 1 眼動劑量相關改善、腦脊髓液發炎與突觸標記變化，探索性、樣本小",
-     "source": "https://www.globenewswire.com/news-release/2026/10/07/3376329/0/en/arvinas-shares-novel-oculomotor-and-biomarker-data-from-phase-1-clinical-trial-of-arv-102-in-patients-with-parkinson-s-disease.html"
-    }
-   ],
-   "veto": null,
-   "asof": "2026-10-22"
-  },
-  "PTCT": {
-   "score": -1,
-   "label": "中性",
-   "summary": "無公司重大消息；RBC 下調目標價、Truist 恢復覆蓋給 Hold，UBS 上調至 90，董事小額減持；財報 10/29。",
-   "events": [
-    {
-     "type": "降評",
-     "date": "2026-10-16",
-     "text": "Truist 恢復覆蓋給 Hold、目標價 62 美元，擔憂 Sephience 長期成長",
-     "source": "https://www.gurufocus.com/news/9127503/truist-resumes-coverage-on-ptc-therapeutics-ptct-with-hold-citing-growth-concerns"
-    },
-    {
-     "type": "降評",
-     "date": "2026-10-08",
-     "text": "RBC 目標價自 85 降至 75 美元",
-     "source": "https://www.marketbeat.com/instant-alerts/analyst-ptc-therapeutics-nasdaq-ptct-now-covered-by-analysts-at-truist-financial-2026-10-16/"
-    }
-   ],
-   "veto": null,
-   "asof": "2026-10-22"
-  },
-  "ADAM": {
-   "score": 0,
-   "label": "中性",
-   "summary": "近兩週僅公告財報日（10/28 盤後），無重大消息。",
-   "events": [],
-   "veto": null,
-   "asof": "2026-10-22"
-  },
   "LQDA": {
    "score": 3,
    "label": "利多",
-   "summary": "10/13 與 United Therapeutics 全球和解、清除訴訟陰影；但淨付 3.807 億美元並放棄 PH-ILD 適應症；多家分析師上調目標價。",
+   "summary": "與United Therapeutics全球和解、Yutrepia續售PAH，多家券商調升目標價；另有律所投資人調查通告。",
    "events": [
     {
      "type": "訴訟",
      "date": "2026-10-13",
-     "text": "全球和解結案六案，淨付 3.807 億美元（分期至 2027），Yutrepia 續售 PAH 但撤除 PH-ILD 標示",
+     "text": "宣布與United Therapeutics全球和解，結束所有訴訟，Yutrepia可續售PAH，淨付3.807億美元分期",
      "source": "https://www.liquidia.com/news-releases/news-release-details/liquidia-announces-global-settlement-resolving-all-pending"
     },
     {
      "type": "其他",
-     "date": "2026-10-15",
-     "text": "HC Wainwright 目標價升至 65 美元維持 Buy；BofA 升至 42 美元",
-     "source": "https://www.marketbeat.com/instant-alerts/analyst-liquidia-nasdaq-lqda-price-target-raised-to-6500-2026-10-15/"
+     "date": "2026-10-14",
+     "text": "LifeSci升評至Outperform目標價59、HC Wainwright目標價升至65",
+     "source": "https://www.marketbeat.com/instant-alerts/analyst-liquidia-nasdaq-lqda-upgraded-to-outperform-at-lifesci-capital-2026-10-14/"
+    },
+    {
+     "type": "訴訟",
+     "date": "2026-10-21",
+     "text": "Kirby McInerney發布代表投資人調查通告（非正式訴訟）",
+     "source": "https://stockhouse.com/news/press-releases/2026/10/21/liquidia-corporation-investigation-continues-investors-may-contact-kirby"
     }
    ],
    "veto": null,
-   "asof": "2026-10-22"
+   "asof": "2026-10-23"
   },
   "STAA": {
-   "score": -3,
+   "score": -2,
    "label": "利空",
-   "summary": "律師事務所重發「調查董事違反受託義務」通告（非 SEC 調查）；Zacks 升等僅小幅抵銷，財報日 11/4。",
+   "summary": "律所Levi & Korsinsky宣布調查高層可能違反受託義務；無重大公司消息。",
    "events": [
     {
      "type": "訴訟",
      "date": "2026-10-21",
-     "text": "Levi & Korsinsky 宣布調查 STAAR 部分董事與高層可能違反受託義務（9/23 已發過同款通告，此為重發）",
+     "text": "Levi & Korsinsky宣布調查STAAR高管董事可能違反受託義務（非正式訴訟）",
      "source": "https://www.prnewswire.com/news-releases/shareholder-alert-levi--korsinsky-llp-notifies-shareholders-of-an-investigation-concerning-possible-breaches-of-fiduciary-duties-by-certain-officers-and-directors-of-staar-surgical-company-nasdaq-staa-302915856.html"
-    },
-    {
-     "type": "其他",
-     "date": "2026-10-19",
-     "text": "Zacks Research 將評級由 Hold 升至 Strong-Buy（量化評級）",
-     "source": "https://www.marketbeat.com/instant-alerts/analyst-zacks-research-upgrades-staar-surgical-nasdaq-staa-to-strong-buy-2026-10-21/"
     }
    ],
    "veto": null,
-   "asof": "2026-10-22"
-  },
-  "KRMN": {
-   "score": 8,
-   "label": "利多",
-   "summary": "10/20 公布與洛克希德馬丁簽 7 年期 2.18 億美元 THAAD 護罩長約；Barclays、Macquarie 新開評等皆正面。",
-   "events": [
-    {
-     "type": "合約",
-     "date": "2026-10-20",
-     "text": "Karman 與 Lockheed Martin 簽 7 年期、價值 2.18 億美元的 THAAD 護罩製造長約",
-     "source": "https://stockhouse.com/news/press-releases/2026/10/20/karman-space-defense-awarded-218-million-long-term-agreement-to-support-thaad"
-    },
-    {
-     "type": "其他",
-     "date": "2026-10-15",
-     "text": "Macquarie 首次評等 Outperform，目標價 65 美元",
-     "source": "https://www.marketbeat.com/instant-alerts/price-karman-nyse-krmn-shares-up-83-time-to-buy-2026-10-15/"
-    },
-    {
-     "type": "其他",
-     "date": "2026-10-09",
-     "text": "Barclays 首次評等 Overweight，目標價 79 美元",
-     "source": "https://www.marketbeat.com/instant-alerts/analyst-karman-nyse-krmn-upgraded-at-barclays-2026-10-10/"
-    }
-   ],
-   "veto": null,
-   "asof": "2026-10-22"
+   "asof": "2026-10-23"
   },
   "SQM": {
    "score": 0,
    "label": "中性",
-   "summary": "10/8 之後無公司重大消息；僅量化評級降評，Q3 財報 11/17。",
+   "summary": "近兩週無重大消息",
+   "events": [],
+   "veto": null,
+   "asof": "2026-10-23"
+  },
+  "MGTX": {
+   "score": 0,
+   "label": "中性",
+   "summary": "近兩週無重大消息",
+   "events": [],
+   "veto": null,
+   "asof": "2026-10-23"
+  },
+  "HE": {
+   "score": 0,
+   "label": "中性",
+   "summary": "近兩週無重大消息",
+   "events": [],
+   "veto": null,
+   "asof": "2026-10-23"
+  },
+  "MRP": {
+   "score": -5,
+   "label": "利空",
+   "summary": "10/9 起多家律所公告南佛州聯邦法院證券集體訴訟，指控隱瞞向 Lennar 購屋出租，12/8 為首席原告期限",
+   "events": [
+    {
+     "type": "訴訟",
+     "date": "2026-10-09",
+     "text": "Rubenstein v. Millrose 證券集體訴訟於 S.D. Fla. 提起，涵蓋 2025/2/7 至 2026/10/2 買進者",
+     "source": "https://globenewswire.com/news-release/2026/10/22/3385993/10782/en/gainey-mckenna-egleston-announces-a-class-action-lawsuit-has-been-filed-against-millrose-properties-inc-mrp.html"
+    }
+   ],
+   "veto": null,
+   "asof": "2026-10-23"
+  },
+  "ADAM": {
+   "score": 0,
+   "label": "中性",
+   "summary": "近兩週無重大消息",
+   "events": [],
+   "veto": null,
+   "asof": "2026-10-23"
+  },
+  "ARVN": {
+   "score": 0,
+   "label": "中性",
+   "summary": "近兩週無重大消息",
+   "events": [],
+   "veto": null,
+   "asof": "2026-10-23"
+  },
+  "PTCT": {
+   "score": -2,
+   "label": "利空",
+   "summary": "Truist 10/16 重啟評等僅給持有、目標價 62 美元，Raymond James 小幅下調目標價，股價創 52 週新低",
    "events": [
     {
      "type": "降評",
-     "date": "2026-10-17",
-     "text": "Wall Street Zen 將評級由 Strong Buy 降至 Buy（量化評級，影響輕微）",
-     "source": "https://www.marketbeat.com/instant-alerts/consensus-sociedad-quimica-y-minera-sa-sqm-what-are-investment-firms-thinking-about-this-stock-2026-10-11/"
-    }
-   ],
-   "veto": null,
-   "asof": "2026-10-22"
-  },
-  "MGTX": {
-   "score": -1,
-   "label": "中性",
-   "summary": "近兩週僅 CFO 依 10b5-1 計畫減持 5.6 萬股（約 55.7 萬美元），無臨床或公司公告。",
-   "events": [
+     "date": "2026-10-16",
+     "text": "Truist 重啟涵蓋給予 Hold、目標價 62 美元",
+     "source": "https://www.marketbeat.com/instant-alerts/analyst-ptc-therapeutics-nasdaq-ptct-now-covered-by-analysts-at-truist-financial-2026-10-16/"
+    },
     {
-     "type": "其他",
+     "type": "降評",
      "date": "2026-10-20",
-     "text": "CFO/COO Richard Giroux 依 10b5-1 計畫以均價 9.95 美元賣出 56,000 股",
-     "source": "https://www.marketbeat.com/instant-alerts/insider-meiragtx-nasdaq-mgtx-stock-insider-richard-giroux-sells-56000-shares-2026-10-20/"
+     "text": "Raymond James 目標價由 108 降至 106 美元",
+     "source": "https://www.cnn.com/markets/stocks/PTCT"
     }
    ],
    "veto": null,
-   "asof": "2026-10-22"
+   "asof": "2026-10-23"
   },
-  "HE": {
-   "score": 1,
-   "label": "中性",
-   "summary": "10/8 申請核准毛伊島 20MW 太陽能加 80MWh 儲能購電案，另擴大無人機野火巡檢；無重大財務消息。",
+  "KRMN": {
+   "score": 6,
+   "label": "利多",
+   "summary": "10/20 取得 Lockheed 2.18 億美元 THAAD 七年長約，Oppenheimer、Barclays 新納入並給買進評等",
    "events": [
     {
      "type": "合約",
-     "date": "2026-10-08",
-     "text": "Hawaiian Electric 向主管機關申請核准購買毛伊島 20MW 太陽能與 80MWh 儲能專案電力",
-     "source": "https://www.hawaiianelectric.com/about-us/newsroom"
+     "date": "2026-10-20",
+     "text": "與 Lockheed Martin 簽七年期 2.18 億美元 THAAD 整流罩供貨協議",
+     "source": "https://finance.yahoo.com/technology/articles/karman-space-defense-awarded-218-115100634.html"
     },
     {
      "type": "其他",
-     "date": "2026-10-20",
-     "text": "擴大夏威夷島無人機巡檢野火風險區",
-     "source": "https://howzitkohala.com/2026/10/20/hawaiian-electric-expands-hawaii-island-drone-inspections-for-wildfire-safety"
+     "date": "2026-10-22",
+     "text": "Oppenheimer 啟動涵蓋給予 Outperform、目標價 40 美元",
+     "source": "https://rallies.ai/news/karman-holdings-initiates-coverage-with-outperform-rating-price-target-40"
     }
    ],
    "veto": null,
-   "asof": "2026-10-22"
+   "asof": "2026-10-23"
+  },
+  "AD": {
+   "score": -4,
+   "label": "利空",
+   "summary": "律所宣布代表股東調查（非 SEC 調查），股價創 52 週新低；其他無重大消息",
+   "events": [
+    {
+     "type": "訴訟",
+     "date": "2026-10-09",
+     "text": "Kaskela 律所宣布代表股東調查（律所通告）",
+     "source": "https://www.prnewswire.com/news-releases/ad-investor-notice-kaskela-law-firm-announces-shareholder-investigation-into-array-digital-infrastructure-ad-and-encourages-investors-with-losses-to-contact-the-firm-302902866.html"
+    },
+    {
+     "type": "其他",
+     "date": "2026-10-19",
+     "text": "股價跌至 32.68 美元創 52 週新低",
+     "source": "https://www.investing.com/news/company-news/array-digital-infrastructure-stock-hits-52week-low-at-3268-usd-93CH-4958187"
+    }
+   ],
+   "veto": null,
+   "asof": "2026-10-23"
+  },
+  "RUN": {
+   "score": -2,
+   "label": "利空",
+   "summary": "多家券商下修目標價（MS、JPM 等）、股價創新低；創紀錄電網調度小幅正面",
+   "events": [
+    {
+     "type": "降評",
+     "date": "2026-10-14",
+     "text": "Morgan Stanley 目標價 15 降至 10，JPMorgan 14 降至 12，均維持評級",
+     "source": "https://www.gurufocus.com/news/9123556/run-maintained-by-morgan-stanley-price-target-lowered-to-1000"
+    },
+    {
+     "type": "其他",
+     "date": "2026-10-14",
+     "text": "Sunrun 與 Tesla 家用電池創 745MW 加州電網調度紀錄",
+     "source": "https://www.globenewswire.com/news-release/2026/10/14/3380666/0/en/sunrun-leads-record-grid-dispatch-delivering-enough-energy-to-power-every-home-in-san-francisco-and-san-jose.html"
+    }
+   ],
+   "veto": null,
+   "asof": "2026-10-23"
+  },
+  "LEGN": {
+   "score": 1,
+   "label": "中性",
+   "summary": "LB2501 體內 CAR-T 獲 FDA IND 許可小幅利多，但多家券商微降目標價",
+   "events": [
+    {
+     "type": "其他",
+     "date": "2026-10-15",
+     "text": "FDA 許可 LB2501 IND，將啟動美國 1/2 期試驗",
+     "source": "https://www.globenewswire.com/news-release/2026/10/15/3381567/0/en/legend-biotech-announces-u-s-fda-clearance-of-ind-application-for-lb2501-an-investigational-cd19-cd20-in-vivo-car-t-therapy.html"
+    },
+    {
+     "type": "降評",
+     "date": "2026-10-13",
+     "text": "Barclays 目標價 74 降至 68 維持 Overweight",
+     "source": "https://www.gurufocus.com/news/9121348/legn-maintained-by-barclays-price-target-lowered-to-6800"
+    }
+   ],
+   "veto": null,
+   "asof": "2026-10-23"
+  },
+  "ALNY": {
+   "score": -1,
+   "label": "中性",
+   "summary": "Citi、Wells Fargo 小幅下調目標價但維持評級；10/29 公布財報",
+   "events": [
+    {
+     "type": "降評",
+     "date": "2026-10-14",
+     "text": "Citigroup 目標價 340 降至 320 維持 Buy",
+     "source": "https://www.gurufocus.com/news/9123852/alny-maintained-by-citigroup-price-target-lowered-to-320"
+    }
+   ],
+   "veto": null,
+   "asof": "2026-10-23"
+  },
+  "GOLF": {
+   "score": -1,
+   "label": "中性",
+   "summary": "Stephens 與 Argus 下調目標價，無其他重大消息",
+   "events": [
+    {
+     "type": "降評",
+     "date": "2026-10-14",
+     "text": "Stephens 目標價 88 降至 81 維持 Equal-Weight",
+     "source": "https://www.gurufocus.com/news/9123667/golf-maintained-by-stephens-co-price-target-lowered-to-8100"
+    }
+   ],
+   "veto": null,
+   "asof": "2026-10-23"
+  },
+  "EPRT": {
+   "score": 1,
+   "label": "中性",
+   "summary": "Q3 財報上調 2026 AFFO 指引下緣、首度給 2027 指引略低於預期，多家分析師降目標價",
+   "events": [
+    {
+     "type": "指引",
+     "date": "2026-10-21",
+     "text": "Q3 營收 1.687 億美元，2026 AFFO 指引下緣上調至 2.02-2.05，2027 指引 2.10-2.18",
+     "source": "https://www.financialcontent.com/article/bizwire-2026-10-21-essential-properties-announces-third-quarter-2026-results"
+    },
+    {
+     "type": "降評",
+     "date": "2026-10-20",
+     "text": "Stifel 維持買進，目標價 36 降至 32.5",
+     "source": "https://www.gurufocus.com/news/9136723/eprt-maintains-buy-rating-price-target-lowered-to-3250-by-stifel"
+    }
+   ],
+   "veto": null,
+   "asof": "2026-10-23"
+  },
+  "ROL": {
+   "score": -4,
+   "label": "利空",
+   "summary": "Q3 調整後 EPS 略低於預期、營業利益下滑、毛利率受壓，多家分析師大幅下調目標價",
+   "events": [
+    {
+     "type": "財報",
+     "date": "2026-10-21",
+     "text": "Q3 營收年增 6.2%、有機成長 4.4%，營業利益年減 1.0%，全年有機成長指引 4-6%",
+     "source": "https://www.rollins.com/investors/press-releases/detail/444/rollins-inc-reports-third-quarter-2026-financial-results"
+    },
+    {
+     "type": "降評",
+     "date": "2026-10-19",
+     "text": "Canaccord 目標價 45 降至 36；Bernstein、JPMorgan、Citi 亦下調",
+     "source": "https://www.gurufocus.com/news/9129685/rol-maintained-by-canaccord-genuity-price-target-lowered-to-36"
+    }
+   ],
+   "veto": null,
+   "asof": "2026-10-23"
+  },
+  "CWEN": {
+   "score": 3,
+   "label": "利多",
+   "summary": "與 PacifiCorp 再簽 210MW 猶他州儲能合約，Zacks 升評，但 Morgan Stanley 下調目標價",
+   "events": [
+    {
+     "type": "合約",
+     "date": "2026-10-09",
+     "text": "與 PacifiCorp 簽署猶他州額外 210MW 電池儲能合約",
+     "source": "https://www.clearwayenergygroup.com/press-releases/"
+    },
+    {
+     "type": "降評",
+     "date": "2026-10-21",
+     "text": "Morgan Stanley 目標價 58 降至 52；Zacks 升至強力買進",
+     "source": "https://www.marketbeat.com/instant-alerts/analyst-clearway-energy-nyse-cwen-upgraded-at-zacks-research-2026-10-21/"
+    }
+   ],
+   "veto": null,
+   "asof": "2026-10-23"
+  },
+  "DMC": {
+   "score": 0,
+   "label": "中性",
+   "summary": "近兩週無重大消息",
+   "events": [],
+   "veto": null,
+   "asof": "2026-10-23"
+  },
+  "ABG": {
+   "score": -2,
+   "label": "利空",
+   "summary": "Zacks 降至強力賣出、出售馬里蘭 Kia 門市；板塊性下跌，Q3 財報 10/27 公布",
+   "events": [
+    {
+     "type": "降評",
+     "date": "2026-10-16",
+     "text": "Zacks Research 由持有降為強力賣出",
+     "source": "https://www.marketbeat.com/instant-alerts/price-asbury-automotive-group-nyse-abg-sets-new-52-week-low-after-analyst-downgrade-2026-10-06/"
+    },
+    {
+     "type": "其他",
+     "date": "2026-10-19",
+     "text": "Asbury 將馬里蘭 Kia 門市出售給 Stivers Automotive Group",
+     "source": "https://news.dealershipguy.com/p/asbury-automotive-group-divests-kia-dealership-to-stivers-automotive-group"
+    }
+   ],
+   "veto": null,
+   "asof": "2026-10-23"
   },
   "DKS": {
    "score": -5,
@@ -265,27 +404,6 @@
    "veto": null,
    "asof": "2026-10-22"
   },
-  "ROL": {
-   "score": -5,
-   "label": "利空",
-   "summary": "10/21 Q3 營收不如預期、營業利益率年減約 140bp，股價盤後跌約 7%；多家分析師下修目標價。",
-   "events": [
-    {
-     "type": "財報",
-     "date": "2026-10-21",
-     "text": "Q3 營收成長 6.2%、營業利益率 20.5%（年減 140bp），營收低於預期；同時宣布季股息升 9.6%",
-     "source": "https://www.prnewswire.com/news-releases/rollins-inc-reports-third-quarter-2026-financial-results-302915958.html"
-    },
-    {
-     "type": "降評",
-     "date": "2026-10-19",
-     "text": "Canaccord 目標價由 45 降至 36（持有）；Bernstein 降至 35；JPM 10/13 降至 35",
-     "source": "https://www.defenseworld.net/2026/10/20/rollins-nyserol-given-new-36-00-price-target-at-canaccord-genuity-group.html"
-    }
-   ],
-   "veto": null,
-   "asof": "2026-10-22"
-  },
   "MNSO": {
    "score": 4,
    "label": "利多",
@@ -302,42 +420,6 @@
      "date": "2026-10-14",
      "text": "6-K 揭露 10/8 於 NYSE 回購 26,240 ADS，10/19 港股續回購",
      "source": "https://www.tipranks.com/news/company-announcements/miniso-group-reports-october-share-buybacks-under-cross-border-capital-management-program"
-    }
-   ],
-   "veto": null,
-   "asof": "2026-10-22"
-  },
-  "CWEN": {
-   "score": 3,
-   "label": "利多",
-   "summary": "10/9 與 PacifiCorp 再簽 210MW 猶他儲能合約（專案約 4 億美元）；但摩根士丹利、瑞銀下修目標價。",
-   "events": [
-    {
-     "type": "合約",
-     "date": "2026-10-09",
-     "text": "與 PacifiCorp 簽署 Honeycomb 額外 210MW 電池儲能長期合約，專案約 4 億美元，預計 2027 商轉",
-     "source": "https://energydigital.com/news/clearway-and-pacificorp-add-210mw-of-battery-storage-in-utah"
-    },
-    {
-     "type": "降評",
-     "date": "2026-10-21",
-     "text": "Morgan Stanley 維持加碼但目標價由 58 降至 52；UBS 目標價 45 降至 38；Zacks 升至強力買進",
-     "source": "https://www.marketbeat.com/instant-alerts/analyst-clearway-energy-nyse-cwen-price-target-cut-to-5200-by-analysts-at-morgan-stanley-2026-10-21/"
-    }
-   ],
-   "veto": null,
-   "asof": "2026-10-22"
-  },
-  "GOLF": {
-   "score": -1,
-   "label": "中性",
-   "summary": "僅 Stephens 目標價由 88 降至 81；董事關聯方依既有協議回售約 5,250 萬美元股票給公司；Q3 財報 11/4。",
-   "events": [
-    {
-     "type": "降評",
-     "date": "2026-10-14",
-     "text": "Stephens 維持 Equal-Weight，目標價由 88 下調至 81",
-     "source": "https://www.gurufocus.com/news/9123667/golf-maintained-by-stephens-co-price-target-lowered-to-8100"
     }
    ],
    "veto": null,
