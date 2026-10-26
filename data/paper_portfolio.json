@@ -19,7 +19,7 @@
    "last_px": 36.650001525878906,
    "name": "Karman Holdings Inc.",
    "score": 69.0,
-   "target": 132015,
+   "target": 132004,
    "sector": "Industrials",
    "opened": "2026-10-21",
    "peak": 36.650001525878906
@@ -38,7 +38,7 @@
    "last_px": 7.300000190734863,
    "name": "Arvinas, Inc.",
    "score": 65.8,
-   "target": 101840,
+   "target": 101831,
    "sector": "Healthcare",
    "opened": "2026-10-21",
    "peak": 7.71999979019165
@@ -57,7 +57,7 @@
    "last_px": 42.650001525878906,
    "name": "Liquidia Corporation",
    "score": 71.5,
-   "target": 155589,
+   "target": 155576,
    "sector": "Healthcare",
    "opened": "2026-10-21",
    "peak": 42.650001525878906
@@ -76,7 +76,7 @@
    "last_px": 7.809999942779541,
    "name": "Adamas Trust, Inc.",
    "score": 68.0,
-   "target": 122585,
+   "target": 122575,
    "sector": "Real Estate",
    "opened": "2026-10-21",
    "peak": 7.809999942779541
@@ -95,7 +95,7 @@
    "last_px": 10.109999656677246,
    "name": "Equinox Gold Corp.",
    "score": 58.7,
-   "target": 47148,
+   "target": 47144,
    "sector": "Basic Materials",
    "opened": "2026-10-21",
    "peak": 10.681949617385863
@@ -111,10 +111,10 @@
    ],
    "shares": 25,
    "cost_ntd": 17870.701572084425,
-   "last_px": 23.969999313354492,
+   "last_px": 23.860000610351562,
    "name": "Millrose Properties, Inc.",
    "score": 65.2,
-   "target": 96182,
+   "target": 96174,
    "sector": "Real Estate",
    "opened": "2026-10-21",
    "peak": 23.969999313354492
@@ -133,7 +133,7 @@
    "last_px": 19.700000762939453,
    "name": "Allied Gold Corporation",
    "score": 59.7,
-   "target": 47148,
+   "target": 47144,
    "sector": "Basic Materials",
    "opened": "2026-10-21",
    "peak": 20.150270153045653
@@ -152,7 +152,7 @@
    "last_px": 10.039999961853027,
    "name": "MINISO Group Holding Limited",
    "score": 72.3,
-   "target": 112254,
+   "target": 112245,
    "sector": "Consumer Cyclical",
    "opened": "2026-10-21",
    "peak": 10.210000038146973
@@ -171,7 +171,7 @@
    "last_px": 31.110000610351562,
    "name": "Clearway Energy, Inc.",
    "score": 70.6,
-   "target": 101223,
+   "target": 101215,
    "sector": "Utilities",
    "opened": "2026-10-21",
    "peak": 31.43000030517578
@@ -190,7 +190,7 @@
    "last_px": 34.38999938964844,
    "name": "General Mills, Inc.",
    "score": 68.5,
-   "target": 87597,
+   "target": 87590,
    "sector": "Consumer Defensive",
    "opened": "2026-10-21",
    "peak": 35.18000030517578
@@ -338,14 +338,14 @@
   },
   {
    "date": "2026-10-23",
-   "equity": 1003582,
+   "equity": 1003497,
    "cash": 781065,
-   "invested": 222517,
-   "day_pnl": 597,
-   "day_ret": 0.0006,
+   "invested": 222432,
+   "day_pnl": 512,
+   "day_ret": 0.00051,
    "spy": 983029,
    "spy_day_ret": -0.00522,
-   "unrealized": 3582,
+   "unrealized": 3497,
    "realized": 0
   }
  ],
@@ -501,10 +501,10 @@
      "symbol": "MRP",
      "kind": "成長型",
      "shares": 25,
-     "price": 23.969999313354492,
-     "value": 18577,
-     "ret": 0.0395,
-     "day_ret": 0.0
+     "price": 23.860000610351562,
+     "value": 18492,
+     "ret": 0.0347,
+     "day_ret": -0.0046
     },
     {
      "symbol": "AAUC",
@@ -582,7 +582,7 @@
   },
   {
    "date": "2026-10-23",
-   "summary": "當日損益 NT$+597（+0.06%），SPY -0.52%；淨值 NT$1,003,582，持股 10 檔",
+   "summary": "當日損益 NT$+512（+0.05%），SPY -0.52%；淨值 NT$1,003,497，持股 10 檔",
    "actions": [
     "今天沒有調整"
    ]
@@ -590,5 +590,5 @@
  ],
  "spy_start": 773.0900268554688,
  "last_date": "2026-10-23",
- "generated": "2026-10-26T05:44:05+00:00"
+ "generated": "2026-10-26T14:17:52+00:00"
 }
