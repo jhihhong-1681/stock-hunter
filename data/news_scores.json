@@ -1,6 +1,6 @@
 {
   "_說明": "選股雷達的消息面評分（−10 ~ +10），由雲端每日排程（SNAPSHOT_TASK.md 的第 12b 步新聞評分）對量化分數前 20 名搜尋近期新聞後寫入。每筆附出處；沒評到的標的在頁面上顯示「消息面未評」，以中性分計算。veto 有值代表紅線（going concern、大量稀釋性增資、SEC 調查等），該檔會被排到最後。",
-  "generated": "2026-10-26T05:43:44+00:00",
+  "generated": "2026-10-27T05:40:25+00:00",
   "scores": {
     "STAA": {
       "score": 0,
@@ -716,6 +716,90 @@
       ],
       "veto": null,
       "asof": "2026-10-22"
+    },
+    "KLIC": {
+      "score": -1,
+      "label": "利空",
+      "summary": "B. Riley 下修目標價至86美元（原105）；獲SEMI北美獎屬小利多，整體小幅偏空。",
+      "events": [
+        {
+          "type": "降評",
+          "date": "2026-10-20",
+          "text": "B. Riley 將目標價由105降至86美元，維持中立",
+          "source": "https://www.marketbeat.com/instant-alerts/analyst-b-riley-financial-issues-pessimistic-forecast-for-kulicke-and-soffa-industries-nasdaq-klic-stock-price-2026-10-20/"
+        },
+        {
+          "type": "其他",
+          "date": "2026-10-13",
+          "text": "無助熱壓合技術獲SEMI北美獎",
+          "source": "https://finance.yahoo.com/technology/articles/kulicke-soffa-receives-semi-award-170000950.html"
+        }
+      ],
+      "veto": null,
+      "asof": "2026-10-27"
+    },
+    "ALM": {
+      "score": -3,
+      "label": "利空",
+      "summary": "Stifel、Oppenheimer接連下修目標價（出貨延遲、同業估值下降），投資人日後股價走弱。",
+      "events": [
+        {
+          "type": "降評",
+          "date": "2026-10-20",
+          "text": "Stifel 目標價由25降至21美元，維持買進，與出貨延遲有關",
+          "source": "https://ad-hoc-news.de/boerse/news/corporate-news/almonty-industries-aktie-stifel-senkte-kursziel-auf-21-00-usd/70416278"
+        },
+        {
+          "type": "降評",
+          "date": "2026-10-15",
+          "text": "Oppenheimer 目標價由25降至19美元，維持Outperform",
+          "source": "https://www.investing.com/news/analyst-ratings/oppenheimer-reiterates-almonty-industries-stock-rating-at-outperform-93CH-4959274"
+        }
+      ],
+      "veto": null,
+      "asof": "2026-10-27"
+    },
+    "ARWR": {
+      "score": 5,
+      "label": "利多",
+      "summary": "ARO-MAPT 期中數據顯示腦脊髓液tau降73%，驗證血腦屏障遞送平台；UBS首次給買進。",
+      "events": [
+        {
+          "type": "其他",
+          "date": "2026-10-14",
+          "text": "ARO-MAPT 期中數據：CSF總tau平均降低最高73%",
+          "source": "https://ir.arrowheadpharma.com/news-releases/news-release-details/arrowhead-pharmaceuticals-announces-aro-mapt-interim-phase-12a"
+        },
+        {
+          "type": "其他",
+          "date": "2026-10-15",
+          "text": "UBS 首次評等買進，目標價109美元",
+          "source": "https://www.marketbeat.com/instant-alerts/consensus-arrowhead-pharmaceuticals-inc-nasdaq-arwr-stock-has-average-price-target-of-9907-2026-10-23/"
+        }
+      ],
+      "veto": null,
+      "asof": "2026-10-27"
+    },
+    "NXST": {
+      "score": 1,
+      "label": "中性",
+      "summary": "與DAZN簽Pacers賽事轉播、TEGNA續約ABC聯盟；Guggenheim重申買進，整體無重大消息。",
+      "events": [
+        {
+          "type": "合作",
+          "date": "2026-10-15",
+          "text": "與DAZN合作轉播15場印第安納溜馬賽事",
+          "source": "https://simplywall.st/stocks/us/media/nasdaq-nxst/nexstar-media-group/news/nexstar-media-group-nxst-could-be-33-below-fair-value-on-daz/amp"
+        },
+        {
+          "type": "其他",
+          "date": "2026-10-22",
+          "text": "Guggenheim 重申買進、目標價270美元",
+          "source": "https://www.ad-hoc-news.de/boerse/news/corporate-news/guggenheim-reiterates-usd-270-00-target-for-nexstar-media-group-stock/70405968"
+        }
+      ],
+      "veto": null,
+      "asof": "2026-10-27"
     }
   }
 }
