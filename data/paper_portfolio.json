@@ -16,13 +16,13 @@
    ],
    "shares": 28,
    "cost_ntd": 31054.44308587646,
-   "last_px": 36.650001525878906,
+   "last_px": 36.970001220703125,
    "name": "Karman Holdings Inc.",
-   "score": 69.0,
-   "target": 132004,
+   "score": 68.6,
+   "target": 126453,
    "sector": "Industrials",
    "opened": "2026-10-21",
-   "peak": 36.650001525878906
+   "peak": 36.970001220703125
   },
   "ARVN": {
    "kind": "成長型",
@@ -35,10 +35,10 @@
    ],
    "shares": 117,
    "cost_ntd": 27393.244693257806,
-   "last_px": 7.300000190734863,
+   "last_px": 7.309999942779541,
    "name": "Arvinas, Inc.",
-   "score": 65.8,
-   "target": 101831,
+   "score": 66.5,
+   "target": 106927,
    "sector": "Healthcare",
    "opened": "2026-10-21",
    "peak": 7.71999979019165
@@ -54,13 +54,13 @@
    ],
    "shares": 19,
    "cost_ntd": 22892.221249999995,
-   "last_px": 42.650001525878906,
+   "last_px": 43.7400016784668,
    "name": "Liquidia Corporation",
-   "score": 71.5,
-   "target": 155576,
+   "score": 71.3,
+   "target": 151557,
    "sector": "Healthcare",
    "opened": "2026-10-21",
-   "peak": 42.650001525878906
+   "peak": 43.7400016784668
   },
   "ADAM": {
    "kind": "成長型",
@@ -73,10 +73,10 @@
    ],
    "shares": 86,
    "cost_ntd": 19867.80468097782,
-   "last_px": 7.809999942779541,
+   "last_px": 7.800000190734863,
    "name": "Adamas Trust, Inc.",
    "score": 68.0,
-   "target": 122575,
+   "target": 120874,
    "sector": "Real Estate",
    "opened": "2026-10-21",
    "peak": 7.809999942779541
@@ -92,10 +92,10 @@
    ],
    "shares": 55,
    "cost_ntd": 18212.724097642895,
-   "last_px": 10.109999656677246,
+   "last_px": 10.050000190734863,
    "name": "Equinox Gold Corp.",
-   "score": 58.7,
-   "target": 47144,
+   "score": 59.0,
+   "target": 46490,
    "sector": "Basic Materials",
    "opened": "2026-10-21",
    "peak": 10.681949617385863
@@ -111,10 +111,10 @@
    ],
    "shares": 25,
    "cost_ntd": 17870.701572084425,
-   "last_px": 23.860000610351562,
+   "last_px": 23.90999984741211,
    "name": "Millrose Properties, Inc.",
-   "score": 65.2,
-   "target": 96174,
+   "score": 65.1,
+   "target": 93910,
    "sector": "Real Estate",
    "opened": "2026-10-21",
    "peak": 23.969999313354492
@@ -130,10 +130,10 @@
    ],
    "shares": 25,
    "cost_ntd": 15616.459368610382,
-   "last_px": 19.700000762939453,
+   "last_px": 19.889999389648438,
    "name": "Allied Gold Corporation",
-   "score": 59.7,
-   "target": 47144,
+   "score": 61.1,
+   "target": 56718,
    "sector": "Basic Materials",
    "opened": "2026-10-21",
    "peak": 20.150270153045653
@@ -149,10 +149,10 @@
    ],
    "shares": 83,
    "cost_ntd": 25291.04669223308,
-   "last_px": 10.039999961853027,
+   "last_px": 9.979999542236328,
    "name": "MINISO Group Holding Limited",
-   "score": 72.3,
-   "target": 112245,
+   "score": 71.6,
+   "target": 109189,
    "sector": "Consumer Cyclical",
    "opened": "2026-10-21",
    "peak": 10.210000038146973
@@ -168,10 +168,10 @@
    ],
    "shares": 23,
    "cost_ntd": 22312.337345607757,
-   "last_px": 31.110000610351562,
+   "last_px": 31.40999984741211,
    "name": "Clearway Energy, Inc.",
-   "score": 70.6,
-   "target": 101215,
+   "score": 70.7,
+   "target": 103269,
    "sector": "Utilities",
    "opened": "2026-10-21",
    "peak": 31.43000030517578
@@ -187,10 +187,10 @@
    ],
    "shares": 18,
    "cost_ntd": 18424.4670552063,
-   "last_px": 34.38999938964844,
+   "last_px": 33.70000076293945,
    "name": "General Mills, Inc.",
    "score": 68.5,
-   "target": 87590,
+   "target": 88798,
    "sector": "Consumer Defensive",
    "opened": "2026-10-21",
    "peak": 35.18000030517578
@@ -346,6 +346,18 @@
    "spy": 983029,
    "spy_day_ret": -0.00522,
    "unrealized": 3497,
+   "realized": 0
+  },
+  {
+   "date": "2026-10-26",
+   "equity": 1004184,
+   "cash": 781065,
+   "invested": 223120,
+   "day_pnl": 687,
+   "day_ret": 0.00068,
+   "spy": 990014,
+   "spy_day_ret": 0.00711,
+   "unrealized": 4184,
    "realized": 0
   }
  ],
@@ -543,6 +555,101 @@
      "day_ret": -0.0225
     }
    ]
+  },
+  {
+   "date": "2026-10-26",
+   "positions": [
+    {
+     "symbol": "KRMN",
+     "kind": "成長型",
+     "shares": 28,
+     "price": 36.970001220703125,
+     "value": 32090,
+     "ret": 0.0333,
+     "day_ret": 0.0087
+    },
+    {
+     "symbol": "ARVN",
+     "kind": "成長型",
+     "shares": 117,
+     "price": 7.309999942779541,
+     "value": 26513,
+     "ret": -0.0321,
+     "day_ret": 0.0014
+    },
+    {
+     "symbol": "LQDA",
+     "kind": "成長型",
+     "shares": 19,
+     "price": 43.7400016784668,
+     "value": 25763,
+     "ret": 0.1254,
+     "day_ret": 0.0256
+    },
+    {
+     "symbol": "ADAM",
+     "kind": "成長型",
+     "shares": 86,
+     "price": 7.800000190734863,
+     "value": 20795,
+     "ret": 0.0467,
+     "day_ret": -0.0013
+    },
+    {
+     "symbol": "EQX",
+     "kind": "成長型",
+     "shares": 55,
+     "price": 10.050000190734863,
+     "value": 17135,
+     "ret": -0.0592,
+     "day_ret": -0.0059
+    },
+    {
+     "symbol": "MRP",
+     "kind": "成長型",
+     "shares": 25,
+     "price": 23.90999984741211,
+     "value": 18530,
+     "ret": 0.0369,
+     "day_ret": 0.0021
+    },
+    {
+     "symbol": "AAUC",
+     "kind": "成長型",
+     "shares": 25,
+     "price": 19.889999389648438,
+     "value": 15415,
+     "ret": -0.0129,
+     "day_ret": 0.0096
+    },
+    {
+     "symbol": "MNSO",
+     "kind": "成熟型",
+     "shares": 83,
+     "price": 9.979999542236328,
+     "value": 25679,
+     "ret": 0.0153,
+     "day_ret": -0.006
+    },
+    {
+     "symbol": "CWEN",
+     "kind": "成熟型",
+     "shares": 23,
+     "price": 31.40999984741211,
+     "value": 22395,
+     "ret": 0.0037,
+     "day_ret": 0.0096
+    },
+    {
+     "symbol": "GIS",
+     "kind": "成熟型",
+     "shares": 18,
+     "price": 33.70000076293945,
+     "value": 18805,
+     "ret": 0.0206,
+     "day_ret": -0.0201
+    }
+   ]
   }
  ],
  "journal": [
@@ -586,9 +693,16 @@
    "actions": [
     "今天沒有調整"
    ]
+  },
+  {
+   "date": "2026-10-26",
+   "summary": "當日損益 NT$+687（+0.07%），SPY +0.71%；淨值 NT$1,004,184，持股 10 檔",
+   "actions": [
+    "今天沒有調整"
+   ]
   }
  ],
  "spy_start": 773.0900268554688,
- "last_date": "2026-10-23",
- "generated": "2026-10-26T14:17:52+00:00"
+ "last_date": "2026-10-26",
+ "generated": "2026-10-27T05:40:47+00:00"
 }
