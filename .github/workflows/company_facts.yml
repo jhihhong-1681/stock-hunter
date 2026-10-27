@@ -1,0 +1,44 @@
+name: Company Facts
+
+on:
+  push:
+    paths:
+      - 'scripts/fetch_company_facts.py'
+  schedule:
+    # 每週六台北 10:00（UTC 02:00）
+    - cron: '0 2 * * 6'
+  workflow_dispatch:
+
+concurrency:
+  group: company-facts
+  cancel-in-progress: true
+
+jobs:
+  facts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install yfinance pandas numpy requests
+
+      - name: Fetch company facts
+        run: python scripts/fetch_company_facts.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/company_facts.json
+          git diff --staged --quiet || git commit -m "chore: company facts $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do git pull --rebase origin main && git push && break || sleep 5; done
