@@ -503,5 +503,9 @@ window.TRADES = [
   { date: "2026-10-19", time: "12:40:51", side: "Sell Close", symbol: "CLF", type: "option", description: "CLF 11/20/2026 10.00 Call", qty: 1, price: 4.2 },
   { date: "2026-10-20", time: "14:00:26", side: "Sell Close", symbol: "AEO", type: "option", description: "AEO 11/20/2026 15.00 Call", qty: 1, price: 3.1 },
   { date: "2026-10-21", time: "12:00:40", side: "Buy Open", symbol: "FLEX", type: "option", description: "FLEX 11/20/2026 100.00 Call", qty: 1, price: 3.6 },
-  { date: "2026-10-21", time: "12:07:38", side: "買進", symbol: "SOXL", type: "stock", description: null, qty: 8, price: 103 }
+  { date: "2026-10-21", time: "12:07:38", side: "買進", symbol: "SOXL", type: "stock", description: null, qty: 8, price: 103 },
+  { date: "2026-10-26", time: "10:24:08", side: "Buy Open", symbol: "XOM", type: "option", description: "XOM 12/18/2026 170.00 Call", qty: 1, price: 16 },
+  { date: "2026-10-26", time: "11:16:39", side: "Buy Open", symbol: "TSLA", type: "option", description: "TSLA 10/26/2026 392.50 Put", qty: 2, price: 0.7 },
+  { date: "2026-10-26", time: "13:14:47", side: "Sell Close", symbol: "HPQ", type: "option", description: "HPQ 12/18/2026 30.00 Call", qty: 1, price: 5 },
+  { date: "2026-10-26", time: "14:07:11", side: "Sell Close", symbol: "TSLA", type: "option", description: "TSLA 10/26/2026 392.50 Put", qty: 2, price: 0.24 }
 ];
