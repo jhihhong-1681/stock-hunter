@@ -23,7 +23,7 @@ import requests
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "data" / "company_facts.json"
-UA = {"User-Agent": "stock-hunter personal research github.com/jhihhong-1681/stock-hunter", "Accept-Encoding": "gzip, deflate"}
+UA = {"User-Agent": "stock-hunter research 267276527+jhihhong-1681@users.noreply.github.com", "Accept-Encoding": "gzip, deflate"}
 
 REVENUE_TAGS = [
     "RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues", "SalesRevenueNet",
@@ -44,10 +44,11 @@ def get_json(url, tries=3):
             r = requests.get(url, headers=UA, timeout=30)
             if r.status_code == 200:
                 return r.json()
+            print(f"  GET {url[-60:]} -> HTTP {r.status_code}", flush=True)
             if r.status_code in (403, 404):
                 return None
-        except requests.RequestException:
-            pass
+        except requests.RequestException as e:
+            print(f"  GET {url[-60:]} -> {type(e).__name__}", flush=True)
         time.sleep(1.5 * (i + 1))
     return None
 
