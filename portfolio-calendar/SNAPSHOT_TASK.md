@@ -127,7 +127,8 @@ push 被拒（remote 有新 commit，例如 ETF 持股、法人資料、本機 F
 
 1. **等 GitHub 的選股掃描跑完**：第 12 步把快照推上去後，GitHub Actions 的「Daily Screener」會自動啟動（約 10–15 分鐘）。先記下推上去的時間 T0（UTC），之後每 60 秒 `git fetch origin main`，檢查 `origin/main:data/screener.json` 裡的 `generated`（UTC 時間字串）是否比 T0 晚；最多等 25 分鐘，晚了就用手上現有的 `data/screener.json`（上一次的結果）繼續。確認後 `git pull --rebase origin main`。
 2. **選出要評的標的**：從 `data/screener.json` 的 `candidates`（已依總分排序）取「`veto` 是 null 且 `verdict` 不是「排除」」的，**成長型前 14 檔 + 成熟型前 6 檔**，共 20 檔。
-3. **逐檔搜尋近兩週新聞**：WebSearch 一律用 `mode: "extended"`，**每檔至少用 3 種不同查詢**：「{公司名} {代號} news October 2026」（月份用當月）、「{公司名} announces」或「{公司名} press release {當月} 2026」、「{代號} analyst price target upgrade downgrade {當月} 2026」；必要時再查「{公司名} 8-K」或「{公司名} investigation lawsuit」。只查一次「stock news」或用標準模式常只找到沒日期的報價頁、漏掉近期消息（實測用上面的查法找得到）。公司 IR 新聞稿、GlobeNewswire／Business Wire／PR Newswire、SEC 8-K、主流財經媒體都可採用。只採用**日期在近 14 天內、有明確出處網址**的消息；查不到可靠消息就是 0 分，不要猜、不要用舊新聞湊。「只是宣布財報日期」不算消息（0 分，財報日頁面已另外標示）。
+2b. **確認這 20 檔都已登記公司類型**：對照 `data/company_profiles.json`，沒登記的先用 WebSearch（`mode: "extended"`）查市值、近四季營收與成長來源、產業地位／市占，**特別判斷年增率是不是一次性（授權金、里程碑款、和解、併購、口徑變動）灌高的**，再照第 2 步「公司類型登記」的格式只新增條目、不改既有條目，理由要寫明成長是否為持續性的本業成長。查不到的數字寫「未確認」。
+3. **逐檔搜尋近兩週新聞**：WebSearch 一律用 `mode: "extended"`，**每檔至少用 3 種不同查詢**：「{公司名} {代號} news October 2026」（月份用當月）、「{公司名} announces」或「{公司名} press release {當月} 2026」、「{代號} analyst price target upgrade downgrade {當月} 2026」；必要時再查「{公司名} 8-K」或「{公司名} investigation lawsuit」。另外每檔加查一次「{公司名} guidance raises OR lowers outlook {當月} 2026」，管理層**上調／下修財測或指引**是最直接的訊號（上調記 +4 ~ +7、下修記 −4 ~ −7，已含在下面評分表的「指引」項目內）。只查一次「stock news」或用標準模式常只找到沒日期的報價頁、漏掉近期消息（實測用上面的查法找得到）。公司 IR 新聞稿、GlobeNewswire／Business Wire／PR Newswire、SEC 8-K、主流財經媒體都可採用。只採用**日期在近 14 天內、有明確出處網址**的消息；查不到可靠消息就是 0 分，不要猜、不要用舊新聞湊。「只是宣布財報日期」不算消息（0 分，財報日頁面已另外標示）。
 4. **評分（−10 ~ +10）與紅線**：
    - +8 ~ +10：與大型企業或政府簽署重大合約／合作（有金額或量產訂單）、財報大幅超預期並上調指引、重大正面核准。
    - +4 ~ +7：財報小幅超預期、較小的新合約、分析師大幅升評、內部人大額買進。

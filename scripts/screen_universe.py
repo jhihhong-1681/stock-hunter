@@ -36,7 +36,7 @@ MIN_HISTORY = 250            # 至少一年日線（排除剛上市、財報不�
 FUND_TTL_DAYS = 7
 PROFILE_TTL_DAYS = 30        # 市值、產業變動慢，一個月抓一次
 FLOW_TTL_DAYS = 3
-FLOW_TOP = 80                # 只對預評分前 80 名抓分析師／內部人／空單／財報日（每檔要多打幾次 Yahoo）
+FLOW_TOP = 150               # 只對預評分前 150 名抓分析師／內部人／空單／財報日（每檔要多打幾次 Yahoo）
 MAX_FUND_FETCH = 1200        # 單日最多抓幾檔財報（大盤大跌時訊號暴增，按最超跌的優先）
 TOP_N = 100                  # 每個類型（成長型／成熟型）輸出最多幾檔候選
 LISTS = [("https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt", "Symbol"),
@@ -254,6 +254,38 @@ def fetch_flow(sym):
             out["sector"] = info["sector"]
     except Exception:
         pass
+    try:                                    # 盈餘預估修正：今年 EPS 預估「現在」相對 30 天前（管理層指引／分析師修正的代理）
+        et = t.eps_trend
+        if et is not None and len(et):
+            row = et.loc["0y"] if "0y" in et.index else et.iloc[min(2, len(et) - 1)]
+            cur, old = row.get("current"), row.get("30daysAgo")
+            if cur is not None and old is not None and cur == cur and old == old and abs(old) > 1e-9:
+                out["eps_rev30"] = float((cur - old) / abs(old))
+    except Exception:
+        pass
+    try:                                    # 明年營收預估成長率
+        re_ = t.revenue_estimate
+        if re_ is not None and "+1y" in re_.index and re_.loc["+1y"].get("growth") == re_.loc["+1y"].get("growth"):
+            out["fwd_rev_growth"] = float(re_.loc["+1y"]["growth"])
+    except Exception:
+        pass
+    try:                                    # 分析師目標價相對現價
+        pt = t.analyst_price_targets
+        if pt and pt.get("mean") and pt.get("current"):
+            out["target_upside"] = float(pt["mean"] / pt["current"] - 1)
+    except Exception:
+        pass
+    try:                                    # 近四次財報的 EPS 驚喜（%）
+        ed_ = t.earnings_dates
+        if ed_ is not None and "Surprise(%)" in ed_.columns:
+            idx = pd.to_datetime(ed_.index).tz_localize(None) if getattr(ed_.index, "tz", None) is not None else pd.to_datetime(ed_.index)
+            sur = ed_["Surprise(%)"][(idx <= now)].dropna().head(4)
+            if len(sur):
+                out["eps_surprise_avg"] = float(sur.mean())
+                out["eps_beats"] = int((sur > 0).sum())
+                out["eps_n"] = int(len(sur))
+    except Exception:
+        pass
     try:
         cal = t.calendar
         ed = cal.get("Earnings Date") if isinstance(cal, dict) else None
@@ -302,7 +334,7 @@ def get_fundamentals(cands, today):
     need = []
     for c in cands:
         e = cache.get(c["symbol"])
-        if not (e and e.get("data") and (today - date.fromisoformat(e["asof"])).days <= FUND_TTL_DAYS):
+        if not (e and e.get("data") and e["data"].get("v") == 2 and (today - date.fromisoformat(e["asof"])).days <= FUND_TTL_DAYS):
             need.append(c["symbol"])
     need = need[:MAX_FUND_FETCH]
 

@@ -4,7 +4,7 @@
 - 基本面品質：成長（年增率、加速）、獲利（毛利率/營業利益率的水準與趨勢）、體質（現金可撐、稀釋）；
   判定「警示」封頂 65 分、「排除」封頂 25 分。
 - 價格位置與止跌：回檔 ÷ 波動率（超跌程度），加上止跌跡象（離近期低點反彈、近 10 日不再跳水、波動收斂）。
-- 預期與資金：分析師升降評、內部人買賣、空單比例（Yahoo，客觀資料；取不到就中性 50）。
+- 預期與資金：分析師升降評、內部人買賣、空單比例、EPS 預估修正、近四次財報驚喜、目標價空間（Yahoo，客觀資料；取不到就中性 50）。
 - 消息催化：雲端排程每日對前 20 名做新聞評分（data/news_scores.json，−10 ~ +10 → 0–100）；沒評到就中性 50 並標「未評」。
 紅線（一票否決、排到最後）：基本面「排除」、新聞掃描發現 going concern／大量稀釋性增資／SEC 調查等（news 的 veto）。
 財報日只標示，不扣分。
@@ -120,7 +120,7 @@ def score_price(c: dict) -> tuple[float, list[str]]:
 
 # ── 預期與資金 ────────────────────────────────────────────
 def score_flow(flow: dict | None) -> tuple[float, list[str]]:
-    """flow：{up30, down30, insider_buy, insider_sell, short_pct}；沒有資料就中性 50。"""
+    """flow：{up30, down30, insider_buy, insider_sell, short_pct, eps_rev30, eps_beats/eps_n, target_upside}；沒有資料就中性 50。"""
     if not flow:
         return 50.0, []
     s, why = 50.0, []
@@ -135,6 +135,26 @@ def score_flow(flow: dict | None) -> tuple[float, list[str]]:
     elif isell >= 3:
         s -= 10
         why.append(f"內部人近 90 天賣出 {isell} 筆")
+    er = flow.get("eps_rev30")
+    if er is not None and abs(er) >= 0.02:
+        s += max(-15, min(15, er * 100))          # 預估上修 5% ≈ +5 分，上下限 ±15
+        why.append(f"今年 EPS 預估近 30 天{'上修' if er > 0 else '下修'} {abs(er):.0%}")
+    n_eps, beats = flow.get("eps_n") or 0, flow.get("eps_beats") or 0
+    if n_eps >= 3:
+        if beats == n_eps:
+            s += 8
+            why.append(f"近 {n_eps} 次財報 EPS 全部超預期")
+        elif beats <= n_eps // 4:
+            s -= 8
+            why.append(f"近 {n_eps} 次財報只有 {beats} 次超預期")
+    tu = flow.get("target_upside")
+    if tu is not None:
+        if tu < -0.05:
+            s -= 5
+            why.append(f"現價高於分析師平均目標價 {abs(tu):.0%}")
+        elif tu > 0.5:
+            s += 3
+            why.append(f"分析師平均目標價高於現價 {tu:.0%}")
     sp = flow.get("short_pct")
     if sp is not None and sp > 0.15:
         s -= 10 if sp > 0.25 else 5

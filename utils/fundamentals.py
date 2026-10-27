@@ -104,9 +104,10 @@ def evaluate(d: dict, partners: list | None, r: FundRules, kind: str | None = No
     m["每季燒錢"], m["現金"], m["可撐月數"] = burn, cash, runway
     m["負債/現金"] = _ratio(debt, cash) if debt else 0.0 if cash else None
     dil = None
-    if len(shares) >= 2 and shares[0] and shares[-1]:
-        qs = len(shares) - 1
-        dil = (shares[-1] / shares[0]) ** (4 / qs) - 1
+    pts = [(i, x) for i, x in enumerate(shares) if x]       # 季度報表的股數常有缺值：取最早與最新的有效值
+    if len(pts) >= 2 and pts[-1][0] > pts[0][0]:
+        qs = pts[-1][0] - pts[0][0]
+        dil = (pts[-1][1] / pts[0][1]) ** (4 / qs) - 1
     m["年化股本稀釋"] = dil
 
     # 只採計實質程度「高/中」的合作；「低」（產品整合、意向、路徑）不算保障
@@ -184,21 +185,65 @@ def _row(df, names):
     return []
 
 
+def _shares_series(t, n_points: int = 5):
+    """由 get_shares_full 取近一年的流通股數，抽成 n_points 個約每季一點（由舊到新）。
+    季度資產負債表常缺股數或只有 5 季，這條路徑較完整；取不到回 []。"""
+    import pandas as pd
+    try:
+        start = (pd.Timestamp.now() - pd.Timedelta(days=400)).strftime("%Y-%m-%d")
+        sf = t.get_shares_full(start=start)
+    except Exception:
+        return []
+    if sf is None or len(sf) < 2:
+        return []
+    sf = sf.dropna()
+    if getattr(sf.index, "tz", None) is not None:
+        sf.index = sf.index.tz_localize(None)
+    sf = sf.sort_index()
+    end = sf.index[-1]
+    out = []
+    for k in range(n_points - 1, -1, -1):          # 最新、−90、−180、−270、−360 天；取「該時點之前最近一筆」
+        target = end - pd.Timedelta(days=90 * k)
+        pos = sf.index.searchsorted(target, side="right") - 1
+        if pos < 0:
+            if sf.index[0] - target > pd.Timedelta(days=45):    # 最舊的資料離目標太遠就放棄
+                return []
+            pos = 0
+        out.append(float(sf.iloc[pos]))
+    return out
+
+
 def fetch_quarterly(symbol: str) -> dict:
     import yfinance as yf
     t = yf.Ticker(symbol)
     inc, bs, cf = t.quarterly_income_stmt, t.quarterly_balance_sheet, t.quarterly_cashflow
     if inc is None or inc.empty:
         return {}
-    cash = _row(bs, ["Cash Cash Equivalents And Short Term Investments", "Cash And Cash Equivalents"]) if bs is not None and not bs.empty else []
-    debt = _row(bs, ["Total Debt"]) if bs is not None and not bs.empty else []
+    has_bs = bs is not None and not bs.empty
+    has_cf = cf is not None and not cf.empty
+    cash = _row(bs, ["Cash Cash Equivalents And Short Term Investments", "Cash And Cash Equivalents", "Cash Financial"]) if has_bs else []
+    debt = _row(bs, ["Total Debt", "Long Term Debt And Capital Lease Obligation", "Long Term Debt"]) if has_bs else []
+    fcf = _row(cf, ["Free Cash Flow"]) if has_cf else []
+    if has_cf and not any(x is not None for x in fcf[-2:]):
+        # 沒有現成的自由現金流：營業現金流 + 資本支出（資本支出為負數）
+        ocf = _row(cf, ["Operating Cash Flow", "Cash Flow From Continuing Operating Activities"])
+        capex = _row(cf, ["Capital Expenditure", "Purchase Of PPE"])
+        n = min(len(ocf), len(capex)) if capex else len(ocf)
+        fcf = [(ocf[i] + (capex[i] or 0.0)) if ocf[i] is not None else None for i in range(len(ocf) - n, len(ocf))] if n else ocf
+    shares = _shares_series(t)
+    shares_src = "get_shares_full"
+    if len(shares) < 2:
+        shares = _row(bs, ["Ordinary Shares Number", "Share Issued"]) if has_bs else []
+        shares_src = "balance_sheet"
     return {
+        "v": 2,
         "dates": [str(c.date()) for c in inc.columns][::-1],
         "rev": _row(inc, ["Total Revenue", "Operating Revenue"]),
         "gross": _row(inc, ["Gross Profit"]),
         "opinc": _row(inc, ["Operating Income", "Total Operating Income As Reported"]),
-        "fcf": _row(cf, ["Free Cash Flow"]) if cf is not None and not cf.empty else [],
-        "shares": _row(bs, ["Ordinary Shares Number", "Share Issued"]) if bs is not None and not bs.empty else [],
+        "fcf": fcf,
+        "shares": shares,
+        "shares_src": shares_src,
         "cash": cash[-1] if cash else None,
         "debt": debt[-1] if debt else None,
     }
