@@ -1,9 +1,9 @@
 {
- "generated": "2026-10-26T15:25:42+00:00",
- "snapshots": 3,
+ "generated": "2026-10-27T14:52:14+00:00",
+ "snapshots": 4,
  "first": "2026-10-21",
- "last": "2026-10-23",
- "rows": 3290,
+ "last": "2026-10-26",
+ "rows": 4407,
  "horizons": {
   "5": {
    "snapshot_days": 0,
