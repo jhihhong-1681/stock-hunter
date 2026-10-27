@@ -18,8 +18,8 @@
    "cost_ntd": 31054.44308587646,
    "last_px": 36.970001220703125,
    "name": "Karman Holdings Inc.",
-   "score": 68.6,
-   "target": 126453,
+   "score": 69.3,
+   "target": 143189,
    "sector": "Industrials",
    "opened": "2026-10-21",
    "peak": 36.970001220703125
@@ -38,7 +38,7 @@
    "last_px": 7.309999942779541,
    "name": "Arvinas, Inc.",
    "score": 66.5,
-   "target": 106927,
+   "target": 115152,
    "sector": "Healthcare",
    "opened": "2026-10-21",
    "peak": 7.71999979019165
@@ -56,8 +56,8 @@
    "cost_ntd": 22892.221249999995,
    "last_px": 43.7400016784668,
    "name": "Liquidia Corporation",
-   "score": 71.3,
-   "target": 151557,
+   "score": 71.6,
+   "target": 166220,
    "sector": "Healthcare",
    "opened": "2026-10-21",
    "peak": 43.7400016784668
@@ -95,7 +95,7 @@
    "last_px": 10.050000190734863,
    "name": "Equinox Gold Corp.",
    "score": 59.0,
-   "target": 46490,
+   "target": 50066,
    "sector": "Basic Materials",
    "opened": "2026-10-21",
    "peak": 10.681949617385863
@@ -132,8 +132,8 @@
    "cost_ntd": 15616.459368610382,
    "last_px": 19.889999389648438,
    "name": "Allied Gold Corporation",
-   "score": 61.1,
-   "target": 56718,
+   "score": 60.5,
+   "target": 55073,
    "sector": "Basic Materials",
    "opened": "2026-10-21",
    "peak": 20.150270153045653
@@ -151,8 +151,8 @@
    "cost_ntd": 25291.04669223308,
    "last_px": 9.979999542236328,
    "name": "MINISO Group Holding Limited",
-   "score": 71.6,
-   "target": 109189,
+   "score": 72.3,
+   "target": 110888,
    "sector": "Consumer Cyclical",
    "opened": "2026-10-21",
    "peak": 10.210000038146973
@@ -170,8 +170,8 @@
    "cost_ntd": 22312.337345607757,
    "last_px": 31.40999984741211,
    "name": "Clearway Energy, Inc.",
-   "score": 70.7,
-   "target": 103269,
+   "score": 71.2,
+   "target": 103837,
    "sector": "Utilities",
    "opened": "2026-10-21",
    "peak": 31.43000030517578
@@ -190,7 +190,7 @@
    "last_px": 33.70000076293945,
    "name": "General Mills, Inc.",
    "score": 68.5,
-   "target": 88798,
+   "target": 86531,
    "sector": "Consumer Defensive",
    "opened": "2026-10-21",
    "peak": 35.18000030517578
@@ -198,7 +198,64 @@
  },
  "reentry": {},
  "cooldown": {},
- "pending": [],
+ "pending": [
+  {
+   "sym": "ADAM",
+   "kind": "成長型",
+   "side": "sell",
+   "ntd": null,
+   "frac": 1.0,
+   "why": "公司類型改判（成長型→成熟型，人工登記），出清後由排行重新判斷",
+   "origin": "rebalance",
+   "created": "2026-10-26",
+   "meta": {}
+  },
+  {
+   "sym": "MRP",
+   "kind": "成長型",
+   "side": "sell",
+   "ntd": null,
+   "frac": 1.0,
+   "why": "公司類型改判（成長型→成熟型，人工登記），出清後由排行重新判斷",
+   "origin": "rebalance",
+   "created": "2026-10-26",
+   "meta": {}
+  },
+  {
+   "sym": "NTST",
+   "kind": "成長型",
+   "side": "buy",
+   "ntd": 19581.333333333332,
+   "frac": 1.0,
+   "why": "依成長型排行補位：總分 63.8，目標總額 NT$88,116（占成長型預算 13%）",
+   "origin": "rebalance",
+   "created": "2026-10-26",
+   "meta": {
+    "name": "NetSTREIT Corp.",
+    "score": 63.8,
+    "target": 88116,
+    "sector": "Real Estate",
+    "opened": "2026-10-26"
+   }
+  },
+  {
+   "sym": "TLN",
+   "kind": "成長型",
+   "side": "buy",
+   "ntd": 18913.777777777777,
+   "frac": 1.0,
+   "why": "依成長型排行補位：總分 63.5，目標總額 NT$85,112（占成長型預算 12%）",
+   "origin": "rebalance",
+   "created": "2026-10-26",
+   "meta": {
+    "name": "Talen Energy Corporation",
+    "score": 63.5,
+    "target": 85112,
+    "sector": "Utilities",
+    "opened": "2026-10-26"
+   }
+  }
+ ],
  "trades": [
   {
    "date": "2026-10-22",
@@ -698,11 +755,15 @@
    "date": "2026-10-26",
    "summary": "當日損益 NT$+687（+0.07%），SPY +0.71%；淨值 NT$1,004,184，持股 10 檔",
    "actions": [
-    "今天沒有調整"
+    "[調整] 預約 賣出 ADAM（全部，隔日開盤）：公司類型改判（成長型→成熟型，人工登記），出清後由排行重新判斷",
+    "[調整] 預約 賣出 MRP（全部，隔日開盤）：公司類型改判（成長型→成熟型，人工登記），出清後由排行重新判斷",
+    "[調整] 成長型跳過：STAA（Healthcare 已滿 2 檔）、ARWR（Healthcare 已滿 2 檔）、PTCT（Healthcare 已滿 2 檔）、LEGN（Healthcare 已滿 2 檔）",
+    "[調整] 預約 買進 NTST（NT$19,581，隔日開盤）：依成長型排行補位：總分 63.8，目標總額 NT$88,116（占成長型預算 13%）",
+    "[調整] 預約 買進 TLN（NT$18,914，隔日開盤）：依成長型排行補位：總分 63.5，目標總額 NT$85,112（占成長型預算 12%）"
    ]
   }
  ],
  "spy_start": 773.0900268554688,
  "last_date": "2026-10-26",
- "generated": "2026-10-27T05:40:47+00:00"
+ "generated": "2026-10-27T08:38:41+00:00"
 }
