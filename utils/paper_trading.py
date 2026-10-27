@@ -12,6 +12,7 @@
    單檔市值 > 總資產 30% → 減到 25%。非止損的全出，30 天內不買回。
 4. 加碼：(a) 價格規則（上一批價再跌 20%，或上漲後回落 25%），基本面要「通過」才加；
    (b) 評分加碼：總分 ≥ 72、還有批數、現價不比上一批高 10% 以上（不追高）、距上次買進 ≥ 10 天 → 加下一批。
+4b. 類型改判：持股在 data/company_profiles.json 的人工登記類型與買進時不同 → 全出（30 天內不買回），名額由新類型的排行補位。
 5. 補位：成長型最多 7 檔、成熟型最多 3 檔；空出來的名額，由該類型排行（總分 ≥ 60、基本面通過、無紅線）由高到低補；
    **同一產業（Yahoo sector）最多 2 檔**（兩個類型合計，產業未知不限）。
 6. 金額依評分：每類型預算 = 類型比重 × 目前總資產；各檔「目標總額」∝ max(總分 − 55, 5)，單檔不超過等權的 2 倍；
@@ -218,6 +219,8 @@ def rebalance(state: dict, d: str, ranked: list, info: dict, rules: Rules) -> li
         p["last_px"] = h["price"]
         if h.get("veto") or h["verdict"] == "排除":
             queue(state, d, sym, p["kind"], "sell", f"紅線出場：{h['veto']}" if h.get("veto") else "基本面判定「排除」，出清", "rebalance", lines=lines)
+        elif h.get("kind_now") in SLEEVES and h["kind_now"] != p["kind"]:
+            queue(state, d, sym, p["kind"], "sell", f"公司類型改判（{p['kind']}→{h['kind_now']}，人工登記），出清後由排行重新判斷", "rebalance", lines=lines)
         elif h.get("health") is not None and h["health"] < EXIT_HEALTH:
             queue(state, d, sym, p["kind"], "sell", f"體質分 {h['health']} < {EXIT_HEALTH}，出清", "rebalance", lines=lines)
         elif h["verdict"] == "警示" and h["news_pct"] <= 30 and not p.get("trimmed"):
