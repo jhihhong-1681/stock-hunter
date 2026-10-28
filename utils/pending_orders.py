@@ -40,6 +40,15 @@ def option_key(desc: str | None) -> str | None:
     return f"{sym.upper()}|{mm}{dd}{yy[-2:]}|{float(strike):g}|{cp.upper()}"
 
 
+def occ_symbol(o: dict) -> str | None:
+    """期權合約的 OCC 代碼（例如 ONDS261106C00007000），拿去 Yahoo 查報價用；不是期權或解析不出來回 None。"""
+    m = OPT_KEY.match(o.get("description") or "")
+    if o.get("type") != "option" or not m:
+        return None
+    sym, mm, dd, yy, strike, cp = m.groups()
+    return f"{sym.upper()}{yy[-2:]}{mm}{dd}{cp.upper()}{round(float(strike) * 1000):08d}"
+
+
 def short_label(o: dict) -> str:
     """標的欄用：股票就是代號；期權寫成「ONDS 11/06 7C」。"""
     m = OPT_KEY.match(o.get("description") or "")

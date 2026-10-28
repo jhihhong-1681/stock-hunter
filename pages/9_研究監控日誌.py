@@ -422,6 +422,13 @@ def render_pending_orders() -> None:
         st.caption("目前沒有追蹤中的未成交訂單。")
         return
     stock_px, opt_px = po.current_prices()
+    # 快照只有「持有中」的標的現價；掛單通常是還沒買到的，所以沒持有的改問 Yahoo（延遲報價）：股票用最新收盤，期權用買賣中間價。
+    need_stock = tuple(sorted({o["symbol"] for o in orders if o.get("type") != "option" and o["symbol"] not in stock_px}))
+    need_opt = tuple(sorted({po.occ_symbol(o) for o in orders if o.get("type") == "option"
+                             and po.option_key(o.get("description")) not in opt_px} - {None}))
+    yahoo_stock = daily_closes(need_stock) if need_stock else pd.DataFrame()
+    yahoo_opt = option_quotes(need_opt) if need_opt else {}
+    yahoo_used = False
     times = {}
     for o in orders:
         times[o["symbol"]] = times.get(o["symbol"], 0) + 1
@@ -429,6 +436,13 @@ def render_pending_orders() -> None:
     for o in sorted(orders, key=lambda o: (o["date"], o.get("time") or ""), reverse=True):
         lim = o.get("limitPrice")
         cur = opt_px.get(po.option_key(o.get("description"))) if o.get("type") == "option" else stock_px.get(o["symbol"])
+        if cur is None and lim is not None:
+            if o.get("type") == "option":
+                q = yahoo_opt.get(po.occ_symbol(o))
+                cur = q[0] if q else None
+            else:
+                cur = close_on(yahoo_stock, o["symbol"])
+            yahoo_used = yahoo_used or cur is not None
         rows.append({
             "日期": f'{o["date"][5:].replace("-", "/")} {(o.get("time") or "")[:5]}'.strip(),
             "標的": po.short_label(o),
@@ -452,7 +466,8 @@ def render_pending_orders() -> None:
             "次數": st.column_config.NumberColumn(width="small", help="同一檔被掛過幾次（一直在等價位的會比較多）"),
         },
     )
-    st.caption("現價取自每日快照，沒持有的標的沒有現價；距限價 = (現價 − 限價) ÷ 限價。")
+    st.caption("現價：持有中的取自每日快照；沒持有的取 Yahoo 延遲報價（股票＝最新收盤，期權＝買賣中間價），"
+               "抓不到（已到期、冷門合約）就空白。距限價 = (現價 − 限價) ÷ 限價。")
 
     if not (JOURNAL_PASSWORD and JOURNAL_URL and JOURNAL_KEY):
         return
