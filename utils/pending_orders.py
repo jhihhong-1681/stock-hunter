@@ -69,6 +69,19 @@ def is_expired(o: dict, today) -> bool:
     return e is not None and e < today
 
 
+def dedupe_keep_highest(orders: list[dict]) -> list[dict]:
+    """同一個合約（股票就是同代號）、同方向的掛單只留限價最高的一筆（同價留最新）；市價單（沒限價）視為最低。
+    回傳的順序與輸入一致。"""
+    best: dict[tuple, dict] = {}
+    for o in orders:
+        k = (o.get("description") or o["symbol"], o["side"])
+        rank = (o.get("limitPrice") if o.get("limitPrice") is not None else float("-inf"), o["date"], o.get("time") or "")
+        if k not in best or rank > best[k][0]:
+            best[k] = (rank, o)
+    keep = {id(v[1]) for v in best.values()}
+    return [o for o in orders if id(o) in keep]
+
+
 def short_label(o: dict) -> str:
     """標的欄用：股票就是代號；期權寫成「ONDS 11/06 7C」。"""
     m = OPT_KEY.match(o.get("description") or "")

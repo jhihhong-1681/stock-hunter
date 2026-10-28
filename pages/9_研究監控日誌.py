@@ -420,11 +420,15 @@ def render_pending_orders() -> None:
     removed = removed_pending_keys()
     today_et = (datetime.now(timezone.utc) - timedelta(hours=4)).date()   # 美東日期（合約到期以美東為準）
     alive = [o for o in po.read_orders() if po.order_key(o) not in removed]
-    orders = [o for o in alive if not po.is_expired(o, today_et)]
-    n_expired = len(alive) - len(orders)
+    live = [o for o in alive if not po.is_expired(o, today_et)]
+    n_expired = len(alive) - len(live)
+    orders = po.dedupe_keep_highest(live)
+    n_dup = len(live) - len(orders)
     st.markdown(f"**⏳ 未成交訂單**（{len(orders)} 筆 · {len({o['symbol'] for o in orders})} 檔）")
-    if n_expired:
-        st.caption(f"已隱藏 {n_expired} 筆合約已到期的期權掛單。")
+    hidden = [t for t in (f"{n_expired} 筆合約已到期的期權掛單" if n_expired else "",
+                          f"{n_dup} 筆同合約、同方向但限價較低的重複掛單（只留限價最高的）" if n_dup else "") if t]
+    if hidden:
+        st.caption("已隱藏：" + "；".join(hidden) + "。")
     if not orders:
         st.caption("目前沒有追蹤中的未成交訂單。")
         return
@@ -437,7 +441,7 @@ def render_pending_orders() -> None:
     yahoo_opt = option_quotes(need_opt) if need_opt else {}
     yahoo_used = False
     times = {}
-    for o in orders:
+    for o in live:                        # 「次數」是去重前的掛單次數，看得出哪幾檔一直在等價位
         times[o["symbol"]] = times.get(o["symbol"], 0) + 1
     rows = []
     for o in sorted(orders, key=lambda o: (o["date"], o.get("time") or ""), reverse=True):
