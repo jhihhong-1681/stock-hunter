@@ -53,6 +53,8 @@ class Rules:
     take_profit: float | None = 0.50  # 僅回測用的假設：相對均價漲多少全出；None = 不止盈
     cooldown_days: int = 40          # 回測：出場後多久內不重新進場
     usd_twd: float = 31.0
+    exec_lag: int = 0                # 回測：訊號出現後隔幾個交易日成交（0 = 當日收盤；1 = 隔日開盤，沒開盤價資料就用隔日收盤）
+    slippage: float = 0.0            # 回測：每筆成交的不利滑價（買貴、賣便宜各吃這個比例，例 0.003 = 0.3%）
 
 
 # ── 持股對照規則 ───────────────────────────────────────────
@@ -177,8 +179,11 @@ def _rolling_high(close: list[float], window: int = 130) -> list[float]:
     return out
 
 
-def backtest(symbol: str, dates: list, close: list[float], rules: Rules) -> list[Trade]:
-    """單一標的、獨立回測（收盤價成交、不含手續費與滑價）。
+def backtest(symbol: str, dates: list, close: list[float], rules: Rules,
+             opens: list[float] | None = None, gate: list[bool] | None = None) -> list[Trade]:
+    """單一標的、獨立回測。預設收盤價成交、無滑價（Firstrade 美股無手續費）；
+    rules.exec_lag=1 改成訊號隔日開盤成交（opens 沒給就用隔日收盤），rules.slippage 加上不利滑價。
+    gate：逐日 True/False，只有 True 的日子才允許「新一輪首批」進場（測試額外條件用；加碼與止損不受影響）。
     止損出場後，等價格從止損價再跌 reentry_drop 才重新進場（新一輪）；止盈出場後回到正常進場條件。
     回測沒有歷史基本面資料，所以「基本面沒大變」這個前提無法檢驗（只測價格規則）。
     回傳已結束的交易；回測終點仍持有的以最後收盤價結算，reason 標「持有中」。"""
@@ -188,6 +193,18 @@ def backtest(symbol: str, dates: list, close: list[float], rules: Rules) -> list
     state = None
     cool_until = -1
     reentry_px = None
+    lag, slip = rules.exec_lag, rules.slippage
+
+    def fill(i, side):
+        """訊號在第 i 天收盤後產生；回傳 (成交日 index, 成交價)，成交日超出資料或價格缺值回 (None, None)。"""
+        j = i + lag
+        if j >= n:
+            return None, None
+        base = opens[j] if (lag > 0 and opens is not None and opens[j] == opens[j]) else close[j]
+        if base != base:
+            return None, None
+        return j, base * (1 + slip) if side == "buy" else base * (1 - slip)
+
     for i in range(n):
         px = close[i]
         if px != px:
@@ -195,11 +212,14 @@ def backtest(symbol: str, dates: list, close: list[float], rules: Rules) -> list
         if state is None:
             if i < 60 or i < cool_until:
                 continue
-            go = (px <= reentry_px) if reentry_px is not None else (px <= highs[i] * (1 - rules.entry_drop))
+            go = (px <= reentry_px) if reentry_px is not None else (px <= highs[i] * (1 - rules.entry_drop) and (gate is None or gate[i]))
             if go:
+                j, fp = fill(i, "buy")
+                if j is None:
+                    continue
                 amt = rules.tranches_ntd[0]
-                state = {"first": px, "last": px, "peak": px, "shares": amt / rules.usd_twd / px,
-                         "cost": amt, "n": 1, "entry_i": i}
+                state = {"first": fp, "last": fp, "peak": fp, "shares": amt / rules.usd_twd / fp,
+                         "cost": amt, "n": 1, "entry_i": j}
                 reentry_px = None
             continue
         s = state
@@ -211,9 +231,12 @@ def backtest(symbol: str, dates: list, close: list[float], rules: Rules) -> list
         elif rules.take_profit is not None and px >= avg * (1 + rules.take_profit):
             reason = "止盈(假設)"
         if reason:
-            value = s["shares"] * px * rules.usd_twd
-            trades.append(Trade(symbol, str(dates[s["entry_i"]])[:10], str(dates[i])[:10], reason, s["n"],
-                                s["cost"], value - s["cost"], i - s["entry_i"], s["first"], px))
+            j, fp = fill(i, "sell")
+            if j is None:
+                continue
+            value = s["shares"] * fp * rules.usd_twd
+            trades.append(Trade(symbol, str(dates[s["entry_i"]])[:10], str(dates[j])[:10], reason, s["n"],
+                                s["cost"], value - s["cost"], j - s["entry_i"], s["first"], fp))
             if reason == "止損":
                 reentry_px = s["first"] * (1 - rules.stop_from_first) * (1 - rules.reentry_drop)
             else:
@@ -224,12 +247,15 @@ def backtest(symbol: str, dates: list, close: list[float], rules: Rules) -> list
             by_step = px <= s["last"] * (1 - rules.add_step)
             by_rebound = s["peak"] >= avg * (1 + rules.rebound_min_gain) and px <= s["peak"] * (1 - rules.rebound_pullback)
             if by_step or by_rebound:
+                j, fp = fill(i, "buy")
+                if j is None:
+                    continue
                 amt = rules.tranches_ntd[s["n"]]
-                s["shares"] += amt / rules.usd_twd / px
+                s["shares"] += amt / rules.usd_twd / fp
                 s["cost"] += amt
                 s["n"] += 1
-                s["last"] = px
-                s["peak"] = px
+                s["last"] = fp
+                s["peak"] = fp
     if state is not None:
         s = state
         last_px = close[-1]

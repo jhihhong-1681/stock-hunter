@@ -1,9 +1,233 @@
 {
-  "_說明": "推到 main 會觸發 .github/workflows/run_backtest.yml，在 GitHub 上抓股價、跑 scripts/run_backtest.py，結果寫進各 job 的 output。symbols=\"from_trades\" 是阿紘成交紀錄裡出現過的所有正股；\"sp500\" 是 S&P 500 成分股（對照組）。這份只留最近要跑的 job；先前產生的 backtest_*.json 已存在，不會被覆寫。",
-  "jobs": [
-    {"symbols": "from_trades", "period": "10y", "output": "backtest_high_window.json",
-     "grid": {"take_profit": [0.5, 1.0], "entry_drop": [0.2], "stop": [0.5], "add_step": [0.2], "high_window": [252, 130], "detail_tp": null}},
-    {"symbols": "sp500", "period": "10y", "output": "backtest_high_window_sp500.json",
-     "grid": {"take_profit": [0.5, 1.0], "entry_drop": [0.2], "stop": [0.5], "add_step": [0.2], "high_window": [252, 130], "detail_tp": null}}
-  ]
+ "_說明": "推到 main 會觸發 .github/workflows/run_backtest.yml。這輪(2026-10-28)：realism=成交假設對照（收盤成交 vs 隔日開盤+滑價）、sensitivity=進場/加碼/止損參數敏感度（隔日開盤+0.3%滑價）、gates=一次一個額外進場條件（大盤200日線、個股200日線上揚、20日相對大盤強弱、脫離20日低點5%）。take_profit=None（止盈由阿紘自己判斷）。symbols=\"from_trades\" 是阿紘成交紀錄裡的正股，\"sp500\" 是 S&P 500 成分股。",
+ "jobs": [
+  {
+   "symbols": "sp500",
+   "period": "10y",
+   "output": "backtest_realism_sp500.json",
+   "exec_variants": [
+    {
+     "name": "收盤成交(舊假設)",
+     "lag": 0,
+     "slippage": 0.0
+    },
+    {
+     "name": "隔日開盤+0.3%滑價",
+     "lag": 1,
+     "slippage": 0.003
+    },
+    {
+     "name": "隔日開盤+1%滑價",
+     "lag": 1,
+     "slippage": 0.01
+    }
+   ],
+   "grid": {
+    "take_profit": [
+     null
+    ],
+    "entry_drop": [
+     0.2
+    ],
+    "stop": [
+     0.5
+    ],
+    "add_step": [
+     0.2
+    ],
+    "high_window": [
+     130
+    ],
+    "detail_tp": null
+   }
+  },
+  {
+   "symbols": "sp500",
+   "period": "10y",
+   "output": "backtest_sensitivity_sp500.json",
+   "exec_variants": [
+    {
+     "name": "隔日開盤+0.3%滑價",
+     "lag": 1,
+     "slippage": 0.003
+    }
+   ],
+   "grid": {
+    "take_profit": [
+     null
+    ],
+    "entry_drop": [
+     0.15,
+     0.2,
+     0.25,
+     0.3
+    ],
+    "stop": [
+     0.4,
+     0.5,
+     0.6
+    ],
+    "add_step": [
+     0.12,
+     0.2,
+     0.3
+    ],
+    "high_window": [
+     130
+    ],
+    "detail_tp": null
+   }
+  },
+  {
+   "symbols": "sp500",
+   "period": "10y",
+   "output": "backtest_gates_sp500.json",
+   "exec_variants": [
+    {
+     "name": "隔日開盤+0.3%滑價",
+     "lag": 1,
+     "slippage": 0.003
+    }
+   ],
+   "gates": [
+    "none",
+    "spy_above_ma200",
+    "ma200_rising",
+    "rel20_vs_spy",
+    "bounce5pct"
+   ],
+   "grid": {
+    "take_profit": [
+     null
+    ],
+    "entry_drop": [
+     0.2
+    ],
+    "stop": [
+     0.5
+    ],
+    "add_step": [
+     0.2
+    ],
+    "high_window": [
+     130
+    ],
+    "detail_tp": null
+   }
+  },
+  {
+   "symbols": "from_trades",
+   "period": "10y",
+   "output": "backtest_realism_trades.json",
+   "exec_variants": [
+    {
+     "name": "收盤成交(舊假設)",
+     "lag": 0,
+     "slippage": 0.0
+    },
+    {
+     "name": "隔日開盤+0.3%滑價",
+     "lag": 1,
+     "slippage": 0.003
+    },
+    {
+     "name": "隔日開盤+1%滑價",
+     "lag": 1,
+     "slippage": 0.01
+    }
+   ],
+   "grid": {
+    "take_profit": [
+     null
+    ],
+    "entry_drop": [
+     0.2
+    ],
+    "stop": [
+     0.5
+    ],
+    "add_step": [
+     0.2
+    ],
+    "high_window": [
+     130
+    ],
+    "detail_tp": null
+   }
+  },
+  {
+   "symbols": "from_trades",
+   "period": "10y",
+   "output": "backtest_sensitivity_trades.json",
+   "exec_variants": [
+    {
+     "name": "隔日開盤+0.3%滑價",
+     "lag": 1,
+     "slippage": 0.003
+    }
+   ],
+   "grid": {
+    "take_profit": [
+     null
+    ],
+    "entry_drop": [
+     0.15,
+     0.2,
+     0.25,
+     0.3
+    ],
+    "stop": [
+     0.4,
+     0.5,
+     0.6
+    ],
+    "add_step": [
+     0.12,
+     0.2,
+     0.3
+    ],
+    "high_window": [
+     130
+    ],
+    "detail_tp": null
+   }
+  },
+  {
+   "symbols": "from_trades",
+   "period": "10y",
+   "output": "backtest_gates_trades.json",
+   "exec_variants": [
+    {
+     "name": "隔日開盤+0.3%滑價",
+     "lag": 1,
+     "slippage": 0.003
+    }
+   ],
+   "gates": [
+    "none",
+    "spy_above_ma200",
+    "ma200_rising",
+    "rel20_vs_spy",
+    "bounce5pct"
+   ],
+   "grid": {
+    "take_profit": [
+     null
+    ],
+    "entry_drop": [
+     0.2
+    ],
+    "stop": [
+     0.5
+    ],
+    "add_step": [
+     0.2
+    ],
+    "high_window": [
+     130
+    ],
+    "detail_tp": null
+   }
+  }
+ ]
 }

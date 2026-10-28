@@ -938,6 +938,7 @@ function renderYtdChart() {
 const holdingsSummaryEl = document.getElementById("holdingsSummary");
 const themeExposureEl = document.getElementById("themeExposure");
 const themeSubExposureEl = document.getElementById("themeSubExposure");
+const themeSymbolExposureEl = document.getElementById("themeSymbolExposure");
 const expiryListEl = document.getElementById("expiryList");
 const holdingsListEl = document.getElementById("holdingsList");
 const holdingsFooterEl = document.getElementById("holdingsFooter");
@@ -1108,18 +1109,25 @@ function fmtUsd2(n) {
 const THEME_CONCENTRATION_THRESHOLD = 20;
 // 細分產業切得比較細，門檻放寬一點抓「單一細項押太重」。
 const SUBTHEME_CONCENTRATION_THRESHOLD = 10;
+// 單一標的（正股＋該標的期權權利金合併）超過這個比例就標警示。
+const SYMBOL_CONCENTRATION_THRESHOLD = 8;
 
 // 槓桿 ETF 的曝險倍數（曝險 = 現值 × 倍數）。新增槓桿 ETF 時要補在這裡。
 const EXPOSURE_LEVERAGE = { UGL: 2, NBIL: 2, MSFL: 2 };
 
 // 把持股現值依 keyFn 分組加總，畫成橫向比例條，看曝險集中度。
-function renderExposureRows(positions, keyFn, threshold, labelFn) {
+function renderExposureRows(positions, keyFn, threshold, labelFn, topN) {
   const totals = new Map();
   const symbolsByKey = new Map();
+  // 正股／期權權利金分開記，每列顯示兩者各占多少（期權以權利金現值計，最大虧損就是這個數字）
+  const splitByKey = new Map();
   for (const p of positions) {
     const key = keyFn(p.symbol);
     const exposure = (p.value || 0) * (EXPOSURE_LEVERAGE[p.symbol] || 1);
     totals.set(key, (totals.get(key) || 0) + exposure);
+    const sp = splitByKey.get(key) || { stock: 0, option: 0 };
+    sp[p.type === "option" ? "option" : "stock"] += exposure;
+    splitByKey.set(key, sp);
     if (!symbolsByKey.has(key)) symbolsByKey.set(key, new Map());
     const m = symbolsByKey.get(key);
     m.set(p.symbol, (m.get(p.symbol) || 0) + exposure);
@@ -1129,7 +1137,7 @@ function renderExposureRows(positions, keyFn, threshold, labelFn) {
   const grandTotal = positions.reduce((a, p) => a + (p.value || 0), 0);
   if (grandTotal <= 0) return "";
 
-  const rows = [...totals.entries()].sort((a, b) => b[1] - a[1]);
+  const rows = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, topN || Infinity);
 
   return rows
     .map(([key, value], i) => {
@@ -1139,6 +1147,12 @@ function renderExposureRows(positions, keyFn, threshold, labelFn) {
         .sort((a, b) => b[1] - a[1])
         .map(([s]) => (EXPOSURE_LEVERAGE[s] ? `${s}(${EXPOSURE_LEVERAGE[s]}x)` : s))
         .join("、");
+      const sp = splitByKey.get(key);
+      const splitHtml = sp.option > 0 && sp.stock > 0
+        ? `<div class="theme-row-split">正股 ${fmtAmount(sp.stock).replace(/^[+-]/, "")}（${((sp.stock / grandTotal) * 100).toFixed(1)}%）＋ 期權權利金 ${fmtAmount(sp.option).replace(/^[+-]/, "")}（${((sp.option / grandTotal) * 100).toFixed(1)}%）</div>`
+        : sp.option > 0
+          ? `<div class="theme-row-split">全部是期權權利金</div>`
+          : "";
       const isOver = pct > threshold;
       const warnBadge = isOver
         ? `<span class="theme-warn-badge" title="占持股現值超過 ${threshold}%">⚠ 集中度偏高</span>`
@@ -1152,6 +1166,7 @@ function renderExposureRows(positions, keyFn, threshold, labelFn) {
             <span class="theme-row-value">${fmtAmount(value).replace(/^[+-]/, "")}（${pct.toFixed(1)}%）</span>
           </div>
           <div class="theme-row-symbols" style="color:${color}">${symbols}</div>
+          ${splitHtml}
           <div class="theme-bar-track">
             <div class="theme-bar-fill" style="width:${Math.min(pct, 100).toFixed(2)}%;background:${color};"></div>
           </div>
@@ -1166,6 +1181,7 @@ function renderThemeExposure(positions) {
   if (!positions.length) {
     themeExposureEl.innerHTML = "";
     themeSubExposureEl.innerHTML = "";
+    themeSymbolExposureEl.innerHTML = "";
     return;
   }
   const fineOf = (sym) => THEME_MAP[sym] || "未分類";
@@ -1176,6 +1192,14 @@ function renderThemeExposure(positions) {
     fineOf,
     SUBTHEME_CONCENTRATION_THRESHOLD,
     (k) => (THEME_PARENT[k] && THEME_PARENT[k] !== k ? `<span class="theme-parent-tag">${THEME_PARENT[k]}</span>` : "")
+  );
+  // 單一標的：正股與期權（以標的歸戶）合併，只列前 10 名
+  themeSymbolExposureEl.innerHTML = renderExposureRows(
+    positions,
+    (sym) => sym,
+    SYMBOL_CONCENTRATION_THRESHOLD,
+    null,
+    10
   );
 }
 

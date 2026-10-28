@@ -461,17 +461,31 @@ with tab_adv:
             rows = []
             for c_ in r["configs"]:
                 p, sm = c_["params"], c_["summary"]
-                rows.append({"止盈": "不止盈（抱到現在）" if p["take_profit"] is None else f"+{p['take_profit']:.0%}", "進場跌幅": f"-{p['entry_drop']:.0%}",
+                extra = {}
+                if p.get("exec"):
+                    extra["成交假設"] = p["exec"]
+                if p.get("gate"):
+                    extra["額外進場條件"] = {"none": "無（基準）", "spy_above_ma200": "大盤在200日線上", "ma200_rising": "個股200日線上揚",
+                                      "rel20_vs_spy": "近20日強於大盤", "bounce5pct": "已脫離20日低點5%"}.get(p["gate"], p["gate"])
+                rows.append({**extra, "止盈": "不止盈（抱到現在）" if p["take_profit"] is None else f"+{p['take_profit']:.0%}", "進場跌幅": f"-{p['entry_drop']:.0%}",
                              "止損": "無" if p["stop"] >= 0.95 else f"首批價 -{p['stop']:.0%}",
                              "加碼間距": f"-{p['add_step']:.0%}" if p.get("add_step") else "-12%（舊）", "交易數": sm["trades"], "已結束": sm["done"],
                              "勝率": "-" if sm["win_rate"] is None else f"{sm['win_rate']:.0%}", "止損次數": sm["stops"],
                              "平均賺NT$": round(sm["avg_win"]), "平均賠NT$": round(sm["avg_loss"]),
                              "報酬率(損益/投入)": f"{sm['pnl'] / sm['invested']:.0%}" if sm["invested"] else "-",
+                             "平均每筆報酬": f"{sm['avg_ret']:+.1%}" if "avg_ret" in sm else "-",
+                             "每筆報酬中位數": f"{sm['median_ret']:+.1%}" if "median_ret" in sm else "-",
                              "最差單筆NT$": round(sm["worst"]), "同時最多檔數": sm["peak_positions"]})
             st.subheader(title)
             st.caption(f"{r['symbols_with_data']}/{r['symbols_requested']} 檔有資料，期間 {r['period']}，更新 {r['generated'][:10]}")
             st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
 
+        hist_table("backtest_realism_trades.json", "成交假設對照（收盤成交 vs 隔日開盤＋滑價）：你交易過的正股")
+        hist_table("backtest_realism_sp500.json", "成交假設對照（收盤成交 vs 隔日開盤＋滑價）：S&P 500")
+        hist_table("backtest_sensitivity_trades.json", "參數敏感度（隔日開盤＋0.3% 滑價）：你交易過的正股")
+        hist_table("backtest_sensitivity_sp500.json", "參數敏感度（隔日開盤＋0.3% 滑價）：S&P 500")
+        hist_table("backtest_gates_trades.json", "額外進場條件，一次測一個（隔日開盤＋0.3% 滑價）：你交易過的正股")
+        hist_table("backtest_gates_sp500.json", "額外進場條件，一次測一個（隔日開盤＋0.3% 滑價）：S&P 500")
         hist_table("backtest_add_step.json", "加碼間距比較（12% vs 20%）：你交易過的正股")
         hist_table("backtest_add_step_sp500.json", "加碼間距比較（12% vs 20%）：S&P 500")
         hist_table("backtest_results.json", "較早的回測（加碼間距 12%）：你交易過的正股，含止損／進場深度比較")

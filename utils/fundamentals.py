@@ -63,6 +63,37 @@ def _yoy(series: list, k: int = 0):
     return _ratio(series[i], series[j]) - 1 if _ratio(series[i], series[j]) is not None else None
 
 
+def quality_flags(d: dict, m: dict, track: str, yoy) -> list[str]:
+    """獲利品質與趨勢的「提示」：只寫進 metrics 與 notes（前綴 ⚠），不影響通過／警示／排除，也不影響評分。
+    1. 單季營收年增率 vs 前幾季：避免單一季度（基期、交付時點）決定整家公司的印象。
+    2. 賺錢但自由現金流為負：營業利益為正不代表現金真的進帳。
+    3. 應收帳款成長遠快於營收：可能是營收品質問題（賒銷、收款變慢）。
+    資料不足就不提示，不猜。"""
+    out = []
+    rev, fcf, ar = d.get("rev") or [], d.get("fcf") or [], d.get("ar") or []
+    ys = [y for y in (_yoy(rev, k) for k in range(4)) if y is not None]    # 最新在前
+    if len(ys) >= 2:
+        m["近4季營收年增率"] = ys
+        others = ys[1:]
+        avg_prev = sum(others) / len(others)
+        if yoy is not None and yoy - avg_prev > 0.40:
+            out.append(f"⚠ 最新一季營收年增率 {yoy:+.0%} 遠高於前幾季平均 {avg_prev:+.0%}，可能是單季異常（交付時點、低基期），別只看最新一季")
+        elif yoy is not None and avg_prev - yoy > 0.40:
+            out.append(f"⚠ 營收年增率從前幾季平均 {avg_prev:+.0%} 放緩到 {yoy:+.0%}")
+    vals = [x for x in fcf[-4:] if x is not None]
+    if len(vals) >= 3:
+        ttm_fcf = sum(vals) * 4 / len(vals)        # 缺一季就按比例放大
+        m["近四季自由現金流"] = ttm_fcf
+        if track == "已獲利型" and ttm_fcf < 0:
+            out.append(f"⚠ 帳上獲利但近四季自由現金流為負（約 {ttm_fcf / 1e6:,.0f}M 美元），獲利品質待確認")
+    if len(ar) >= 5 and len(rev) >= 5 and ar[-1] and ar[-5] and rev[-1] and rev[-5]:
+        ar_g, rev_g = ar[-1] / ar[-5] - 1, rev[-1] / rev[-5] - 1
+        m["應收帳款年增率"] = ar_g
+        if ar_g > 0.30 and ar_g - rev_g > 0.30:
+            out.append(f"⚠ 應收帳款年增 {ar_g:+.0%}，遠快於營收年增 {rev_g:+.0%}，留意收款變慢或營收品質")
+    return out
+
+
 def evaluate(d: dict, partners: list | None, r: FundRules, kind: str | None = None) -> dict:
     """kind：「成長型」/「成熟型」，None = 由營收年增率自動推定。
     d：由舊到新的季度序列（缺值為 None）。
@@ -169,6 +200,7 @@ def evaluate(d: dict, partners: list | None, r: FundRules, kind: str | None = No
     # 負債/現金只用在營業利益為負的公司：賺錢的公司（JLL、CAG 這類）本來就有債，用現金去比沒有意義
     if track == "成長虧損型" and dc is not None and dc > r.max_debt_to_cash and burn:
         bump(1, f"總負債是現金的 {dc:.1f} 倍")
+    notes += quality_flags(d, m, track, yoy)
     if has_partner:
         notes.append("有巨頭合作：" + "、".join(p.get("partner", "?") for p in partners_ok))
     elif partners:
@@ -230,6 +262,7 @@ def fetch_quarterly(symbol: str) -> dict:
         capex = _row(cf, ["Capital Expenditure", "Purchase Of PPE"])
         n = min(len(ocf), len(capex)) if capex else len(ocf)
         fcf = [(ocf[i] + (capex[i] or 0.0)) if ocf[i] is not None else None for i in range(len(ocf) - n, len(ocf))] if n else ocf
+    ar = _row(bs, ["Accounts Receivable", "Receivables", "Gross Accounts Receivable"]) if has_bs else []
     shares = _shares_series(t)
     shares_src = "get_shares_full"
     if len(shares) < 2:
@@ -242,6 +275,7 @@ def fetch_quarterly(symbol: str) -> dict:
         "gross": _row(inc, ["Gross Profit"]),
         "opinc": _row(inc, ["Operating Income", "Total Operating Income As Reported"]),
         "fcf": fcf,
+        "ar": ar,
         "shares": shares,
         "shares_src": shares_src,
         "cash": cash[-1] if cash else None,
