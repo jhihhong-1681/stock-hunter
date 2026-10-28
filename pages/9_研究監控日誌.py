@@ -420,13 +420,15 @@ def render_pending_orders() -> None:
     removed = removed_pending_keys()
     today_et = (datetime.now(timezone.utc) - timedelta(hours=4)).date()   # 美東日期（合約到期以美東為準）
     alive = [o for o in po.read_orders() if po.order_key(o) not in removed]
+    alive, bought = po.split_filled(alive, po.read_trades())
     live = [o for o in alive if not po.is_expired(o, today_et)]
     n_expired = len(alive) - len(live)
-    orders = po.dedupe_keep_highest(live)
+    orders = po.dedupe_keep_best(live)
     n_dup = len(live) - len(orders)
     st.markdown(f"**⏳ 未成交訂單**（{len(orders)} 筆 · {len({o['symbol'] for o in orders})} 檔）")
-    hidden = [t for t in (f"{n_expired} 筆合約已到期的期權掛單" if n_expired else "",
-                          f"{n_dup} 筆同合約、同方向但限價較低的重複掛單（只留限價最高的）" if n_dup else "") if t]
+    hidden = [t for t in (f"{len(bought)} 筆後來已成交（成交紀錄裡有同合約、同方向、較晚的成交）" if bought else "",
+                          f"{n_expired} 筆合約已到期的期權掛單" if n_expired else "",
+                          f"{n_dup} 筆同合約、同方向的重複掛單（買單留限價最高、賣單留最低）" if n_dup else "") if t]
     if hidden:
         st.caption("已隱藏：" + "；".join(hidden) + "。")
     if not orders:

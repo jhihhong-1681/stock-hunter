@@ -69,13 +69,63 @@ def is_expired(o: dict, today) -> bool:
     return e is not None and e < today
 
 
-def dedupe_keep_highest(orders: list[dict]) -> list[dict]:
-    """同一個合約（股票就是同代號）、同方向的掛單只留限價最高的一筆（同價留最新）；市價單（沒限價）視為最低。
-    回傳的順序與輸入一致。"""
+def is_buy(side: str | None) -> bool:
+    return bool(re.search(r"buy|買", side or "", re.I))
+
+
+def read_trades() -> list[dict]:
+    try:
+        lines = (DATA_DIR / "trades.js").read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    out = []
+    for line in lines:
+        if line.strip().startswith("{ date"):
+            try:
+                out.append(_js_obj(line))
+            except ValueError:
+                pass
+    return out
+
+
+def split_filled(orders: list[dict], trades: list[dict]) -> tuple[list[dict], list[dict]]:
+    """用成交紀錄（trades.js）再檢查一次：同方向、同商品（股票同代號；期權要同一個合約）、成交時間晚於掛單時間，就視為已成交。
+    本機排程（FIRSTRADE_TASK.md 第 4 步）應該會幫掛單標 filled，但漏標過（成交沒對上時），這裡當保險。
+    回傳（仍在追蹤, 其實已成交）。成交沒有時間（舊紀錄）時，只在成交日晚於掛單日才算。"""
+    def when(d, t):
+        return (d, t or "")
+
+    pending, filled = [], []
+    for o in orders:
+        ok = False
+        for t in trades:
+            if is_buy(t.get("side")) != is_buy(o.get("side")) or t.get("type") != o.get("type") or t["symbol"] != o["symbol"]:
+                continue
+            if o.get("type") == "option" and option_key(t.get("description")) != option_key(o.get("description")):
+                continue
+            if t.get("time"):
+                later = when(t["date"], t["time"]) > when(o["date"], o.get("time"))
+            else:
+                later = t["date"] > o["date"]
+            if later:
+                ok = True
+                break
+        (filled if ok else pending).append(o)
+    return pending, filled
+
+
+def dedupe_keep_best(orders: list[dict]) -> list[dict]:
+    """同一個合約（股票就是同代號）、同方向的掛單只留一筆：買單留限價最高、賣單留限價最低（同價留最新）；
+    市價單（沒限價）視為最差。回傳的順序與輸入一致。"""
     best: dict[tuple, dict] = {}
     for o in orders:
         k = (o.get("description") or o["symbol"], o["side"])
-        rank = (o.get("limitPrice") if o.get("limitPrice") is not None else float("-inf"), o["date"], o.get("time") or "")
+        lim = o.get("limitPrice")
+        if is_buy(o["side"]):
+            price_rank = lim if lim is not None else float("-inf")
+        else:
+            price_rank = -lim if lim is not None else float("-inf")
+        rank = (price_rank, o["date"], o.get("time") or "")
         if k not in best or rank > best[k][0]:
             best[k] = (rank, o)
     keep = {id(v[1]) for v in best.values()}
