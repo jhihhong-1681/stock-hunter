@@ -49,6 +49,26 @@ def occ_symbol(o: dict) -> str | None:
     return f"{sym.upper()}{yy[-2:]}{mm}{dd}{cp.upper()}{round(float(strike) * 1000):08d}"
 
 
+def expiry(o: dict):
+    """期權合約的到期日（date），不是期權或解析不出來回 None。"""
+    from datetime import date
+    m = OPT_KEY.match(o.get("description") or "")
+    if o.get("type") != "option" or not m:
+        return None
+    _sym, mm, dd, yy, _strike, _cp = m.groups()
+    y = int(yy) if len(yy) == 4 else 2000 + int(yy)
+    try:
+        return date(y, int(mm), int(dd))
+    except ValueError:
+        return None
+
+
+def is_expired(o: dict, today) -> bool:
+    """期權到期日已過（當天還算有效）。today 用美東日期。"""
+    e = expiry(o)
+    return e is not None and e < today
+
+
 def short_label(o: dict) -> str:
     """標的欄用：股票就是代號；期權寫成「ONDS 11/06 7C」。"""
     m = OPT_KEY.match(o.get("description") or "")

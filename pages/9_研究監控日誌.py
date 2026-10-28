@@ -416,8 +416,13 @@ def removed_pending_keys() -> frozenset[str]:
 def render_pending_orders() -> None:
     """標的總表右邊：Firstrade 還在追蹤的未成交訂單，對照持股現價看離限價多遠。"""
     removed = removed_pending_keys()
-    orders = [o for o in po.read_orders() if po.order_key(o) not in removed]
+    today_et = (datetime.now(timezone.utc) - timedelta(hours=4)).date()   # 美東日期（合約到期以美東為準）
+    alive = [o for o in po.read_orders() if po.order_key(o) not in removed]
+    orders = [o for o in alive if not po.is_expired(o, today_et)]
+    n_expired = len(alive) - len(orders)
     st.markdown(f"**⏳ 未成交訂單**（{len(orders)} 筆 · {len({o['symbol'] for o in orders})} 檔）")
+    if n_expired:
+        st.caption(f"已隱藏 {n_expired} 筆合約已到期的期權掛單。")
     if not orders:
         st.caption("目前沒有追蹤中的未成交訂單。")
         return
