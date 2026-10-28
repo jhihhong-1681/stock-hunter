@@ -135,7 +135,12 @@ def scan_symbol(close: list[float] | "pd.Series", rules: Rules) -> dict | None:
     mean = sum(rets) / len(rets)
     vol = (sum((r - mean) ** 2 for r in rets) / (len(rets) - 1)) ** 0.5 * (252 ** 0.5) if len(rets) > 2 else None
     first = last
+    ma200_up = None                           # 200 日均線是否比 20 個交易日前高（只顯示、不影響進場區判定與評分；回測見 docs 第 18 節）
+    if len(vals) >= 220:
+        ma_now, ma_prev = sum(vals[-200:]) / 200, sum(vals[-220:-20]) / 200
+        ma200_up = ma_now > ma_prev
     return {
+        "200日線上揚": ma200_up,
         "現價": last, "區間高點": high, "距高點": dd, "進場區": dd <= -rules.entry_drop,
         "年化波動率": vol, "回檔/波動率": (dd / vol) if vol else None,
         "進場價(距高點-%d%%)" % round(rules.entry_drop * 100): round(high * (1 - rules.entry_drop), 2),

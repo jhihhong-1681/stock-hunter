@@ -223,6 +223,10 @@ def candidate_card(c: dict) -> str:
         badges += f'<span class="b {cls}" title="依市值、營收規模、營收成長推定">自動推定・把握度{esc(conf)}</span>'
     if c.get("is_new"):
         badges += '<span class="b b-new">NEW</span>'
+    if c.get("ma200_up") is True:
+        badges += '<span class="b b-na" title="200 日均線比 20 個交易日前高。只是參考標籤，不影響評分">200日線上揚</span>'
+    elif c.get("ma200_up") is False:
+        badges += '<span class="b b-na" title="200 日均線比 20 個交易日前低。只是參考標籤，不影響評分">200日線下彎</span>'
     ed = c.get("earnings_days")
     if ed is not None and 0 <= ed <= 14:
         badges += f'<span class="b b-warn">財報 {ed} 天後</span>' if ed <= 7 else f'<span class="b b-na">財報 {ed} 天後</span>'

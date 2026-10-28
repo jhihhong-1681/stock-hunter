@@ -12,6 +12,7 @@ import yfinance as yf
 st.set_page_config(page_title="研究監控日誌 - 阿紘的股票儀表板", page_icon="📰", layout="wide")
 from utils.styles import load_css
 load_css()
+from utils import pending_orders as po
 st.title("📰 研究監控日誌")
 
 # 付費電子報內容只存在阿紘的私人 Google Drive 資料夾，這個 app 的 repo 是公開的，所以：
@@ -396,6 +397,89 @@ def color_change(v) -> str:
     return "color: #2fbf6a; font-weight: 700" if v > 0 else "color: #ff5c5c; font-weight: 700"
 
 
+JOURNAL_URL = st.secrets.get("JOURNAL_API_URL", "")
+JOURNAL_KEY = st.secrets.get("JOURNAL_API_KEY", "")
+JOURNAL_PASSWORD = st.secrets.get("JOURNAL_PASSWORD", "")
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def removed_pending_keys() -> frozenset[str]:
+    """手動「不再追蹤」的清單（交易紀錄同一支 Apps Script 中繼）；沒設定或讀不到就當沒有。"""
+    if not (JOURNAL_URL and JOURNAL_KEY):
+        return frozenset()
+    try:
+        return frozenset(po.fetch_removed(JOURNAL_URL, JOURNAL_KEY))
+    except Exception:
+        return frozenset()
+
+
+def render_pending_orders() -> None:
+    """標的總表右邊：Firstrade 還在追蹤的未成交訂單，對照持股現價看離限價多遠。"""
+    removed = removed_pending_keys()
+    orders = [o for o in po.read_orders() if po.order_key(o) not in removed]
+    st.markdown(f"**⏳ 未成交訂單**（{len(orders)} 筆 · {len({o['symbol'] for o in orders})} 檔）")
+    if not orders:
+        st.caption("目前沒有追蹤中的未成交訂單。")
+        return
+    stock_px, opt_px = po.current_prices()
+    times = {}
+    for o in orders:
+        times[o["symbol"]] = times.get(o["symbol"], 0) + 1
+    rows = []
+    for o in sorted(orders, key=lambda o: (o["date"], o.get("time") or ""), reverse=True):
+        lim = o.get("limitPrice")
+        cur = opt_px.get(po.option_key(o.get("description"))) if o.get("type") == "option" else stock_px.get(o["symbol"])
+        rows.append({
+            "日期": f'{o["date"][5:].replace("-", "/")} {(o.get("time") or "")[:5]}'.strip(),
+            "標的": po.short_label(o),
+            "動作": o["side"],
+            "數量": o.get("qty"),
+            "限價": lim,
+            "現價": cur if lim is not None else None,
+            "距限價": (cur - lim) / lim * 100 if (lim and cur is not None) else None,
+            "次數": times[o["symbol"]],
+        })
+    st.dataframe(
+        pd.DataFrame(rows), hide_index=True, use_container_width=True, height=min(35 * len(rows) + 38, 460),
+        column_config={
+            "日期": st.column_config.TextColumn(width="small", pinned=True),
+            "標的": st.column_config.TextColumn(width="small", pinned=True),
+            "動作": st.column_config.TextColumn(width="small"),
+            "數量": st.column_config.NumberColumn(width="small"),
+            "限價": st.column_config.NumberColumn(width="small", format="%.2f"),
+            "現價": st.column_config.NumberColumn(width="small", format="%.2f"),
+            "距限價": st.column_config.NumberColumn(width="small", format="%+.1f%%"),
+            "次數": st.column_config.NumberColumn(width="small", help="同一檔被掛過幾次（一直在等價位的會比較多）"),
+        },
+    )
+    st.caption("現價取自每日快照，沒持有的標的沒有現價；距限價 = (現價 − 限價) ÷ 限價。")
+
+    if not (JOURNAL_PASSWORD and JOURNAL_URL and JOURNAL_KEY):
+        return
+    with st.expander("不再追蹤某一筆"):
+        if not st.session_state.get("journal_unlocked"):
+            with st.form("pending_unlock"):
+                pw = st.text_input("密碼（同交易紀錄頁）", type="password")
+                if st.form_submit_button("解鎖"):
+                    if hmac.compare_digest(pw, JOURNAL_PASSWORD):
+                        st.session_state["journal_unlocked"] = True
+                        st.rerun()
+                    else:
+                        st.error("密碼錯誤")
+            return
+        labels = {f'{r["日期"]} {r["標的"]} {r["動作"]}' + (f' 限價 {r["限價"]:g}' if r["限價"] is not None else ""): o
+                  for r, o in zip(rows, sorted(orders, key=lambda o: (o["date"], o.get("time") or ""), reverse=True))}
+        pick = st.selectbox("選一筆", list(labels), label_visibility="collapsed")
+        if st.button("不再追蹤這筆"):
+            try:
+                po.remove_order(JOURNAL_URL, JOURNAL_KEY, labels[pick])
+                removed_pending_keys.clear()
+                st.rerun()
+            except Exception as e:
+                st.error(f"刪除失敗：{e}")
+        st.caption("只是不再顯示；資料仍留在 pending_orders.js，要恢復跟 Claude 說。")
+
+
 def render_positions(dates: list[str]) -> None:
     # 賣出警報要往前找買進紀錄，所以讀最多 90 個交易日（中繼一次最多 31 天，分批讀）。
     span = dates[:90]
@@ -448,6 +532,14 @@ def render_positions(dates: list[str]) -> None:
              and (not term or term in r["ticker"].upper())
              and (not only_entry or entry_state(r).startswith("🟢"))
              and (not only_mine or r["mine"])]
+    left, right = st.columns([3.4, 1.6], gap="medium")
+    with right:
+        render_pending_orders()
+    with left:
+        render_picks_table(shown)
+
+
+def render_picks_table(shown: list[dict]) -> None:
     if not shown:
         st.info("沒有符合條件的推薦。")
         return

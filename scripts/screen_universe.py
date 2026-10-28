@@ -150,7 +150,7 @@ def scan_prices(universe: dict, rules: Rules, held: set):
             stats["in_zone"] += 1
             vals = [float(x) for x in ser.values]
             cands.append({"stab": stab_metrics(vals), "rev_ttm": None, "symbol": sym, "name": universe.get(sym, sym), "price": last, "high_ref": sc["區間高點"], "dd": sc["距高點"],
-                          "vol": sc["年化波動率"], "dd_vol": sc["回檔/波動率"], "dollar_vol": dv,
+                          "vol": sc["年化波動率"], "dd_vol": sc["回檔/波動率"], "dollar_vol": dv, "ma200_up": sc["200日線上揚"],
                           "spark": [round(float(x), 2) for x in ser.iloc[-60:].values], "last_date": str(ser.index[-1].date())})
         print(f"  價格 {min(i + 150, len(syms))}/{len(syms)}，候選累計 {len(cands)}", flush=True)
     return cands, stats

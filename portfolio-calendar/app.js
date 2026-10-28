@@ -1596,6 +1596,8 @@ async function removePendingOrder(o) {
 }
 
 function renderPendingOrders() {
+  // 未成交訂單已搬到 Streamlit「研究監控日誌 → 標的總表」旁邊顯示（utils/pending_orders.py），這個日曆頁不再放這一區。
+  if (!pendingSectionEl) return;
   if (!Array.isArray(window.PENDING_ORDERS)) {
     pendingSectionEl.style.display = "none";
     return;
