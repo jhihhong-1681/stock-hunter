@@ -12,7 +12,9 @@ import yfinance as yf
 st.set_page_config(page_title="研究監控日誌 - 阿紘的股票儀表板", page_icon="📰", layout="wide")
 from utils.styles import load_css
 load_css()
+import importlib
 from utils import pending_orders as po
+importlib.reload(po)   # Streamlit Cloud 部署後舊模組會留在快取裡，缺新函式就 AttributeError（同交易系統頁的做法）
 st.title("📰 研究監控日誌")
 
 # 付費電子報內容只存在阿紘的私人 Google Drive 資料夾，這個 app 的 repo 是公開的，所以：
