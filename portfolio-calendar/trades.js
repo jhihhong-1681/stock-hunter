@@ -507,5 +507,9 @@ window.TRADES = [
   { date: "2026-10-26", time: "10:24:08", side: "Buy Open", symbol: "XOM", type: "option", description: "XOM 12/18/2026 170.00 Call", qty: 1, price: 16 },
   { date: "2026-10-26", time: "11:16:39", side: "Buy Open", symbol: "TSLA", type: "option", description: "TSLA 10/26/2026 392.50 Put", qty: 2, price: 0.7 },
   { date: "2026-10-26", time: "13:14:47", side: "Sell Close", symbol: "HPQ", type: "option", description: "HPQ 12/18/2026 30.00 Call", qty: 1, price: 5 },
-  { date: "2026-10-26", time: "14:07:11", side: "Sell Close", symbol: "TSLA", type: "option", description: "TSLA 10/26/2026 392.50 Put", qty: 2, price: 0.24 }
+  { date: "2026-10-26", time: "14:07:11", side: "Sell Close", symbol: "TSLA", type: "option", description: "TSLA 10/26/2026 392.50 Put", qty: 2, price: 0.24 },
+  { date: "2026-10-28", time: "03:22:30", side: "買進", symbol: "VRT", type: "stock", description: null, qty: 4, price: 212 },
+  { date: "2026-10-28", time: "11:27:18", side: "賣出", symbol: "JLL", type: "stock", description: null, qty: 3, price: 334 },
+  { date: "2026-10-28", time: "11:27:32", side: "Buy Open", symbol: "PBR", type: "option", description: "PBR 11/20/2026 25.00 Call", qty: 8, price: 0.16 },
+  { date: "2026-10-28", time: "14:53:13", side: "Buy Open", symbol: "KGC", type: "option", description: "KGC 01/15/2027 20.00 Call", qty: 1, price: 3.35 }
 ];
