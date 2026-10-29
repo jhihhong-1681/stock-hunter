@@ -401,7 +401,6 @@ def color_change(v) -> str:
 
 JOURNAL_URL = st.secrets.get("JOURNAL_API_URL", "")
 JOURNAL_KEY = st.secrets.get("JOURNAL_API_KEY", "")
-JOURNAL_PASSWORD = st.secrets.get("JOURNAL_PASSWORD", "")
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -466,46 +465,41 @@ def render_pending_orders() -> None:
             "距限價": (cur - lim) / lim * 100 if (lim and cur is not None) else None,
             "次數": times[o["symbol"]],
         })
-    st.dataframe(
-        pd.DataFrame(rows), hide_index=True, use_container_width=True, height=min(35 * len(rows) + 38, 460),
-        column_config={
-            "日期": st.column_config.TextColumn(width="small", pinned=True),
-            "標的": st.column_config.TextColumn(width="small", pinned=True),
-            "動作": st.column_config.TextColumn(width="small"),
-            "數量": st.column_config.NumberColumn(width="small"),
-            "限價": st.column_config.NumberColumn(width="small", format="%.2f"),
-            "現價": st.column_config.NumberColumn(width="small", format="%.2f"),
-            "距限價": st.column_config.NumberColumn(width="small", format="%+.1f%%"),
-            "次數": st.column_config.NumberColumn(width="small", help="同一檔被掛過幾次（一直在等價位的會比較多）"),
-        },
+    can_remove = bool(JOURNAL_URL and JOURNAL_KEY)
+    shown = sorted(orders, key=lambda o: (o["date"], o.get("time") or ""), reverse=True)   # 跟 rows 同順序
+    df = pd.DataFrame(rows)
+    cfg = {
+        "日期": st.column_config.TextColumn(width="small", pinned=True),
+        "標的": st.column_config.TextColumn(width="small", pinned=True),
+        "動作": st.column_config.TextColumn(width="small"),
+        "數量": st.column_config.NumberColumn(width="small"),
+        "限價": st.column_config.NumberColumn(width="small", format="%.2f"),
+        "現價": st.column_config.NumberColumn(width="small", format="%.2f"),
+        "距限價": st.column_config.NumberColumn(width="small", format="%+.1f%%"),
+        "次數": st.column_config.NumberColumn(width="small", help="同一檔被掛過幾次（一直在等價位的會比較多）"),
+    }
+    if can_remove:
+        df.insert(0, "不追蹤", False)
+        cfg["不追蹤"] = st.column_config.CheckboxColumn(width="small", pinned=True, help="勾選後按下方按鈕，這幾筆就不再顯示")
+    edited = st.data_editor(
+        df, hide_index=True, use_container_width=True, height=min(35 * len(rows) + 38, 460),
+        column_config=cfg, disabled=[c for c in df.columns if c != "不追蹤"], key="pending_table",
     )
     st.caption("現價：持有中的取自每日快照；沒持有的取 Yahoo 延遲報價（股票＝最新收盤，期權＝買賣中間價），"
                "抓不到（已到期、冷門合約）就空白。距限價 = (現價 − 限價) ÷ 限價。")
 
-    if not (JOURNAL_PASSWORD and JOURNAL_URL and JOURNAL_KEY):
+    if not can_remove:
         return
-    with st.expander("不再追蹤某一筆"):
-        if not st.session_state.get("journal_unlocked"):
-            with st.form("pending_unlock"):
-                pw = st.text_input("密碼（同交易紀錄頁）", type="password")
-                if st.form_submit_button("解鎖"):
-                    if hmac.compare_digest(pw, JOURNAL_PASSWORD):
-                        st.session_state["journal_unlocked"] = True
-                        st.rerun()
-                    else:
-                        st.error("密碼錯誤")
-            return
-        labels = {f'{r["日期"]} {r["標的"]} {r["動作"]}' + (f' 限價 {r["限價"]:g}' if r["限價"] is not None else ""): o
-                  for r, o in zip(rows, sorted(orders, key=lambda o: (o["date"], o.get("time") or ""), reverse=True))}
-        pick = st.selectbox("選一筆", list(labels), label_visibility="collapsed")
-        if st.button("不再追蹤這筆"):
-            try:
-                po.remove_order(JOURNAL_URL, JOURNAL_KEY, labels[pick])
-                removed_pending_keys.clear()
-                st.rerun()
-            except Exception as e:
-                st.error(f"刪除失敗：{e}")
-        st.caption("只是不再顯示；資料仍留在 pending_orders.js，要恢復跟 Claude 說。")
+    picked = [o for o, chk in zip(shown, edited["不追蹤"]) if chk]
+    if st.button(f"不再追蹤勾選的 {len(picked)} 筆", disabled=not picked):
+        try:
+            for o in picked:
+                po.remove_order(JOURNAL_URL, JOURNAL_KEY, o)
+            removed_pending_keys.clear()
+            st.rerun()
+        except Exception as e:
+            st.error(f"刪除失敗：{e}")
+    st.caption("只是不再顯示；資料仍留在 pending_orders.js，要恢復跟 Claude 說。")
 
 
 def render_positions(dates: list[str]) -> None:
