@@ -963,6 +963,7 @@ const THEME_MAP = {
   UGL: "黃金",
   GLD: "黃金",
   B: "黃金",
+  KGC: "黃金",
   SLV: "白銀",
   MU: "AI-記憶體",
   WDC: "AI-記憶體",
