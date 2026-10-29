@@ -163,5 +163,7 @@ push 被拒（remote 有新 commit，例如 ETF 持股、法人資料、本機 F
 
 - (h) 選股新聞評分：成功就一行帶過（「📰 新聞評分 N 檔：利多 a／利空 b」），有紅線的列出 symbol 與原因；失敗或跳過要說明原因。
 
+- (i) **模擬帳戶現況（每次都要附，沒狀況也要附）**：只讀 `data/paper_portfolio.json`（不要改它；跑完第 12 步後先 `git pull --rebase origin main` 取最新）。用 `equity` 最後一筆與 `journal` 最後一筆，寫 2–4 行：①資產狀況：淨值、當日損益（金額與 %）、對照 SPY 當日與累計（`equity[-1].spy` 對 NT$100 萬起始）、累計報酬（淨值 ÷ `capital` − 1）、現金／持股檔數、已實現與未實現損益；②最近一個交易日做了什麼：取 `journal[-1].actions` 與 `trades` 中 `date == last_date` 的成交（買進／賣出、代號、金額，賣出附 pnl 與一句理由）和已預約的隔日單（`pending`）；沒動作就寫「無交易」。若 `last_date` 比快照對應日期舊，註明資料停在哪天。規則改動前先問阿紘的限制不變，這裡只回報。
+
 - 有新平倉或新開倉的部位，用一行帶過（例如「新平倉：MU、LPG；新部位：ET、SDGR 11/20 35C」）。
 - 最後一行附網站連結 https://jhihhong-stock-hunter-v2.streamlit.app/報酬日曆 。
