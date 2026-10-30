@@ -1,6 +1,6 @@
 {
   "_說明": "選股雷達的消息面評分（−10 ~ +10），由雲端每日排程（SNAPSHOT_TASK.md 的第 12b 步新聞評分）對量化分數前 20 名搜尋近期新聞後寫入。每筆附出處；沒評到的標的在頁面上顯示「消息面未評」，以中性分計算。veto 有值代表紅線（going concern、大量稀釋性增資、SEC 調查等），該檔會被排到最後。",
-  "generated": "2026-10-28T08:15:47+00:00",
+  "generated": "2026-10-30T05:46:22+00:00",
   "scores": {
     "ALHC": {
       "score": -5,
@@ -51,19 +51,25 @@
       "asof": "2026-10-26"
     },
     "MGTX": {
-      "score": 0,
+      "score": -1,
       "label": "中性",
-      "summary": "近兩週無重大消息，僅有高管依10b5-1計畫例行減持。",
+      "summary": "僅有前臨床海報發表，CFO依交易計畫小額減持；無重大消息",
       "events": [
         {
           "type": "其他",
+          "date": "2026-10-27",
+          "text": "公布於ESGCT與NEALS發表四篇前臨床海報",
+          "source": "https://www.globenewswire.com/news-release/2026/10/27/3388913/0/en/meiragtx-announces-four-posters-at-the-european-society-of-gene-and-cell-therapy-esgct-2026-annual-congress-and-the-network-of-excellence-for-als-neals-annual-meeting.html"
+        },
+        {
+          "type": "其他",
           "date": "2026-10-20",
-          "text": "CFO Giroux依10b5-1計畫賣出5.6萬股約55.7萬美元",
-          "source": "https://www.marketbeat.com/instant-alerts/insider-meiragtx-nasdaq-mgtx-stock-insider-richard-giroux-sells-56000-shares-2026-10-20/"
+          "text": "CFO Giroux 依交易計畫以均價9.95美元賣出56,000股",
+          "source": "https://www.stocktitan.net/sec-filings/MGTX/form-4-meira-g-tx-holdings-plc-insider-trading-activity-06bda8cbe492.html"
         }
       ],
       "veto": null,
-      "asof": "2026-10-26"
+      "asof": "2026-10-30"
     },
     "MRP": {
       "score": -5,
@@ -81,25 +87,25 @@
       "asof": "2026-10-26"
     },
     "GOLF": {
-      "score": -2,
-      "label": "利空",
-      "summary": "Stephens下修目標價，Magnus以約5250萬美元回售股份予公司，無重大消息。",
+      "score": -1,
+      "label": "中性",
+      "summary": "Stephens 10/14 下修目標價至81美元，Wall Street Zen 升評；11/4 才公布財報，無重大消息。",
       "events": [
         {
           "type": "降評",
           "date": "2026-10-14",
-          "text": "Stephens將目標價由88降至81美元，維持中立",
-          "source": "https://www.gurufocus.com/news/9123667/golf-maintained-by-stephens-co-price-target-lowered-to-8100"
+          "text": "Stephens 將目標價由88降至81美元，維持Equal Weight",
+          "source": "https://www.ad-hoc-news.de/boerse/news/nebenwerte/stephens-cuts-target-for-acushnet-stock-to-usd-81-00/70331184"
         },
         {
           "type": "其他",
-          "date": "2026-10-15",
-          "text": "Magnus Holdings將583,527股回售公司，約5250萬美元",
-          "source": "https://www.stocktitan.net/sec-filings/GOLF/form-4-acushnet-holdings-corp-insider-trading-activity-838cc8ae5305.html"
+          "date": "2026-10-17",
+          "text": "Wall Street Zen 將評級由持有升為買進（非傳統券商）",
+          "source": "https://www.marketbeat.com/instant-alerts/analyst-acushnet-nyse-golf-upgraded-at-wall-street-zen-2026-10-17/"
         }
       ],
       "veto": null,
-      "asof": "2026-10-26"
+      "asof": "2026-10-30"
     },
     "LEGN": {
       "score": 0,
@@ -512,121 +518,90 @@
     "ARVN": {
       "score": 0,
       "label": "中性",
-      "summary": "近兩週無重大消息",
+      "summary": "近兩週無重大消息；僅公告11/3將發布Q3財報，不計分。",
       "events": [],
       "veto": null,
-      "asof": "2026-10-28"
+      "asof": "2026-10-30"
     },
     "PTCT": {
-      "score": 1,
-      "label": "中性",
-      "summary": "UBS 調升目標價至90美元，但股價創12個月新低，Q3財報10/29公布",
+      "score": 7,
+      "label": "利多",
+      "summary": "10/29 公布Q3營收3.58億美元大幅超預期，並上調全年營收與產品營收指引。",
       "events": [
         {
-          "type": "其他",
-          "date": "2026-10-15",
-          "text": "UBS 維持買進並將目標價由80美元調升至90美元。",
-          "source": "https://stockanalysis.com/stocks/ptct/forecast/"
+          "type": "財報",
+          "date": "2026-10-29",
+          "text": "Q3營收3.58億美元，Sephience營收1.82億美元，優於預期",
+          "source": "https://www.prnewswire.com/news-releases/ptc-therapeutics-provides-corporate-update-and-reports-third-quarter-2026-financial-results-302924188.html"
         },
         {
-          "type": "其他",
-          "date": "2026-10-16",
-          "text": "Truist 開始覆蓋（各來源評等不一致）。",
-          "source": "https://www.marketbeat.com/instant-alerts/analyst-ptc-therapeutics-nasdaq-ptct-now-covered-by-analysts-at-truist-financial-2026-10-16/"
+          "type": "指引",
+          "date": "2026-10-29",
+          "text": "全年總營收指引上調至12.9-13.2億美元，產品營收上調至9.6-9.9億美元",
+          "source": "https://www.gurufocus.com/news/9154029/ptc-therapeutics-ptct-reports-record-q3-2026-revenue-raises-fullyear-guidance"
         }
       ],
       "veto": null,
-      "asof": "2026-10-28"
+      "asof": "2026-10-30"
     },
     "SNDX": {
-      "score": -4,
+      "score": -6,
       "label": "利空",
-      "summary": "IPF二期失敗停止開發(10/12)，股價創一年新低，多家律所發起調查",
+      "summary": "axatilimab治療IPF的二期試驗未達主要終點，公司終止該適應症開發；多家律所宣布調查，尚非正式訴訟。",
       "events": [
+        {
+          "type": "其他",
+          "date": "2026-10-12",
+          "text": "MAXPIRe二期試驗未達主要終點，停止IPF開發（距窗口起點僅4天，股價後續仍在消化）",
+          "source": "https://www.globenewswire.com/news-release/2026/10/12/3379220/0/en/syndax-announces-topline-results-from-maxpire-phase-2-trial-of-axatilimab-in-idiopathic-pulmonary-fibrosis.html"
+        },
         {
           "type": "訴訟",
           "date": "2026-10-17",
-          "text": "SBS Law 等律所就 IPF 試驗揭露發起投資人調查（律所通告，非 SEC 調查）。",
+          "text": "SBS Law等律所宣布代表投資人調查，非SEC調查",
           "source": "https://www.businesswire.com/news/home/20261017877184/en/SNDX-Investors-with-$100000-in-Losses-Have-Opportunity-to-Join-Syndax-Pharmaceuticals-Inc.-Fraud-Investigation-with-SBS-Law"
-        },
-        {
-          "type": "降評",
-          "date": "2026-10-19",
-          "text": "Weiss Ratings 將 SNDX 由 Sell(D-) 降至 Sell(E+)；10/16 股價創52週新低。",
-          "source": "https://www.marketbeat.com/instant-alerts/price-syndax-pharmaceuticals-nasdaq-sndx-reaches-new-1-year-low-time-to-sell-2026-10-16/"
         }
       ],
       "veto": null,
-      "asof": "2026-10-28"
+      "asof": "2026-10-30"
     },
     "STAA": {
-      "score": -3,
-      "label": "利空",
-      "summary": "Levi & Korsinsky 對董監事信託義務展開調查，Wall Street Zen 降評",
+      "score": 0,
+      "label": "中性",
+      "summary": "近兩週無重大消息；僅人事任命與投資人會議公告，財報11/4",
       "events": [
         {
-          "type": "訴訟",
-          "date": "2026-10-21",
-          "text": "Levi & Korsinsky 宣布調查 STAAR 董監事可能違反信託義務（律所通告，非 SEC 調查）。",
-          "source": "https://www.aol.co.uk/articles/shareholder-alert-levi-korsinsky-llp-201800000.html"
-        },
-        {
-          "type": "降評",
-          "date": "2026-10-18",
-          "text": "Wall Street Zen 將 STAA 由買進降至持有。",
-          "source": "https://www.marketbeat.com/instant-alerts/analyst-staar-surgical-nasdaq-staa-downgraded-by-wall-street-zen-to-hold-2026-10-18/"
+          "type": "其他",
+          "date": "2026-10-29",
+          "text": "任命Pascal Aeschlimann為亞太區副總裁，11/2生效",
+          "source": "https://visionmonday.com/eyecare/article/staar-surgical-appoints-pascal-aeschlimann-as-vice-president-of-asia-pacific"
         }
       ],
       "veto": null,
-      "asof": "2026-10-28"
+      "asof": "2026-10-30"
     },
     "LQDA": {
-      "score": 4,
-      "label": "利多",
-      "summary": "與UTHR全球和解、多家券商升評調高目標價，但需付3.81億並移除PH-ILD適應症",
-      "events": [
-        {
-          "type": "訴訟",
-          "date": "2026-10-14",
-          "text": "UTHR 聲明與 Liquidia 達成和解結束全部訴訟，Yutrepia 可續售 PAH，淨付約3.807億美元分期，並移除 PH-ILD 標示。",
-          "source": "https://ir.unither.com/press-releases/2026/10-14-2026"
-        },
-        {
-          "type": "其他",
-          "date": "2026-10-14",
-          "text": "LifeSci Capital 升至 Outperform、目標價59美元；BTIG 升至買進（目標70美元）。",
-          "source": "https://www.marketbeat.com/instant-alerts/analyst-liquidia-nasdaq-lqda-upgraded-to-outperform-at-lifesci-capital-2026-10-14/"
-        },
-        {
-          "type": "其他",
-          "date": "2026-10-15",
-          "text": "RBC 設定目標價65美元；HC Wainwright 維持買進並調高目標價至65美元。",
-          "source": "https://www.marketbeat.com/instant-alerts/analyst-liquidia-nasdaq-lqda-price-target-raised-to-6500-2026-10-15/"
-        }
-      ],
+      "score": 0,
+      "label": "中性",
+      "summary": "近兩週無重大消息；與United Therapeutics和解及分析師升評皆發生在10/13-10/14，早於視窗，僅有小額內部人賣出。",
+      "events": [],
       "veto": null,
-      "asof": "2026-10-28"
+      "asof": "2026-10-30"
     },
     "KLIC": {
       "score": -2,
       "label": "利空",
-      "summary": "B. Riley 目標價由105砍至86、Argus 下調目標價，股價走弱",
+      "summary": "B. Riley 10/20下修目標價至86美元（原105美元），屬輕微利空；近兩週無其他重大消息。",
       "events": [
         {
           "type": "降評",
           "date": "2026-10-20",
-          "text": "B. Riley 將目標價由105美元降至86美元，維持中立。",
-          "source": "https://www.marketbeat.com/instant-alerts/analyst-b-riley-financial-issues-pessimistic-forecast-for-kulicke-and-soffa-industries-nasdaq-klic-stock-price-2026-10-20/"
-        },
-        {
-          "type": "降評",
-          "date": "2026-10-14",
-          "text": "Argus 將目標價下調至93美元。",
-          "source": "https://www.defenseworld.net/2026/10/21/kulicke-and-soffa-industries-nasdaqklic-stock-price-target-lowered-at-b-riley-financial.html"
+          "text": "B. Riley將目標價由105美元下修至86美元",
+          "source": "https://www.cnn.com/markets/stocks/KLIC"
         }
       ],
       "veto": null,
-      "asof": "2026-10-28"
+      "asof": "2026-10-30"
     },
     "NTST": {
       "score": -1,
@@ -700,52 +675,71 @@
     "AAON": {
       "score": -2,
       "label": "利空",
-      "summary": "Oppenheimer 因價格與成本壓力下調目標價，股價創一年新低",
+      "summary": "Oppenheimer 10/14 下修目標價至115美元（維持優於大盤），股價創52週新低附近；無新公司公告",
       "events": [
         {
           "type": "降評",
           "date": "2026-10-14",
-          "text": "Oppenheimer 維持 Outperform，目標價由 125 降至 115 美元，理由為價格/成本壓力。",
-          "source": "https://www.defenseworld.net/2026/10/27/aaon-inc-nasdaqaaon-stock-rated-moderate-buy-by-sell-side-analysts.html"
+          "text": "Oppenheimer 將AAON目標價由125美元降至115美元，維持Outperform",
+          "source": "https://sg.finance.yahoo.com/news/aaon-aaon-top-line-surge-152857637.html"
         }
       ],
       "veto": null,
-      "asof": "2026-10-28"
+      "asof": "2026-10-30"
     },
     "ARWR": {
-      "score": 6,
+      "score": 5,
       "label": "利多",
-      "summary": "ARO-MAPT阿茲海默早期數據tau降73%，UBS以買進評等開始追蹤",
+      "summary": "ARO-MAPT 期中數據顯示腦脊髓液tau降73%，plozasiran 獲FDA STAR計畫並在英格蘭獲NHS採用",
       "events": [
         {
           "type": "其他",
           "date": "2026-10-14",
-          "text": "ARO-MAPT 第1/2a期期中數據顯示腦脊液總tau平均下降73%，支持每季給藥，惟為健康受試者。",
+          "text": "ARO-MAPT 期中1/2a數據：Day105腦脊髓液tau平均降73%，首度驗證TRiM穿越血腦障壁",
           "source": "https://www.businesswire.com/news/home/20261014103135/en/Arrowhead-Pharmaceuticals-Announces-ARO-MAPT-Interim-Phase-12a-Clinical-Data-Demonstrating-Deep-and-Durable-Tau-Reductions-in-Healthy-Volunteers"
         },
         {
           "type": "其他",
-          "date": "2026-10-15",
-          "text": "UBS 開始追蹤給予買進評等，目標價 109 美元。",
-          "source": "https://www.marketbeat.com/instant-alerts/consensus-arrowhead-pharmaceuticals-inc-nasdaq-arwr-stock-has-average-price-target-of-9907-2026-10-23/"
+          "date": "2026-10-07",
+          "text": "plozasiran 獲FDA STAR試辦計畫，補充申請可享6個月優先審查",
+          "source": "https://ir.arrowheadpharma.com/news-releases/news-release-details/arrowhead-pharmaceuticals-granted-entry-fda-star-pilot-program"
+        },
+        {
+          "type": "合約",
+          "date": "2026-10-27",
+          "text": "REDEMPLO 獲NICE決定納入英格蘭與威爾斯NHS用於FCS",
+          "source": "https://ir.arrowheadpharma.com/news-releases/news-release-details/adults-living-familial-chylomicronaemia-syndrome-fcs-england-and"
         },
         {
           "type": "其他",
-          "date": "2026-10-20",
-          "text": "英國 MHRA 核准 Redemplo 用於成人家族性乳糜微粒血症（FCS）。",
-          "source": "https://www.thepharmaletter.com/ones-to-watch/arrowhead-pharmaceuticals"
+          "date": "2026-10-15",
+          "text": "UBS 開始評等買進目標價109美元，HC Wainwright、Chardan 重申買進",
+          "source": "https://www.marketbeat.com/instant-alerts/consensus-arrowhead-pharmaceuticals-inc-nasdaq-arwr-stock-has-average-price-target-of-9907-2026-10-23/"
         }
       ],
       "veto": null,
-      "asof": "2026-10-28"
+      "asof": "2026-10-30"
     },
     "HLIT": {
-      "score": 0,
-      "label": "中性",
-      "summary": "近兩週無重大消息",
-      "events": [],
+      "score": 2,
+      "label": "利多",
+      "summary": "Cablenet 選用其cOS寬頻平台，Rosenblatt 10/29 重申買進、目標價20美元",
+      "events": [
+        {
+          "type": "合約",
+          "date": "2026-10-12",
+          "text": "賽普勒斯業者Cablenet選用Harmonic cOS寬頻平台提供多Gbps服務",
+          "source": "https://investor.harmonicinc.com/press-releases/"
+        },
+        {
+          "type": "其他",
+          "date": "2026-10-29",
+          "text": "Rosenblatt 重申買進評等，目標價20美元",
+          "source": "https://www.marketbeat.com/instant-alerts/analyst-harmonic-nasdaq-hlit-stock-keeps-buy-rating-at-rosenblatt-securities-2026-10-29/"
+        }
+      ],
       "veto": null,
-      "asof": "2026-10-28"
+      "asof": "2026-10-30"
     },
     "ALNY": {
       "score": 2,
@@ -811,46 +805,52 @@
       "asof": "2026-10-28"
     },
     "HE": {
-      "score": 1,
-      "label": "中性",
-      "summary": "股東訴訟和解獲法院final核准，不確定性降低，但其餘無重大消息",
+      "score": -3,
+      "label": "利空",
+      "summary": "Jefferies 10/6 降目標價至7美元維持劣於大盤，Weiss 降評，股價創一年新低，風暴相關成本與監管審查持續。",
       "events": [
         {
-          "type": "訴訟",
-          "date": "2026-10-23",
-          "text": "聯邦法官最終核准約 4,775 萬美元的茂宜野火股東集體訴訟和解，律師費由 30% 砍到 20%。",
-          "source": "https://news.bloomberglaw.com/securities-law/hawaiian-electrics-48-million-investor-accord-gets-final-nod"
+          "type": "降評",
+          "date": "2026-10-06",
+          "text": "Jefferies 將目標價由8.75降至7美元，維持Underperform，理由為風暴成本與融資負擔",
+          "source": "https://www.ad-hoc-news.de/boerse/news/nebenwerte/jefferies-cuts-target-to-usd-7-00-for-hawaiian-electric-industries-stock/70378142"
+        },
+        {
+          "type": "其他",
+          "date": "2026-10-16",
+          "text": "夏威夷PUC 就風暴後服務可靠度重排公眾說明會",
+          "source": "https://www.westhawaiitoday.com/2026/10/16/hawaii-news/puc-reschedules-meetings-regarding-hawaiian-electrics-service-reliability/"
+        },
+        {
+          "type": "其他",
+          "date": "2026-10-26",
+          "text": "股價創一年新低",
+          "source": "https://www.thestockobserver.com/2026/10/26/hawaiian-electric-industries-nysehe-hits-new-1-year-low-heres-why.html"
         }
       ],
       "veto": null,
-      "asof": "2026-10-28"
+      "asof": "2026-10-30"
     },
     "BYD": {
-      "score": 0,
-      "label": "中性",
-      "summary": "Q3略低於預期、拉斯維加斯疲弱，但線上業務強且多家升評、S&P展望轉正",
+      "score": -3,
+      "label": "利空",
+      "summary": "Q3 營收與EBITDAR小幅下滑，拉斯維加斯Orleans疲弱，線上業務成長；Citi 下修目標價至76美元，股價走弱。",
       "events": [
         {
           "type": "財報",
           "date": "2026-10-22",
-          "text": "Q3 營收 9.905 億美元（調整後 +2%），EPS 1.67 美元略低於預期 1.70 美元；線上與管理業務預期落在指引高端。",
-          "source": "https://media.boydgaming.com/2026-10-22-BOYD-GAMING-REPORTS-THIRD-QUARTER-2026-RESULTS"
+          "text": "Q3 營收與EBITDAR約年減1%，Las Vegas Orleans疲弱，線上業務雙位數成長，季內回饋股東約1.8億美元",
+          "source": "https://www.prnewswire.com/news-releases/boyd-gaming-reports-third-quarter-2026-results-302917374.html"
         },
         {
           "type": "降評",
-          "date": "2026-10-19",
-          "text": "Morgan Stanley 與 Susquehanna 同日升評（目標價仍下調至 83 美元）；Stifel、Barclays、Citi 等多家下調目標價。",
-          "source": "https://www.benzinga.com/analyst-stock-ratings/upgrades/26/10/62186761/this-boyd-gaming-analyst-turns-bullish-here-are-top-5-upgrades-for-tuesday"
-        },
-        {
-          "type": "其他",
-          "date": "2026-10-27",
-          "text": "S&P 將 Boyd 展望由穩定調為正向，維持 BB 評等。",
-          "source": "https://www.investing.com/news/stock-market-news/sp-revises-boyd-gaming-outlook-to-positive-on-balance-sheet-discipline-4976191"
+          "date": "2026-10-26",
+          "text": "Citigroup 將目標價由78降至76美元，維持中立",
+          "source": "https://www.marketbeat.com/instant-alerts/analyst-boyd-gaming-nyse-byd-given-new-7600-price-target-at-citigroup-2026-10-26/"
         }
       ],
       "veto": null,
-      "asof": "2026-10-28"
+      "asof": "2026-10-30"
     },
     "ROL": {
       "score": -5,
@@ -880,46 +880,157 @@
       "asof": "2026-10-28"
     },
     "AN": {
-      "score": -1,
-      "label": "中性",
-      "summary": "近兩週僅有分析師下調目標價與董事任命，Q3財報10/30公布",
+      "score": -2,
+      "label": "利空",
+      "summary": "Morgan Stanley 降評並下修目標價至175美元，BofA、UBS 亦下調目標價；10/30 當天公布財報，結果尚未查得。",
       "events": [
         {
           "type": "降評",
-          "date": "2026-10-16",
-          "text": "Bank of America 將目標價由 250 降至 213 美元、維持買進（另有 UBS 降至 213 美元）。",
-          "source": "https://www.cnn.com/markets/stocks/AN"
+          "date": "2026-10-23",
+          "text": "Morgan Stanley 降至Equal-weight、目標價175美元；BofA與UBS下調目標價至213美元",
+          "source": "https://www.marketscreener.com/news/autonation-inc-announces-appointment-of-mark-stewart-as-independent-director-ce785cdadc81fe27"
+        },
+        {
+          "type": "其他",
+          "date": "2026-10-13",
+          "text": "任命Mark Stewart 為獨立董事",
+          "source": "https://www.marketscreener.com/news/autonation-inc-announces-appointment-of-mark-stewart-as-independent-director-ce785cdadc81fe27"
         }
       ],
       "veto": null,
-      "asof": "2026-10-28"
+      "asof": "2026-10-30"
     },
     "CRUS": {
-      "score": -3,
+      "score": -4,
       "label": "利空",
-      "summary": "KeyBanc與Barclays因蘋果風險降評，目標價下調，另有小型併購",
+      "summary": "KeyBanc 降至中性、Barclays 降至劣於大盤並下修目標價至95美元，擔憂蘋果依賴；另有小型併購與高管減持。",
       "events": [
         {
           "type": "降評",
           "date": "2026-10-20",
-          "text": "Barclays 由中立降至劣於大盤，目標價 130 降至 95 美元，理由為 iPhone 生產風險；Susquehanna 目標價 200 降至 170 美元。",
-          "source": "https://www.tipranks.com/news/cirrus-logic-stock-falls-to-109-66-as-barclays-cuts-target-to-95-on-apple-iphone-production-risks"
+          "text": "Barclays 降評至Underweight，目標價由130降至95美元，指蘋果展望偏軟與價格壓力",
+          "source": "https://seekingalpha.com/news/4655282-barclays-downgrades-cirrus-logic-on-apple-outlook-pricing-concerns"
         },
         {
           "type": "降評",
           "date": "2026-10-15",
-          "text": "KeyBanc 由優於大盤降至持股觀望，指約 80% 營收依賴蘋果。",
-          "source": "https://www.defenseworld.net/2026/10/18/cirrus-logic-nasdaqcrus-stock-rating-lowered-by-wall-street-zen.html"
+          "text": "KeyBanc 降評至Sector Weight，擔憂蘋果營收集中與iPhone產量下滑",
+          "source": "https://www.gurufocus.com/news/9125386/cirrus-logic-crus-shares-dip-after-keybanc-downgrade-on-apple-iphone-concerns"
         },
         {
           "type": "其他",
-          "date": "2026-10-06",
-          "text": "收購義大利 INVENTVM Semiconductor，公司稱對營收無重大影響。",
-          "source": "https://investor.cirrus.com/news-and-events/investor-news/news-details/2026/Cirrus-Logic-Announces-Acquisition-of-INVENTVM-Semiconductor/default.aspx"
+          "date": "2026-10-23",
+          "text": "EVP Baumgartner 於10/20 以約107.75美元出售1,166股",
+          "source": "https://www.thecerbatgem.com/2026/10/23/cirrus-logic-nasdaqcrus-stock-insider-jeffrey-baumgartner-sells-1166-shares.html"
         }
       ],
       "veto": null,
-      "asof": "2026-10-28"
+      "asof": "2026-10-30"
+    },
+    "SIMO": {
+      "score": 7,
+      "label": "利多",
+      "summary": "Q3營收5.6億美元年增131%優於預期,Q4指引5.88~6.16億高於共識,2027年預期至少成長40%,Craig-Hallum與Susquehanna調升目標價。",
+      "events": [
+        {
+          "type": "財報",
+          "date": "2026-10-28",
+          "text": "Q3營收5.602億美元優於預期約5.29億,年增131%",
+          "source": "https://www.stocktitan.net/news/SIMO/silicon-motion-announces-results-for-the-quarterly-period-ended-07hjsdfjdyiu.html"
+        },
+        {
+          "type": "指引",
+          "date": "2026-10-28",
+          "text": "Q4營收指引5.88~6.16億美元,高於共識約5.50億",
+          "source": "https://marketscreener.com/news/simo-silicon-motion-technology-corporation-expects-q4-revenue-range-588-0m-616-0m-ce785cd3db8df520"
+        },
+        {
+          "type": "其他",
+          "date": "2026-10-29",
+          "text": "財報電話會議預期2027年成長至少40%,分析師調升目標價至325~350美元",
+          "source": "https://www.fool.com/earnings/call-transcripts/2026/10/29/silicon-motion-simo-q3-2026-earnings-call-transcript/"
+        }
+      ],
+      "veto": null,
+      "asof": "2026-10-30"
+    },
+    "SITM": {
+      "score": 1,
+      "label": "中性",
+      "summary": "Rosenblatt首次評等買進為小利多,董事辭任董事會縮為8席與內部人小額賣股影響有限,Q3財報11/4公布,股價10月明顯回落。",
+      "events": [
+        {
+          "type": "其他",
+          "date": "2026-10-19",
+          "text": "Rosenblatt首次覆蓋給予買進評等",
+          "source": "https://www.marketbeat.com/instant-alerts/price-sitime-nasdaq-sitm-stock-price-up-67-whats-next-2026-10-19/"
+        },
+        {
+          "type": "其他",
+          "date": "2026-10-20",
+          "text": "董事Schuelke辭任,董事會由9席縮減為8席",
+          "source": "https://www.ad-hoc-news.de/boerse/news/nebenwerte/sitime-stock-sitime-cuts-its-board-to-eight-seats-sitime-stock-enters-a-new-governance-setup/70401214"
+        }
+      ],
+      "veto": null,
+      "asof": "2026-10-30"
+    },
+    "AGX": {
+      "score": 1,
+      "label": "中性",
+      "summary": "JPMorgan將其列為年底前首選股屬輕微利多,但Lake Street降評至持有、JPMorgan微降目標價,整體偏中性。",
+      "events": [
+        {
+          "type": "其他",
+          "date": "2026-10-20",
+          "text": "JPMorgan點名Argan為2026下半年首選股之一",
+          "source": "https://www.cnn.com/markets/stocks/AGX"
+        }
+      ],
+      "veto": null,
+      "asof": "2026-10-30"
+    },
+    "NESR": {
+      "score": 0,
+      "label": "中性",
+      "summary": "近兩週無重大消息,僅BTIG重申買進評等,10/8沙烏地阿美鋰提取協議與Barclays降目標價皆在區間之前。",
+      "events": [
+        {
+          "type": "其他",
+          "date": "2026-10-21",
+          "text": "BTIG重申買進評等",
+          "source": "https://www.marketbeat.com/instant-alerts/price-national-energy-services-reunited-nasdaq-nesr-sees-strong-trading-volume-whats-next-2026-10-21/"
+        }
+      ],
+      "veto": null,
+      "asof": "2026-10-30"
+    },
+    "AA": {
+      "score": -3,
+      "label": "利空",
+      "summary": "Q3 EPS優於預期但營收低於預期,Argus降評至持有,多家券商下修目標價,鋁價疲弱;出售Massena部分資產為小利多。",
+      "events": [
+        {
+          "type": "降評",
+          "date": "2026-10-22",
+          "text": "Argus將Alcoa由買進降至持有,股價單日跌約5%",
+          "source": "https://ng.investing.com/news/stock-market-news/argus-downgrades-alcoa-stock-rating-to-hold-on-aluminum-pricing-93CH-2751354"
+        },
+        {
+          "type": "財報",
+          "date": "2026-10-15",
+          "text": "Q3營收約37億美元低於預期,淨利4.83億美元",
+          "source": "https://www.investing.com/news/transcripts/earnings-call-transcript-alcoa-tops-q3-2026-eps-forecast-as-revenue-misses-93CH-4952743"
+        },
+        {
+          "type": "其他",
+          "date": "2026-10-15",
+          "text": "同意出售Massena East部分廠區,預計收入最高3.15億美元",
+          "source": "https://www.gurufocus.com/news/9126898/alcoa-corp-aa-reports-strong-q3-2026-results-with-strategic-asset-sale-and-production-boost"
+        }
+      ],
+      "veto": null,
+      "asof": "2026-10-30"
     }
   }
 }
