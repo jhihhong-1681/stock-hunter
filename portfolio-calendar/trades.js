@@ -511,5 +511,15 @@ window.TRADES = [
   { date: "2026-10-28", time: "03:22:30", side: "買進", symbol: "VRT", type: "stock", description: null, qty: 4, price: 212 },
   { date: "2026-10-28", time: "11:27:18", side: "賣出", symbol: "JLL", type: "stock", description: null, qty: 3, price: 334 },
   { date: "2026-10-28", time: "11:27:32", side: "Buy Open", symbol: "PBR", type: "option", description: "PBR 11/20/2026 25.00 Call", qty: 8, price: 0.16 },
-  { date: "2026-10-28", time: "14:53:13", side: "Buy Open", symbol: "KGC", type: "option", description: "KGC 01/15/2027 20.00 Call", qty: 1, price: 3.35 }
+  { date: "2026-10-28", time: "14:53:13", side: "Buy Open", symbol: "KGC", type: "option", description: "KGC 01/15/2027 20.00 Call", qty: 1, price: 3.35 },
+  { date: "2026-10-30", time: "09:42:00", side: "Buy Open", symbol: "QQQ", type: "option", description: "QQQ 10/30/2026 710.00 Call", qty: 5, price: 0.15 },
+  { date: "2026-10-30", time: "09:58:54", side: "Sell Close", symbol: "GOOGL", type: "option", description: "GOOGL 10/30/2026 295.00 Call", qty: 1, price: 0.03 },
+  { date: "2026-10-30", time: "10:51:38", side: "Buy Open", symbol: "PBR", type: "option", description: "PBR 12/18/2026 24.00 Call", qty: 10, price: 0.55 },
+  { date: "2026-10-30", time: "12:22:39", side: "Buy Open", symbol: "SPY", type: "option", description: "SPY 10/30/2026 753.00 Put", qty: 1, price: 0.28 },
+  { date: "2026-10-30", time: "12:25:35", side: "賣出", symbol: "VRT", type: "stock", description: null, qty: 8, price: 234 },
+  { date: "2026-10-30", time: "13:26:51", side: "Sell Close", symbol: "SPY", type: "option", description: "SPY 10/30/2026 753.00 Put", qty: 1, price: 0.6 },
+  { date: "2026-10-30", time: "13:38:52", side: "Sell Close", symbol: "FLYW", type: "option", description: "FLYW 12/18/2026 15.00 Call", qty: 1, price: 4.5 },
+  { date: "2026-10-30", time: "13:41:25", side: "賣出", symbol: "NBIS", type: "stock", description: null, qty: 3, price: 152 },
+  { date: "2026-10-30", time: "15:50:50", side: "Sell Close", symbol: "CLF", type: "option", description: "CLF 11/20/2026 10.00 Call", qty: 1, price: 4.15 },
+  { date: "2026-10-30", time: "15:51:44", side: "Sell Close", symbol: "PBR", type: "option", description: "PBR 12/18/2026 24.00 Call", qty: 10, price: 0.53 }
 ];
