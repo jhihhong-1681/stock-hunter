@@ -54,6 +54,7 @@ window.HOLDINGS = {
     {symbol: "FLYW", name: "FLYW 12/18/26 15 Call", note: "4.5賣出", realized: 1550},
     {symbol: "SPY", name: "SPY 10/30/26 753 Put", note: null, realized: 992},
     {symbol: "VRT", name: "Vertiv Holding", note: "240賣出5股 264賣出5股 255賣出5股 265賣出5股 268賣出5股 261.3賣出7...", realized: 83750.22},
+    {symbol: "GOOGL", name: "GOOGL 10/30/26 295 Call", note: null, realized: -3000},
     {symbol: "JLL", name: "Jones Lang LaSalle", note: "334賣出3股", realized: 3597.24},
     {symbol: "HPQ", name: "HPQ 12/18/26 30 Call", note: "5賣出", realized: 1860},
     {symbol: "UVXY", name: "UVXY 10/23/26 17 Put", note: null, realized: -5890},

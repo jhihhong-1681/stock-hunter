@@ -1899,7 +1899,7 @@ window.POSITIONS_HISTORY = {
       {symbol: "NBIS", name: "Nebius", pl: 0, realized: -2821},
       {symbol: "FLYW", name: "FLYW 12/18/26 15 Call", pl: 0, realized: 1550},
       {symbol: "CLF", name: "CLF 11/20/26 10 Call", pl: 0, realized: 13485},
-      {symbol: "GOOGL", name: "GOOGL 10/30/26 295 Call", pl: 0, realized: null},
+      {symbol: "GOOGL", name: "GOOGL 10/30/26 295 Call", pl: 0, realized: -3000},
       {symbol: "ASTS", name: "AST Spacemobile", pl: -59215.89, realized: null},
       {symbol: "VOYG", name: "Voyager Technologies", pl: -14653.7, realized: null},
       {symbol: "SMR", name: "NuScale Power", pl: -65393.66, realized: -106338.51},
