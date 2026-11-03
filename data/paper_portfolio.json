@@ -16,10 +16,10 @@
    ],
    "shares": 28,
    "cost_ntd": 31054.44308587646,
-   "last_px": 39.95000076293945,
+   "last_px": 39.130001068115234,
    "name": "Karman Holdings Inc.",
-   "score": 68.0,
-   "target": 144638,
+   "score": 68.2,
+   "target": 153223,
    "sector": "Industrials",
    "opened": "2026-10-21",
    "peak": 41.689998626708984
@@ -35,10 +35,10 @@
    ],
    "shares": 117,
    "cost_ntd": 27393.244693257806,
-   "last_px": 7.860000133514404,
+   "last_px": 7.519999980926514,
    "name": "Arvinas, Inc.",
-   "score": 68.0,
-   "target": 144638,
+   "score": 67.9,
+   "target": 149740,
    "sector": "Healthcare",
    "opened": "2026-10-21",
    "peak": 7.900000095367432
@@ -54,10 +54,10 @@
    ],
    "shares": 19,
    "cost_ntd": 22892.221249999995,
-   "last_px": 45.060001373291016,
+   "last_px": 41.849998474121094,
    "name": "Liquidia Corporation",
-   "score": 66.2,
-   "target": 124611,
+   "score": 66.8,
+   "target": 136972,
    "sector": "Healthcare",
    "opened": "2026-10-21",
    "peak": 45.720001220703125
@@ -73,10 +73,10 @@
    ],
    "shares": 55,
    "cost_ntd": 18212.724097642895,
-   "last_px": 9.699999809265137,
+   "last_px": 10.079999923706055,
    "name": "Equinox Gold Corp.",
    "score": 59.0,
-   "target": 55630,
+   "target": 58039,
    "sector": "Basic Materials",
    "opened": "2026-10-21",
    "peak": 10.681949617385863
@@ -92,10 +92,10 @@
    ],
    "shares": 25,
    "cost_ntd": 15616.459368610382,
-   "last_px": 18.799999237060547,
+   "last_px": 19.34000015258789,
    "name": "Allied Gold Corporation",
-   "score": 58.8,
-   "target": 55630,
+   "score": 59.4,
+   "target": 58039,
    "sector": "Basic Materials",
    "opened": "2026-10-21",
    "peak": 20.31999969482422
@@ -111,13 +111,13 @@
    ],
    "shares": 83,
    "cost_ntd": 25291.04669223308,
-   "last_px": 10.229999542236328,
+   "last_px": 10.420000076293945,
    "name": "MINISO Group Holding Limited",
-   "score": 71.1,
-   "target": 106905,
+   "score": 70.6,
+   "target": 104622,
    "sector": "Consumer Cyclical",
    "opened": "2026-10-21",
-   "peak": 10.229999542236328
+   "peak": 10.420000076293945
   },
   "CWEN": {
    "kind": "成熟型",
@@ -130,13 +130,13 @@
    ],
    "shares": 23,
    "cost_ntd": 22312.337345607757,
-   "last_px": 32.029998779296875,
+   "last_px": 33.900001525878906,
    "name": "Clearway Energy, Inc.",
    "score": 71.0,
-   "target": 106241,
+   "target": 107305,
    "sector": "Utilities",
    "opened": "2026-10-21",
-   "peak": 32.880001068115234
+   "peak": 33.900001525878906
   },
   "GIS": {
    "kind": "成熟型",
@@ -149,10 +149,10 @@
    ],
    "shares": 18,
    "cost_ntd": 18424.4670552063,
-   "last_px": 34.290000915527344,
+   "last_px": 34.75,
    "name": "General Mills, Inc.",
    "score": 68.5,
-   "target": 89641,
+   "target": 90538,
    "sector": "Consumer Defensive",
    "opened": "2026-10-21",
    "peak": 35.18000030517578
@@ -168,10 +168,10 @@
    ],
    "shares": 1,
    "cost_ntd": 10568.821743865965,
-   "last_px": 343.1199951171875,
+   "last_px": 332.989990234375,
    "name": "Talen Energy Corporation",
-   "score": 63.6,
-   "target": 95684,
+   "score": 61.4,
+   "target": 74290,
    "sector": "Utilities",
    "opened": "2026-10-26",
    "peak": 348.8500061035156
@@ -187,10 +187,10 @@
    ],
    "shares": 54,
    "cost_ntd": 17780.84323619842,
-   "last_px": 10.229999542236328,
+   "last_px": 10.1899995803833,
    "name": "Harmonic Inc.",
-   "score": 62.7,
-   "target": 85670,
+   "score": 61.5,
+   "target": 75450,
    "sector": "Technology",
    "opened": "2026-10-27",
    "peak": 10.800000190734863
@@ -479,6 +479,18 @@
    "spy": 977532,
    "spy_day_ret": -0.01773,
    "unrealized": 7342,
+   "realized": 1947
+  },
+  {
+   "date": "2026-11-02",
+   "equity": 1008217,
+   "cash": 792400,
+   "invested": 215817,
+   "day_pnl": -1072,
+   "day_ret": -0.00106,
+   "spy": 972849,
+   "spy_day_ret": -0.00479,
+   "unrealized": 6270,
    "realized": 1947
   }
  ],
@@ -1151,6 +1163,101 @@
      "day_ret": -0.0528
     }
    ]
+  },
+  {
+   "date": "2026-11-02",
+   "positions": [
+    {
+     "symbol": "KRMN",
+     "kind": "成長型",
+     "shares": 28,
+     "price": 39.130001068115234,
+     "value": 33965,
+     "ret": 0.0937,
+     "day_ret": -0.0205
+    },
+    {
+     "symbol": "ARVN",
+     "kind": "成長型",
+     "shares": 117,
+     "price": 7.519999980926514,
+     "value": 27275,
+     "ret": -0.0043,
+     "day_ret": -0.0433
+    },
+    {
+     "symbol": "LQDA",
+     "kind": "成長型",
+     "shares": 19,
+     "price": 41.849998474121094,
+     "value": 24650,
+     "ret": 0.0768,
+     "day_ret": -0.0712
+    },
+    {
+     "symbol": "EQX",
+     "kind": "成長型",
+     "shares": 55,
+     "price": 10.079999923706055,
+     "value": 17186,
+     "ret": -0.0564,
+     "day_ret": 0.0392
+    },
+    {
+     "symbol": "AAUC",
+     "kind": "成長型",
+     "shares": 25,
+     "price": 19.34000015258789,
+     "value": 14989,
+     "ret": -0.0402,
+     "day_ret": 0.0287
+    },
+    {
+     "symbol": "MNSO",
+     "kind": "成熟型",
+     "shares": 83,
+     "price": 10.420000076293945,
+     "value": 26811,
+     "ret": 0.0601,
+     "day_ret": 0.0186
+    },
+    {
+     "symbol": "CWEN",
+     "kind": "成熟型",
+     "shares": 23,
+     "price": 33.900001525878906,
+     "value": 24171,
+     "ret": 0.0833,
+     "day_ret": 0.0584
+    },
+    {
+     "symbol": "GIS",
+     "kind": "成熟型",
+     "shares": 18,
+     "price": 34.75,
+     "value": 19390,
+     "ret": 0.0524,
+     "day_ret": 0.0134
+    },
+    {
+     "symbol": "TLN",
+     "kind": "成長型",
+     "shares": 1,
+     "price": 332.989990234375,
+     "value": 10323,
+     "ret": -0.0233,
+     "day_ret": -0.0295
+    },
+    {
+     "symbol": "HLIT",
+     "kind": "成長型",
+     "shares": 54,
+     "price": 10.1899995803833,
+     "value": 17058,
+     "ret": -0.0406,
+     "day_ret": -0.0039
+    }
+   ]
   }
  ],
  "journal": [
@@ -1240,9 +1347,16 @@
    "actions": [
     "今天沒有調整"
    ]
+  },
+  {
+   "date": "2026-11-02",
+   "summary": "當日損益 NT$-1,072（-0.11%），SPY -0.48%；淨值 NT$1,008,217，持股 10 檔",
+   "actions": [
+    "今天沒有調整"
+   ]
   }
  ],
  "spy_start": 773.0900268554688,
- "last_date": "2026-10-30",
- "generated": "2026-11-02T17:06:29+00:00"
+ "last_date": "2026-11-02",
+ "generated": "2026-11-03T15:10:24+00:00"
 }
