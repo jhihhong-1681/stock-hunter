@@ -521,5 +521,9 @@ window.TRADES = [
   { date: "2026-10-30", time: "13:38:52", side: "Sell Close", symbol: "FLYW", type: "option", description: "FLYW 12/18/2026 15.00 Call", qty: 1, price: 4.5 },
   { date: "2026-10-30", time: "13:41:25", side: "賣出", symbol: "NBIS", type: "stock", description: null, qty: 3, price: 152 },
   { date: "2026-10-30", time: "15:50:50", side: "Sell Close", symbol: "CLF", type: "option", description: "CLF 11/20/2026 10.00 Call", qty: 1, price: 4.15 },
-  { date: "2026-10-30", time: "15:51:44", side: "Sell Close", symbol: "PBR", type: "option", description: "PBR 12/18/2026 24.00 Call", qty: 10, price: 0.53 }
+  { date: "2026-10-30", time: "15:51:44", side: "Sell Close", symbol: "PBR", type: "option", description: "PBR 12/18/2026 24.00 Call", qty: 10, price: 0.53 },
+  { date: "2026-11-04", time: "10:57:58", side: "Sell Close", symbol: "WMT", type: "option", description: "WMT 11/06/2026 130.00 Call", qty: 3, price: 1.5 },
+  { date: "2026-11-04", time: "11:31:11", side: "賣出", symbol: "UGL", type: "stock", description: null, qty: 28, price: 42.8 },
+  { date: "2026-11-04", time: "11:35:57", side: "買進", symbol: "VST", type: "stock", description: null, qty: 10, price: 119 },
+  { date: "2026-11-04", time: "12:08:40", side: "Sell Close", symbol: "NVO", type: "option", description: "NVO 11/20/2026 42.50 Call", qty: 1, price: 1.65 }
 ];
