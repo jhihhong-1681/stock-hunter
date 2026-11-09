@@ -14,7 +14,9 @@ from utils.styles import load_css
 load_css()
 import importlib
 from utils import pending_orders as po
-importlib.reload(po)   # Streamlit Cloud 部署後舊模組會留在快取裡，缺新函式就 AttributeError（同交易系統頁的做法）
+from utils import hunting as hunt
+importlib.reload(po)
+importlib.reload(hunt)   # Streamlit Cloud 部署後舊模組會留在快取裡，缺新函式就 AttributeError（同交易系統頁的做法）
 st.title("📰 研究監控日誌")
 
 # 付費電子報內容只存在阿紘的私人 Google Drive 資料夾，這個 app 的 repo 是公開的，所以：
@@ -175,15 +177,30 @@ def render_day(day: dict) -> None:
     articles = sorted(day.get("articles") or [], key=lambda a: a.get("publishedAtUtc") or "", reverse=True)
     dots = "".join(f'<span class="rl-dot {run_cls(r)}" title="{esc(fmt_taipei(r.get("ranAtUtc")))}"></span>' for r in runs)
     fails = sorted({f'{SITE_LABEL.get(x.get("site"), x.get("site"))}：{x["error"]}' for r in runs for x in (r.get("results") or []) if not x.get("ok") and x.get("error")})
-    body = "".join(article_card(a) for a in articles) or '<div class="rl-daycount">這天沒有新文章</div>'
     fail_html = f'<div class="rl-fail">檢查失敗：{"；".join(esc(f) for f in fails)}</div>' if fails else ""
     st.markdown(
         f'<div class="rl-day"><div class="rl-dayhead"><span class="rl-daytitle">{esc(day_title(day["date"]))}</span>'
         f'<span class="rl-daycount">{len(articles)} 篇新文章 · {len(runs)} 次檢查</span></div>'
-        f'<div class="rl-dots">{dots}</div>{body}{fail_html}</div>',
+        f'<div class="rl-dots">{dots}</div></div>',
         unsafe_allow_html=True,
     )
-
+    if not articles:
+        st.markdown('<div class="rl-daycount">這天沒有新文章</div>', unsafe_allow_html=True)
+    hunted = {h["id"] for h in hunting_items()} if HUNT_OK else set()
+    for i, a in enumerate(articles):
+        st.markdown(article_card(a), unsafe_allow_html=True)
+        if HUNT_OK and hunt.can_hunt(a):
+            item = hunt.make_item(a)
+            done = item["id"] in hunted
+            if st.button("✅ 已在 Hunting" if done else "🎯 加入 Hunting", key=f'hunt_{day["date"]}_{i}', disabled=done):
+                try:
+                    hunt.add(JOURNAL_URL, JOURNAL_KEY, item)
+                    hunting_items.clear()
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"加入失敗：{e}")
+    if fail_html:
+        st.markdown(fail_html, unsafe_allow_html=True)
 
 
 @st.cache_data(ttl=600, show_spinner=False)
@@ -310,6 +327,83 @@ def fmt_dt_taipei(iso: str, fmt: str = "%m/%d %H:%M") -> str:
         return iso
 
 
+# ── Hunting（準備下單清單）──────────────────────────────────
+JOURNAL_URL = st.secrets.get("JOURNAL_API_URL", "")
+JOURNAL_KEY = st.secrets.get("JOURNAL_API_KEY", "")
+HUNT_OK = bool(JOURNAL_URL and JOURNAL_KEY)
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def hunting_items() -> list[dict]:
+    if not HUNT_OK:
+        return []
+    try:
+        return hunt.load(JOURNAL_URL, JOURNAL_KEY)
+    except Exception:
+        return []
+
+
+def render_hunting() -> None:
+    """監控日誌最上方：我按「加入 Hunting」的推薦，對照現價看離進場價多遠；勾選後可移除。"""
+    if not HUNT_OK:
+        return
+    items = hunting_items()
+    with st.expander(f"🎯 Hunting（準備下單清單）· {len(items)} 筆", expanded=bool(items)):
+        if not items:
+            st.caption("還沒有。在下方文章卡片按「🎯 加入 Hunting」就會出現在這裡。")
+            return
+        stocks = tuple(sorted({h["ticker"] for h in items if h.get("ticker")}))
+        closes = daily_closes(stocks) if stocks else pd.DataFrame()
+        occ = {h["id"]: option_symbol(h["ticker"], h.get("contract"), h.get("published")) if "期權" in (h.get("instrument") or "") else None for h in items}
+        quotes = option_quotes(tuple(sorted({v for v in occ.values() if v}))) if any(occ.values()) else {}
+        rows = []
+        for h in items:
+            lim = hunt.first_price(h.get("entry"))
+            o = occ[h["id"]]
+            if o:
+                q = quotes.get(o)
+                cur = q[0] if q else None
+            else:
+                cur = close_on(closes, h["ticker"])
+            rows.append({
+                "移除": False,
+                "標的": h["ticker"],
+                "動作": f'{(h.get("action") or "")[:4]}{" · " + h["instrument"] if h.get("instrument") else ""}',
+                "合約": h.get("contract") or "",
+                "進場價": h.get("entry") or "",
+                "現價": cur,
+                "距進場價": (cur - lim) / lim * 100 if (lim and cur is not None) else None,
+                "目標價": h.get("target") or "",
+                "停損": h.get("stop") or "",
+                "來源": SITE_LABEL.get(h.get("site"), h.get("site") or ""),
+                "推薦時間": fmt_dt_taipei(h["published"], "%m/%d %H:%M") if h.get("published") else "",
+                "原文": h.get("url"),
+            })
+        df = pd.DataFrame(rows)
+        edited = st.data_editor(
+            df, hide_index=True, use_container_width=True, key="hunting_table", height=min(35 * len(rows) + 38, 420),
+            column_config={
+                "移除": st.column_config.CheckboxColumn(width="small", pinned=True),
+                "標的": st.column_config.TextColumn(width="small", pinned=True),
+                "現價": st.column_config.NumberColumn(format="%.2f", width="small"),
+                "距進場價": st.column_config.NumberColumn(format="%+.1f%%", width="small"),
+                "原文": st.column_config.LinkColumn(display_text="開啟", width="small"),
+            },
+            disabled=[c for c in df.columns if c != "移除"],
+        )
+        picked = [h for h, chk in zip(items, edited["移除"]) if chk]
+        if st.button(f"從 Hunting 移除勾選的 {len(picked)} 筆", disabled=not picked):
+            try:
+                for h in picked:
+                    hunt.remove(JOURNAL_URL, JOURNAL_KEY, h)
+                hunting_items.clear()
+                st.rerun()
+            except Exception as e:
+                st.error(f"移除失敗：{e}")
+        st.caption("現價：股票＝最新收盤，期權＝Yahoo 買賣中間價（延遲報價；抓不到就空白）。距進場價 = (現價 − 進場價) ÷ 進場價，"
+                   "進場價取原文第一個數字，僅供參考，下單請以券商即時報價與原文為準。")
+
+
 # ── 總表顯示用的精簡格式 ──────────────────────────────────
 MY_DATA_DIR = Path(__file__).resolve().parent.parent / "portfolio-calendar"
 
@@ -397,10 +491,6 @@ def color_change(v) -> str:
     if pd.isna(v) or round(v, 1) == 0:  # 顯示成 0.0% 的就不上色（避免「-0.0%」變紅）
         return ""
     return "color: #2fbf6a; font-weight: 700" if v > 0 else "color: #ff5c5c; font-weight: 700"
-
-
-JOURNAL_URL = st.secrets.get("JOURNAL_API_URL", "")
-JOURNAL_KEY = st.secrets.get("JOURNAL_API_KEY", "")
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -626,6 +716,7 @@ if v2.button("🔄 重新整理"):
 if view == "🎯 標的總表":
     render_positions(dates)
 else:
+    render_hunting()
     c1, c2 = st.columns([2, 2])
     mode = c1.radio("顯示", ["最近幾天", "指定日期"], horizontal=True, label_visibility="collapsed")
     if mode == "最近幾天":
