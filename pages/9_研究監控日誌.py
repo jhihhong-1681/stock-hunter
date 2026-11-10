@@ -366,7 +366,11 @@ def render_todos() -> None:
             c1, c2, c3 = st.columns([1.3, 1, 1])
             has_due = c1.checkbox("指定日期")
             due = c1.date_input("日期", value=datetime.now(TAIPEI).date(), label_visibility="collapsed")
-            ticker = c2.text_input("相關標的（可空）", placeholder="OXY")
+            held, _pend = my_symbols()
+            opts = ["（無）"] + sorted(held | {h["ticker"] for h in hunting_items() if h.get("ticker")})
+            pick = c2.selectbox("相關標的（我的持股／Hunting）", opts)
+            other = c2.text_input("其他標的（可空）", placeholder="沒持有的才填，例如 OXY")
+            ticker = other.strip().upper() or ("" if pick == "（無）" else pick)
             if c3.form_submit_button("＋ 新增待辦", use_container_width=True):
                 if not text.strip():
                     st.warning("請先寫要做的事")
