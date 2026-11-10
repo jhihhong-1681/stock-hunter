@@ -87,3 +87,42 @@ def first_price(text: str | None) -> float | None:
     """進場價文字（例如「限價不超過8.25美元/口」「50%現價約$348進場…」）裡的第一個數字。"""
     m = re.search(r"\d+(?:\.\d+)?", (text or "").replace(",", ""))
     return float(m.group(0)) if m else None
+
+
+# ── 待辦清單（同一個存放處，key 用 "todo|" 開頭）──────────────────
+TODO_PREFIX = "todo|"
+
+
+def make_todo(text: str, due: str | None = None, ticker: str | None = None) -> dict:
+    """text：要做的事；due：YYYY-MM-DD（可空）；ticker：相關標的（可空）。id 用建立時間（微秒）避免重複。"""
+    now = datetime.now(timezone.utc)
+    return {"id": now.strftime("%Y%m%d%H%M%S%f"), "text": text.strip(), "due": due or "",
+            "ticker": (ticker or "").strip().upper(), "added": now.isoformat(timespec="seconds")}
+
+
+def load_todos(api_url: str, api_key: str) -> list[dict]:
+    """待辦清單：有日期的依日期由近到遠排前面，沒日期的排後面（依新增時間）。"""
+    import requests
+    r = requests.get(api_url, params={"what": "removed", "key": api_key}, timeout=20)
+    data = r.json()
+    if not data.get("ok"):
+        raise RuntimeError(data.get("error", "讀取失敗"))
+    items = []
+    for k in data["keys"]:
+        if not k.startswith(TODO_PREFIX):
+            continue
+        try:
+            it = json.loads(k[len(TODO_PREFIX):])
+        except ValueError:
+            continue
+        it["_key"] = k
+        items.append(it)
+    return sorted(items, key=lambda x: (not x.get("due"), x.get("due") or "", x.get("added") or ""))
+
+
+def add_todo(api_url: str, api_key: str, item: dict) -> None:
+    _post(api_url, api_key, "removePending", TODO_PREFIX + json.dumps(item, ensure_ascii=False, separators=(",", ":")))
+
+
+def remove_todo(api_url: str, api_key: str, item: dict) -> None:
+    _post(api_url, api_key, "restorePending", item["_key"])

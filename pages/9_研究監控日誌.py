@@ -343,6 +343,71 @@ def hunting_items() -> list[dict]:
         return []
 
 
+@st.cache_data(ttl=30, show_spinner=False)
+def todo_items() -> list[dict]:
+    if not HUNT_OK:
+        return []
+    try:
+        return hunt.load_todos(JOURNAL_URL, JOURNAL_KEY)
+    except Exception:
+        return []
+
+
+def render_todos() -> None:
+    """Hunting 旁邊的待辦清單：登記想做的事（買進賣出、某天要做什麼），可直接新增、勾選刪除。"""
+    if not HUNT_OK:
+        return
+    items = todo_items()
+    today = datetime.now(TAIPEI).date().isoformat()
+    due_n = sum(1 for t in items if t.get("due") and t["due"] <= today)
+    with st.expander(f"📝 待辦清單 · {len(items)} 筆" + (f"（{due_n} 筆到期／逾期）" if due_n else ""), expanded=True):
+        with st.form("todo_add", clear_on_submit=True):
+            text = st.text_input("要做的事", placeholder="例如：OXY 跌到 8 以下買 Call、週五前賣掉 XOM 期權…")
+            c1, c2, c3 = st.columns([1.3, 1, 1])
+            has_due = c1.checkbox("指定日期")
+            due = c1.date_input("日期", value=datetime.now(TAIPEI).date(), label_visibility="collapsed")
+            ticker = c2.text_input("相關標的（可空）", placeholder="OXY")
+            if c3.form_submit_button("＋ 新增待辦", use_container_width=True):
+                if not text.strip():
+                    st.warning("請先寫要做的事")
+                else:
+                    try:
+                        hunt.add_todo(JOURNAL_URL, JOURNAL_KEY, hunt.make_todo(text, due.isoformat() if has_due else None, ticker))
+                        todo_items.clear()
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"新增失敗：{e}")
+        if not items:
+            st.caption("目前沒有待辦。")
+            return
+        df = pd.DataFrame([{
+            "完成／刪除": False,
+            "日期": ("⚠️ " if t.get("due") and t["due"] <= today else "") + (t.get("due") or "—"),
+            "標的": t.get("ticker") or "",
+            "待辦": t.get("text") or "",
+        } for t in items])
+        edited = st.data_editor(
+            df, hide_index=True, use_container_width=True, key="todo_table", height=min(35 * len(df) + 38, 420),
+            column_config={
+                "完成／刪除": st.column_config.CheckboxColumn(width="small", pinned=True),
+                "日期": st.column_config.TextColumn(width="small"),
+                "標的": st.column_config.TextColumn(width="small"),
+                "待辦": st.column_config.TextColumn(width="large"),
+            },
+            disabled=[c for c in df.columns if c != "完成／刪除"],
+        )
+        picked = [t for t, chk in zip(items, edited["完成／刪除"]) if chk]
+        if st.button(f"刪除勾選的 {len(picked)} 筆", disabled=not picked, key="todo_del"):
+            try:
+                for t in picked:
+                    hunt.remove_todo(JOURNAL_URL, JOURNAL_KEY, t)
+                todo_items.clear()
+                st.rerun()
+            except Exception as e:
+                st.error(f"刪除失敗：{e}")
+        st.caption("有指定日期的排在前面，到期或逾期的標 ⚠️。")
+
+
 def render_hunting() -> None:
     """監控日誌最上方：我按「加入 Hunting」的推薦，對照現價看離進場價多遠；勾選後可移除。"""
     if not HUNT_OK:
@@ -716,7 +781,11 @@ if v2.button("🔄 重新整理"):
 if view == "🎯 標的總表":
     render_positions(dates)
 else:
-    render_hunting()
+    hl, hr = st.columns([3, 2], gap="medium")
+    with hl:
+        render_hunting()
+    with hr:
+        render_todos()
     c1, c2 = st.columns([2, 2])
     mode = c1.radio("顯示", ["最近幾天", "指定日期"], horizontal=True, label_visibility="collapsed")
     if mode == "最近幾天":
