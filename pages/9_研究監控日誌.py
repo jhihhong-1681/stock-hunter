@@ -353,6 +353,28 @@ def todo_items() -> list[dict]:
         return []
 
 
+@st.cache_data(ttl=600, show_spinner=False)
+def held_labels() -> list[str]:
+    """目前持有的部位（holdings.js），期權寫完整合約並標「期權」，股票標「正股」，待辦選單用。"""
+    stocks, options = [], []
+    try:
+        text = (MY_DATA_DIR / "holdings.js").read_text(encoding="utf-8").split("closedPositions")[0]
+    except OSError:
+        return []
+    for line in text.splitlines():
+        if not line.strip().startswith("{symbol"):
+            continue
+        try:
+            p = po._js_obj(line)
+        except ValueError:
+            continue
+        if p.get("type") == "option":
+            options.append(f'{p.get("name") or p["symbol"]}（期權）')
+        else:
+            stocks.append(f'{p["symbol"]}（正股）')
+    return sorted(stocks) + options
+
+
 def render_todos() -> None:
     """Hunting 旁邊的待辦清單：登記想做的事（買進賣出、某天要做什麼），可直接新增、勾選刪除。"""
     if not HUNT_OK:
@@ -366,8 +388,7 @@ def render_todos() -> None:
             c1, c2, c3 = st.columns([1.3, 1, 1])
             has_due = c1.checkbox("指定日期")
             due = c1.date_input("日期", value=datetime.now(TAIPEI).date(), label_visibility="collapsed")
-            held, _pend = my_symbols()
-            opts = ["（無）"] + sorted(held | {h["ticker"] for h in hunting_items() if h.get("ticker")})
+            opts = ["（無）"] + held_labels() + sorted({h["ticker"] for h in hunting_items() if h.get("ticker")})
             pick = c2.selectbox("相關標的（我的持股／Hunting）", opts)
             other = c2.text_input("其他標的（可空）", placeholder="沒持有的才填，例如 OXY")
             ticker = other.strip().upper() or ("" if pick == "（無）" else pick)

@@ -97,7 +97,7 @@ def make_todo(text: str, due: str | None = None, ticker: str | None = None) -> d
     """text：要做的事；due：YYYY-MM-DD（可空）；ticker：相關標的（可空）。id 用建立時間（微秒）避免重複。"""
     now = datetime.now(timezone.utc)
     return {"id": now.strftime("%Y%m%d%H%M%S%f"), "text": text.strip(), "due": due or "",
-            "ticker": (ticker or "").strip().upper(), "added": now.isoformat(timespec="seconds")}
+            "ticker": (ticker or "").strip() if " " in (ticker or "").strip() or "（" in (ticker or "") else (ticker or "").strip().upper(), "added": now.isoformat(timespec="seconds")}
 
 
 def load_todos(api_url: str, api_key: str) -> list[dict]:
