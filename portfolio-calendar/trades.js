@@ -527,5 +527,8 @@ window.TRADES = [
   { date: "2026-11-04", time: "11:35:57", side: "買進", symbol: "VST", type: "stock", description: null, qty: 10, price: 119 },
   { date: "2026-11-04", time: "12:08:40", side: "Sell Close", symbol: "NVO", type: "option", description: "NVO 11/20/2026 42.50 Call", qty: 1, price: 1.65 },
   { date: "2026-11-09", time: "10:22:43", side: "Buy Open", symbol: "NVDA", type: "option", description: "NVDA 11/11/2026 192.50 Call", qty: 2, price: 0.5 },
-  { date: "2026-11-09", time: "11:08:44", side: "Sell Close", symbol: "WY", type: "option", description: "WY 01/15/2027 17.00 Call", qty: 1, price: 4.2 }
+  { date: "2026-11-09", time: "11:08:44", side: "Sell Close", symbol: "WY", type: "option", description: "WY 01/15/2027 17.00 Call", qty: 1, price: 4.2 },
+  { date: "2026-11-10", time: "11:39:36", side: "Buy Open", symbol: "NVDA", type: "option", description: "NVDA 11/11/2026 175.00 Call", qty: 1, price: 0.75 },
+  { date: "2026-11-10", time: "11:40:43", side: "Buy Open", symbol: "NVDA", type: "option", description: "NVDA 11/11/2026 177.50 Call", qty: 1, price: 0.4 },
+  { date: "2026-11-10", time: "13:01:01", side: "Buy Open", symbol: "PBR", type: "option", description: "PBR 11/20/2026 19.00 Call", qty: 2, price: 0.29 }
 ];
