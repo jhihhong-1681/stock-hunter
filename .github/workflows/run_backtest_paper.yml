@@ -1,0 +1,41 @@
+name: Run Paper Backtest
+
+on:
+  workflow_dispatch:
+    inputs:
+      years:
+        description: '回測年數'
+        default: '2'
+  push:
+    paths:
+      - 'scripts/backtest_paper.py'
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install yfinance pandas numpy
+
+      - name: Run paper backtest
+        run: python scripts/backtest_paper.py ${{ github.event.inputs.years || '2' }}
+
+      - name: Commit and push results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/backtest_paper.json
+          git diff --staged --quiet || git commit -m "chore: paper backtest $(date -u +%Y-%m-%d)"
+          git pull --rebase origin main
+          git push
