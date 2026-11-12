@@ -530,5 +530,10 @@ window.TRADES = [
   { date: "2026-11-09", time: "11:08:44", side: "Sell Close", symbol: "WY", type: "option", description: "WY 01/15/2027 17.00 Call", qty: 1, price: 4.2 },
   { date: "2026-11-10", time: "11:39:36", side: "Buy Open", symbol: "NVDA", type: "option", description: "NVDA 11/11/2026 175.00 Call", qty: 1, price: 0.75 },
   { date: "2026-11-10", time: "11:40:43", side: "Buy Open", symbol: "NVDA", type: "option", description: "NVDA 11/11/2026 177.50 Call", qty: 1, price: 0.4 },
-  { date: "2026-11-10", time: "13:01:01", side: "Buy Open", symbol: "PBR", type: "option", description: "PBR 11/20/2026 19.00 Call", qty: 2, price: 0.29 }
+  { date: "2026-11-10", time: "13:01:01", side: "Buy Open", symbol: "PBR", type: "option", description: "PBR 11/20/2026 19.00 Call", qty: 2, price: 0.29 },
+  { date: "2026-11-11", time: "10:34:10", side: "Sell Close", symbol: "NVDA", type: "option", description: "NVDA 11/11/2026 177.50 Call", qty: 1, price: 0.26 },
+  { date: "2026-11-11", time: "11:26:11", side: "Sell Close", symbol: "NVDA", type: "option", description: "NVDA 11/11/2026 175.00 Call", qty: 1, price: 1.5 },
+  { date: "2026-11-11", time: "12:07:59", side: "賣出", symbol: "VOYG", type: "stock", description: null, qty: 50, price: 30 },
+  { date: "2026-11-11", time: "12:14:41", side: "Sell Close", symbol: "TTD", type: "option", description: "TTD 11/20/2026 15.00 Call", qty: 2, price: 1.3 },
+  { date: "2026-11-11", time: "12:26:07", side: "Buy Open", symbol: "OXY", type: "option", description: "OXY 01/15/2027 60.00 Call", qty: 1, price: 1.75 }
 ];
