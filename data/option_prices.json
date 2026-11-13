@@ -1,0 +1,216 @@
+{
+ "generated": "2026-11-13T08:31:24+00:00",
+ "asof": "2026-11-12",
+ "note": "價格＝每股權利金（USD），來源 yfinance；source: last=成交價, mid=買賣中間值, last_stale=成交價但已過時",
+ "by_date": {
+  "2026-11-12": {
+   "XOM|XOM 12/18/26 170 Call": {
+    "price": 5.7,
+    "source": "last",
+    "last": 5.7,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "S|S 01/15/27 20 Call": {
+    "price": 4.95,
+    "source": "last",
+    "last": 4.95,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-11",
+    "stale": false
+   },
+   "CLSK|CLSK 12/18/26 10 Call": {
+    "price": 0.17,
+    "source": "last",
+    "last": 0.17,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "SPCX|SPCX 01/15/27 180 Call": {
+    "price": 2.4,
+    "source": "last",
+    "last": 2.4,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "GSK|GSK 11/20/26 45 Call": {
+    "price": 5.7,
+    "source": "last",
+    "last": 5.7,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "SDGR|SDGR 11/20/26 35 Call": {
+    "price": 0.4,
+    "source": "last",
+    "last": 0.4,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "VZ|VZ 01/15/27 40 Call": {
+    "price": 7.0,
+    "source": "last",
+    "last": 7.0,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "BMNR|BMNR 01/15/27 20 Call": {
+    "price": 1.92,
+    "source": "last",
+    "last": 1.92,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "HAL|HAL 11/20/26 32 Call": {
+    "price": 1.08,
+    "source": "last",
+    "last": 1.08,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "SRPT|SRPT 12/18/26 17.5 Call": {
+    "price": 1.15,
+    "source": "last",
+    "last": 1.15,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "KGC|KGC 01/15/27 20 Call": {
+    "price": 2.15,
+    "source": "last",
+    "last": 2.15,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "XLI|XLI 01/15/2027 185 Call": {
+    "price": 0.85,
+    "source": "last",
+    "last": 0.85,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "RCAT|RCAT 01/15/27 10 Call": {
+    "price": 0.05,
+    "source": "last",
+    "last": 0.05,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "ALB|ALB 11/20/26 115 Call": {
+    "price": 0.04,
+    "source": "last",
+    "last": 0.04,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "NVTS|NVTS 01/15/27 9 Call": {
+    "price": 1.67,
+    "source": "last",
+    "last": 1.67,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "MAGS|MAGS 11/20/26 74 Call": {
+    "price": 0.05,
+    "source": "last",
+    "last": 0.05,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "OXY|OXY 01/15/27 60 Call": {
+    "price": 2.35,
+    "source": "last",
+    "last": 2.35,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "TTD|TTD 11/20/26 15 Call": {
+    "price": 0.92,
+    "source": "last",
+    "last": 0.92,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "PBR|PBR 11/20/26 25 Call": {
+    "price": 0.01,
+    "source": "last",
+    "last": 0.01,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-11",
+    "stale": false
+   },
+   "PACB|PACB 11/20/26 3 Call": {
+    "price": 0.01,
+    "source": "last",
+    "last": 0.01,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "BB|BB 11/20/26 10 C": {
+    "price": 0.11,
+    "source": "last",
+    "last": 0.11,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "PBR|PBR 11/20/26 19 Call": {
+    "price": 0.12,
+    "source": "last",
+    "last": 0.12,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   },
+   "FLEX|FLEX 11/20/26 100 Call": {
+    "price": 0.15,
+    "source": "last",
+    "last": 0.15,
+    "bid": null,
+    "ask": null,
+    "lastTrade": "2026-11-12",
+    "stale": false
+   }
+  }
+ }
+}
