@@ -22,7 +22,7 @@ import utils.trading_ui as _ui_mod
 for _m in (_fund_mod, _score_mod, _parse_mod, _ts_mod, _ui_mod):
     importlib.reload(_m)
 from utils.fundamentals import FundRules, evaluate, fetch_quarterly, load_partnerships, load_profiles
-from utils.scoring import WEIGHTS, label as score_label, score_news, total_score
+from utils.scoring import WEIGHTS, label as score_label, score_news, total_score, total_score_no_news
 from utils.option_parse import parse_option_text
 from utils.trading_system import OptionRules, Rules, backtest, check_option, entry_hint, read_positions, read_totals, summarize
 from utils.trading_ui import CSS, action_card, candidate_card, check_row, holding_card, kpi
@@ -177,6 +177,19 @@ with tab_pick:
         st.caption(f"總分 ＝ 基本面 {WEIGHTS['基本面']:.0%} ＋ 價格位置與止跌 {WEIGHTS['價格']:.0%} ＋ 預期與資金 {WEIGHTS['預期資金']:.0%} ＋ 消息 {WEIGHTS['消息']:.0%}"
                    f"　·　消息面已評 {n_news} 檔" + (f"（更新 {gen}）" if gen else "（雲端排程尚未寫入新聞評分，先以中性分計算）"))
         ok = [x for x in picks if not x.get("veto_final") and x["verdict"] in ("通過", "警示")]
+        rank_mode = st.radio("排序方式", ["含消息面（總分）", "不含消息面（純量化分）"], horizontal=True, key="pick_rank_mode",
+                             help="純量化分＝基本面 40／價格 35／預期資金 5 重新換算成 0–100，不看新聞；消息面紅線（going concern、大量稀釋等）仍然會被排除。")
+        if rank_mode.startswith("不含"):
+            alt = []
+            for x in ok:
+                if x.get("pillars"):
+                    t = total_score_no_news(x["pillars"])
+                    alt.append({**x, "total": t, "score_label": score_label(t), "pillars": {k: v for k, v in x["pillars"].items() if k != "消息"}})
+                else:
+                    alt.append(x)
+            alt.sort(key=lambda c: -(c.get("total") or 0))
+            ok = alt
+            st.caption("目前是「不含消息面」排名：分數只由基本面、價格位置與止跌、預期與資金決定（卡片上不顯示消息分，新聞摘要仍會顯示供參考）。")
         growth = [x for x in ok if x["kind"] == "成長型"]
         mature = [x for x in ok if x["kind"] == "成熟型"]
         t_g, t_m, t_v = st.tabs([f"🚀 成長型（{len(growth)}）", f"🛡️ 成熟型・被錯殺（{len(mature)}）", f"⛔ 紅線與排除（{len(picks) - len(ok)}）"])

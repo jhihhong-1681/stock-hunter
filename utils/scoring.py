@@ -178,5 +178,11 @@ def total_score(pillars: dict) -> float:
     return round(sum(WEIGHTS[k] * pillars[k] for k in WEIGHTS), 1)
 
 
+def total_score_no_news(pillars: dict) -> float:
+    """不含消息面的總分：基本面 40／價格 35／預期資金 5 重新正規化到 0–100（÷0.80）。給「純量化排名」用。"""
+    ks = ("基本面", "價格", "預期資金")
+    return round(sum(WEIGHTS[k] * pillars[k] for k in ks) / sum(WEIGHTS[k] for k in ks), 1)
+
+
 def label(score: float) -> str:
     return "很強" if score >= 80 else "不錯" if score >= 65 else "普通" if score >= 50 else "偏弱"
