@@ -45,7 +45,17 @@ Firstrade 未成交訂單（`portfolio-calendar/pending_orders.js`）**不歸這
 
 ### 3. 期權價格
 
-直接信任 Sheet 的數字（阿紘手動更新期權報價），不用另外查證或修正。
+直接信任 Sheet 的數字（阿紘手動更新期權報價），不用另外查證或修正。**唯一例外：自動補價**（阿紘不在時沒更新 Sheet）：
+
+GitHub Actions「Option Prices」（`scripts/fetch_option_prices.py`，美股收盤後跑）把每檔期權的成交價（TradingView 同口徑；成交太舊才退回買賣中間值）寫進 `data/option_prices.json` 的 `by_date[快照對應日期]`，key 是 `"symbol|name"`（name 用 holdings.js 的寫法），值 `{price（每股權利金 USD）, source, stale, ...}` 或 `{error}`。
+
+做法（在第 4 步比對 priceUnchangedDays **之後**、寫入之前）：對這次每一筆期權，**只有同時符合**才用自動價：
+- 這筆的 Sheet 現值跟上一份 holdings.js 同 symbol+name 的 value 完全相等（Sheet 沒更新；priceUnchangedDays ≥ 1），且
+- `option_prices.json` 的 `by_date[快照對應日期]` 有這一筆的 `price`（沒有 error）。
+
+符合時：`price = 自動價`、`value = round(price × shares × 31)`、`pl = value − invested`、`pct = pl ÷ invested × 100`（小數 1 位）、物件加 `priceSource: "auto"`（`source` 不是 "last" 的另加 `priceStale: true`）。`priceUnchangedDays` 仍照第 4 步用「Sheet 數字」比對的結果，不因自動補價歸零（這樣阿紘回來還看得到哪些天沒更新）。**Sheet 有更新的那筆一律以 Sheet 為準**，不要被自動價蓋掉；抓不到（error 或缺）的沿用 Sheet 數字。underlyingPrice 照舊用 Sheet 的「現價」欄。
+
+有任何一筆被自動補價時，要連動調整總計：`totals.value`、`totals.unrealizedPL`、`totals.totalAssets` 各加上所有被補價期權的 value 變動總和（cash、invested 不變），`unrealizedPct = unrealizedPL ÷ invested × 100`；data.js 的 total 用調整後的 totalAssets；positions_history 的 pl 用調整後的值。realizedPL 不動。摘要要寫明自動補價的檔數與名單、有 stale 的、抓不到的（第 14 步 (j)）。
 
 ### 4. 期權報價更新警示（priceUnchangedDays）
 
@@ -156,10 +166,12 @@ push 被拒（remote 有新 commit，例如 ETF 持股、法人資料、本機 F
 - (a) 有指數因來源B不可靠改採 Yahoo Finance（指數、兩來源數字、採用值）
 - (b) git push 失敗（原因）
 - (c) 有新代號已自動研究並加進 THEME_MAP（列出 symbol、歸入的細分產業與一句理由，阿紘不同意再改）；有新正股另外登記了公司類型（列出 symbol、成長型/成熟型/ETF 與一句理由）
-- (d) 有期權 priceUnchangedDays ≥ 1（列出名稱與連續天數，請阿紘檢查 Sheet 現價是否忘記更新）
+- (d) 有期權 priceUnchangedDays ≥ 1（列出名稱與連續天數，請阿紘檢查 Sheet 現價是否忘記更新；若已由 (j) 自動補價就註明「已自動補價」，不必再當異常）
 - (e) 有期權的 Sheet 現價欄空白、underlyingPrice 留 null（列出 symbol）
 - (f) positions + closedPositions 的 realized 加總跟 Sheet 已實現損益對不上（差額多少；截斷本身已經是常態，補回後對得上就不用通知）
 - (g) 第 2 步整個讀取失敗、這次沒有寫入
+
+- (j) 期權自動補價：有任何一筆用了 `option_prices.json`，寫「🤖 期權自動補價 N 檔（Sheet 未更新）」，列出 stale（成交價過時或用中間值）與抓不到而沿用舊數字的名單，並註明總資產因此調整的金額；若 `option_prices.json` 沒有快照對應日期的資料（Actions 沒跑或失敗），也要說明。
 
 - (h) 選股新聞評分：成功就一行帶過（「📰 新聞評分 N 檔：利多 a／利空 b」），有紅線的列出 symbol 與原因；失敗或跳過要說明原因。
 
