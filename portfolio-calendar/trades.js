@@ -535,5 +535,9 @@ window.TRADES = [
   { date: "2026-11-11", time: "11:26:11", side: "Sell Close", symbol: "NVDA", type: "option", description: "NVDA 11/11/2026 175.00 Call", qty: 1, price: 1.5 },
   { date: "2026-11-11", time: "12:07:59", side: "賣出", symbol: "VOYG", type: "stock", description: null, qty: 50, price: 30 },
   { date: "2026-11-11", time: "12:14:41", side: "Sell Close", symbol: "TTD", type: "option", description: "TTD 11/20/2026 15.00 Call", qty: 2, price: 1.3 },
-  { date: "2026-11-11", time: "12:26:07", side: "Buy Open", symbol: "OXY", type: "option", description: "OXY 01/15/2027 60.00 Call", qty: 1, price: 1.75 }
+  { date: "2026-11-11", time: "12:26:07", side: "Buy Open", symbol: "OXY", type: "option", description: "OXY 01/15/2027 60.00 Call", qty: 1, price: 1.75 },
+  { date: "2026-11-12", time: "10:36:10", side: "Sell Close", symbol: "CPRT", type: "option", description: "CPRT 11/20/2026 30.00 Call", qty: 1, price: 2.5 },
+  { date: "2026-11-12", time: "10:52:29", side: "買進", symbol: "NBIL", type: "stock", description: null, qty: 100, price: 5.8 },
+  { date: "2026-11-12", time: "10:52:56", side: "Sell Close", symbol: "FLEX", type: "option", description: "FLEX 11/20/2026 100.00 Call", qty: 1, price: 0.15 },
+  { date: "2026-11-12", time: "15:55:18", side: "買進", symbol: "FCX", type: "stock", description: null, qty: 15, price: 60.5 }
 ];
