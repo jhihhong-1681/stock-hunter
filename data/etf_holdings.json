@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-14",
+  "date": "2026-11-15",
   "holdings": {
     "XLK": [
       {
@@ -404,17 +404,17 @@
       {
         "代號": "MPC",
         "名稱": "Marathon Petroleum Corp",
-        "權重": 2.81
+        "權重": 2.82
       },
       {
         "代號": "CVX",
         "名稱": "Chevron Corp",
-        "權重": 2.78
+        "權重": 2.79
       },
       {
         "代號": "PR",
         "名稱": "Permian Resources Corp Class A",
-        "權重": 2.78
+        "權重": 2.79
       }
     ],
     "XLU": [
