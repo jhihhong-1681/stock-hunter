@@ -2486,5 +2486,48 @@ window.POSITIONS_HISTORY = {
       {symbol: "CE", name: "CE 12/18/26 55 Call", pl: -1705, realized: null}
     ],
     totals: { cash: 158999, invested: 1136470, realizedPL: 347756 }
+  },
+  "2026-11-17": {
+    positions: [
+      {symbol: "ASTS", name: "AST Spacemobile", pl: -89494.83, realized: null},
+      {symbol: "SMR", name: "NuScale Power", pl: -69899.51, realized: -106338.51},
+      {symbol: "RKLB", name: "Rocket Lab Corporation", pl: -22420.75, realized: 28585.1},
+      {symbol: "MP", name: "MP Materials", pl: -24379.8, realized: -9693.7},
+      {symbol: "FVRR", name: "Fiverr International", pl: -8549.8, realized: null},
+      {symbol: "VIAV", name: "Viavi Solutions", pl: -9704.55, realized: null},
+      {symbol: "VST", name: "Vistra Corp.", pl: 2526.5, realized: -124},
+      {symbol: "VPG", name: "Vishay Precision Group", pl: -16911.12, realized: -8410.92},
+      {symbol: "UUUU", name: "Energy Fuels", pl: -24534.95, realized: -12827.8},
+      {symbol: "FCX", name: "Freeport-McMoRan", pl: -2418, realized: null},
+      {symbol: "GOOGL", name: "Alphabet", pl: -260.4, realized: null},
+      {symbol: "TSM", name: "Taiwan Semiconductor", pl: -3863.22, realized: null},
+      {symbol: "SOXL", name: "Semiconductor Bull 3X", pl: -13374.64, realized: null},
+      {symbol: "NVDA", name: "Nvidia", pl: -3662.96, realized: null},
+      {symbol: "VRT", name: "Vertiv Holding", pl: 1781.88, realized: 83750.22},
+      {symbol: "BWXT", name: "BWX Technologies", pl: -3282.9, realized: -1841.4},
+      {symbol: "MU", name: "Micron", pl: 850.02, realized: 4185},
+      {symbol: "BA", name: "Boeing", pl: -631.16, realized: null},
+      {symbol: "MRCY", name: "Mercury Systems", pl: -3458.67, realized: null},
+      {symbol: "PATH", name: "UiPath", pl: -1100.5, realized: 1240},
+      {symbol: "NU", name: "Nu Holdings", pl: 1131.5, realized: 7812},
+      {symbol: "NBIL", name: "2X Long NBIS", pl: -5208, realized: null},
+      {symbol: "XOM", name: "XOM 12/18/26 170 Call", pl: -34875, realized: null},
+      {symbol: "S", name: "S 01/15/27 20 Call", pl: -6510, realized: null},
+      {symbol: "CLSK", name: "CLSK 12/18/26 10 Call", pl: -28024, realized: null},
+      {symbol: "SPCX", name: "SPCX 01/15/27 180 Call", pl: -18290, realized: null},
+      {symbol: "SDGR", name: "SDGR 11/20/26 35 Call", pl: -20398, realized: null},
+      {symbol: "VZ", name: "VZ 01/15/27 40 Call", pl: 2480, realized: null},
+      {symbol: "BMNR", name: "BMNR 01/15/27 20 Call", pl: -14167, realized: null},
+      {symbol: "SRPT", name: "SRPT 12/18/26 17.5 Call", pl: -10385, realized: null},
+      {symbol: "KGC", name: "KGC 01/15/27 20 Call", pl: -4960, realized: null},
+      {symbol: "XLI", name: "XLI 01/15/2027 185 Call", pl: -6603, realized: null},
+      {symbol: "RCAT", name: "RCAT 01/15/27 10 Call", pl: -7440, realized: null},
+      {symbol: "ALB", name: "ALB 11/20/26 115 Call", pl: -7719, realized: null},
+      {symbol: "NVTS", name: "NVTS 01/15/27 9 Call", pl: -5053, realized: null},
+      {symbol: "MAGS", name: "MAGS 11/20/26 74 Call", pl: -6076, realized: null},
+      {symbol: "OXY", name: "OXY 01/15/27 60 Call", pl: -806, realized: null},
+      {symbol: "CE", name: "CE 12/18/26 55 Call", pl: -2170, realized: null}
+    ],
+    totals: { cash: 158999, invested: 1136470, realizedPL: 347756 }
   }
 };
