@@ -16,10 +16,10 @@
    ],
    "shares": 28,
    "cost_ntd": 31054.44308587646,
-   "last_px": 37.4900016784668,
+   "last_px": 34.189998626708984,
    "name": "Karman Holdings Inc.",
-   "score": 58.4,
-   "target": 60887,
+   "score": 59.1,
+   "target": 58736,
    "sector": "Industrials",
    "opened": "2026-10-21",
    "peak": 45.900001525878906
@@ -35,10 +35,10 @@
    ],
    "shares": 19,
    "cost_ntd": 22892.221249999995,
-   "last_px": 56.369998931884766,
+   "last_px": 56.400001525878906,
    "name": "Liquidia Corporation",
-   "score": 61.6,
-   "target": 80371,
+   "score": 62.8,
+   "target": 91629,
    "sector": "Healthcare",
    "opened": "2026-10-21",
    "peak": 58.119998931884766
@@ -54,10 +54,10 @@
    ],
    "shares": 55,
    "cost_ntd": 18212.724097642895,
-   "last_px": 9.829999923706055,
+   "last_px": 9.170000076293945,
    "name": "Equinox Gold Corp.",
    "score": 63.5,
-   "target": 103508,
+   "target": 99852,
    "sector": "Basic Materials",
    "opened": "2026-10-21",
    "peak": 12.09000015258789
@@ -73,10 +73,10 @@
    ],
    "shares": 25,
    "cost_ntd": 15616.459368610382,
-   "last_px": 20.100000381469727,
+   "last_px": 19.850000381469727,
    "name": "Allied Gold Corporation",
    "score": 56.6,
-   "target": 60887,
+   "target": 58736,
    "sector": "Basic Materials",
    "opened": "2026-10-21",
    "peak": 23.530000686645508
@@ -92,13 +92,13 @@
    ],
    "shares": 83,
    "cost_ntd": 25291.04669223308,
-   "last_px": 11.239999771118164,
+   "last_px": 11.699999809265137,
    "name": "MINISO Group Holding Limited",
    "score": 65.0,
-   "target": 76896,
+   "target": 76857,
    "sector": "Consumer Cyclical",
    "opened": "2026-10-21",
-   "peak": 11.239999771118164
+   "peak": 12.180000305175781
   },
   "CWEN": {
    "kind": "成熟型",
@@ -111,10 +111,10 @@
    ],
    "shares": 23,
    "cost_ntd": 22312.337345607757,
-   "last_px": 32.70000076293945,
+   "last_px": 32.0099983215332,
    "name": "Clearway Energy, Inc.",
    "score": 71.0,
-   "target": 123034,
+   "target": 122970,
    "sector": "Utilities",
    "opened": "2026-10-21",
    "peak": 35.709999084472656
@@ -130,10 +130,10 @@
    ],
    "shares": 18,
    "cost_ntd": 18424.4670552063,
-   "last_px": 35.2400016784668,
+   "last_px": 34.529998779296875,
    "name": "General Mills, Inc.",
    "score": 68.5,
-   "target": 103810,
+   "target": 103756,
    "sector": "Consumer Defensive",
    "opened": "2026-10-21",
    "peak": 36.459999084472656
@@ -149,10 +149,10 @@
    ],
    "shares": 1,
    "cost_ntd": 10568.821743865965,
-   "last_px": 359.739990234375,
+   "last_px": 360.17999267578125,
    "name": "Talen Energy Corporation",
    "score": 65.4,
-   "target": 126645,
+   "target": 122172,
    "sector": "Utilities",
    "opened": "2026-10-26",
    "peak": 386.67999267578125
@@ -173,13 +173,13 @@
    ],
    "shares": 271,
    "cost_ntd": 85724.95384712217,
-   "last_px": 10.15999984741211,
+   "last_px": 10.739999771118164,
    "name": "Harmonic Inc.",
-   "score": 72.7,
-   "target": 202493,
+   "score": 73.6,
+   "target": 202389,
    "sector": "Technology",
    "opened": "2026-10-27",
-   "peak": 10.15999984741211
+   "peak": 10.739999771118164
   },
   "SIMO": {
    "kind": "成長型",
@@ -192,10 +192,10 @@
    ],
    "shares": 6,
    "cost_ntd": 32554.370999999996,
-   "last_px": 157.57000732421875,
+   "last_px": 149.3000030517578,
    "name": "Silicon Motion Technology Corporation",
-   "score": 57.8,
-   "target": 60887,
+   "score": 58.0,
+   "target": 58736,
    "sector": "Technology",
    "opened": "2026-11-11",
    "peak": 179.5
@@ -208,7 +208,19 @@
   "NTST": "2026-10-28",
   "ARVN": "2026-11-12"
  },
- "pending": [],
+ "pending": [
+  {
+   "sym": "KRMN",
+   "kind": "成長型",
+   "side": "buy",
+   "ntd": 20295.666666666668,
+   "frac": 1.0,
+   "why": "加碼第 2 批：上漲後從高點 $45.9 回落 26%",
+   "origin": "close",
+   "created": "2026-11-18",
+   "meta": {}
+  }
+ ],
  "trades": [
   {
    "date": "2026-10-22",
@@ -651,6 +663,30 @@
    "spy": 957133,
    "spy_day_ret": -0.01911,
    "unrealized": 13143,
+   "realized": -676
+  },
+  {
+   "date": "2026-11-17",
+   "equity": 1011958,
+   "cash": 716672,
+   "invested": 295285,
+   "day_pnl": -509,
+   "day_ret": -0.0005,
+   "spy": 947419,
+   "spy_day_ret": -0.01015,
+   "unrealized": 12633,
+   "realized": -676
+  },
+  {
+   "date": "2026-11-18",
+   "equity": 1011945,
+   "cash": 716672,
+   "invested": 295272,
+   "day_pnl": -13,
+   "day_ret": -1e-05,
+   "spy": 944521,
+   "spy_day_ret": -0.00306,
+   "unrealized": 12620,
    "realized": -676
   }
  ],
@@ -2368,6 +2404,196 @@
      "day_ret": -0.0701
     }
    ]
+  },
+  {
+   "date": "2026-11-17",
+   "positions": [
+    {
+     "symbol": "KRMN",
+     "kind": "成長型",
+     "shares": 28,
+     "price": 35.54999923706055,
+     "value": 30857,
+     "ret": -0.0063,
+     "day_ret": -0.0517
+    },
+    {
+     "symbol": "LQDA",
+     "kind": "成長型",
+     "shares": 19,
+     "price": 56.72999954223633,
+     "value": 33414,
+     "ret": 0.4596,
+     "day_ret": 0.0064
+    },
+    {
+     "symbol": "EQX",
+     "kind": "成長型",
+     "shares": 55,
+     "price": 9.859999656677246,
+     "value": 16811,
+     "ret": -0.0769,
+     "day_ret": 0.0031
+    },
+    {
+     "symbol": "AAUC",
+     "kind": "成長型",
+     "shares": 25,
+     "price": 20.389999389648438,
+     "value": 15802,
+     "ret": 0.0119,
+     "day_ret": 0.0144
+    },
+    {
+     "symbol": "MNSO",
+     "kind": "成熟型",
+     "shares": 83,
+     "price": 12.180000305175781,
+     "value": 31339,
+     "ret": 0.2391,
+     "day_ret": 0.0836
+    },
+    {
+     "symbol": "CWEN",
+     "kind": "成熟型",
+     "shares": 23,
+     "price": 31.309999465942383,
+     "value": 22324,
+     "ret": 0.0005,
+     "day_ret": -0.0425
+    },
+    {
+     "symbol": "GIS",
+     "kind": "成熟型",
+     "shares": 18,
+     "price": 34.68000030517578,
+     "value": 19351,
+     "ret": 0.0503,
+     "day_ret": -0.0159
+    },
+    {
+     "symbol": "TLN",
+     "kind": "成長型",
+     "shares": 1,
+     "price": 354.7099914550781,
+     "value": 10996,
+     "ret": 0.0404,
+     "day_ret": -0.014
+    },
+    {
+     "symbol": "HLIT",
+     "kind": "成長型",
+     "shares": 271,
+     "price": 10.25,
+     "value": 86110,
+     "ret": 0.0045,
+     "day_ret": 0.0089
+    },
+    {
+     "symbol": "SIMO",
+     "kind": "成長型",
+     "shares": 6,
+     "price": 152.0399932861328,
+     "value": 28279,
+     "ret": -0.1313,
+     "day_ret": -0.0351
+    }
+   ]
+  },
+  {
+   "date": "2026-11-18",
+   "positions": [
+    {
+     "symbol": "KRMN",
+     "kind": "成長型",
+     "shares": 28,
+     "price": 34.189998626708984,
+     "value": 29677,
+     "ret": -0.0444,
+     "day_ret": -0.0383
+    },
+    {
+     "symbol": "LQDA",
+     "kind": "成長型",
+     "shares": 19,
+     "price": 56.400001525878906,
+     "value": 33220,
+     "ret": 0.4511,
+     "day_ret": -0.0058
+    },
+    {
+     "symbol": "EQX",
+     "kind": "成長型",
+     "shares": 55,
+     "price": 9.170000076293945,
+     "value": 15635,
+     "ret": -0.1415,
+     "day_ret": -0.07
+    },
+    {
+     "symbol": "AAUC",
+     "kind": "成長型",
+     "shares": 25,
+     "price": 19.850000381469727,
+     "value": 15384,
+     "ret": -0.0149,
+     "day_ret": -0.0265
+    },
+    {
+     "symbol": "MNSO",
+     "kind": "成熟型",
+     "shares": 83,
+     "price": 11.699999809265137,
+     "value": 30104,
+     "ret": 0.1903,
+     "day_ret": -0.0394
+    },
+    {
+     "symbol": "CWEN",
+     "kind": "成熟型",
+     "shares": 23,
+     "price": 32.0099983215332,
+     "value": 22823,
+     "ret": 0.0229,
+     "day_ret": 0.0224
+    },
+    {
+     "symbol": "GIS",
+     "kind": "成熟型",
+     "shares": 18,
+     "price": 34.529998779296875,
+     "value": 19268,
+     "ret": 0.0458,
+     "day_ret": -0.0043
+    },
+    {
+     "symbol": "TLN",
+     "kind": "成長型",
+     "shares": 1,
+     "price": 360.17999267578125,
+     "value": 11166,
+     "ret": 0.0565,
+     "day_ret": 0.0154
+    },
+    {
+     "symbol": "HLIT",
+     "kind": "成長型",
+     "shares": 271,
+     "price": 10.739999771118164,
+     "value": 90227,
+     "ret": 0.0525,
+     "day_ret": 0.0478
+    },
+    {
+     "symbol": "SIMO",
+     "kind": "成長型",
+     "shares": 6,
+     "price": 149.3000030517578,
+     "value": 27770,
+     "ret": -0.147,
+     "day_ret": -0.018
+    }
+   ]
   }
  ],
  "journal": [
@@ -2536,9 +2762,23 @@
    "actions": [
     "成交 買進 HLIT @ $10.1002（開盤 $10.07）：評分加碼第 2 批：總分 72.9 ≥ 72，現價未追高"
    ]
+  },
+  {
+   "date": "2026-11-17",
+   "summary": "當日損益 NT$-509（-0.05%），SPY -1.01%；淨值 NT$1,011,958，持股 10 檔",
+   "actions": [
+    "今天沒有調整"
+   ]
+  },
+  {
+   "date": "2026-11-18",
+   "summary": "當日損益 NT$-13（-0.00%），SPY -0.31%；淨值 NT$1,011,945，持股 10 檔",
+   "actions": [
+    "預約 買進 KRMN（NT$20,296，隔日開盤）：加碼第 2 批：上漲後從高點 $45.9 回落 26%"
+   ]
   }
  ],
  "spy_start": 773.0900268554688,
- "last_date": "2026-11-16",
- "generated": "2026-11-17T16:54:02+00:00"
+ "last_date": "2026-11-18",
+ "generated": "2026-11-19T16:35:26+00:00"
 }
