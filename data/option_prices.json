@@ -1,6 +1,6 @@
 {
- "generated": "2026-11-20T03:39:36+00:00",
- "asof": "2026-11-19",
+ "generated": "2026-11-21T03:21:12+00:00",
+ "asof": "2026-11-20",
  "note": "價格＝每股權利金（USD），來源 yfinance；source: last=成交價, mid=買賣中間值, last_stale=成交價但已過時",
  "by_date": {
   "2026-11-12": {
@@ -1002,6 +1002,134 @@
     "bid": 0.4,
     "ask": 0.65,
     "lastTrade": "2026-11-19",
+    "stale": false
+   }
+  },
+  "2026-11-20": {
+   "XOM|XOM 12/18/26 170 Call": {
+    "price": 1.93,
+    "source": "last",
+    "last": 1.93,
+    "bid": 1.78,
+    "ask": 2.19,
+    "lastTrade": "2026-11-20",
+    "stale": false
+   },
+   "S|S 01/15/27 20 Call": {
+    "price": 4.5,
+    "source": "last",
+    "last": 4.5,
+    "bid": 4.1,
+    "ask": 5.2,
+    "lastTrade": "2026-11-20",
+    "stale": false
+   },
+   "CLSK|CLSK 12/18/26 10 Call": {
+    "price": 0.03,
+    "source": "last",
+    "last": 0.03,
+    "bid": 0.02,
+    "ask": 0.04,
+    "lastTrade": "2026-11-20",
+    "stale": false
+   },
+   "SPCX|SPCX 01/15/27 180 Call": {
+    "price": 0.82,
+    "source": "last",
+    "last": 0.82,
+    "bid": 0.75,
+    "ask": 0.85,
+    "lastTrade": "2026-11-20",
+    "stale": false
+   },
+   "SDGR|SDGR 11/20/26 35 Call": {
+    "error": "找不到該到期日"
+   },
+   "VZ|VZ 01/15/27 40 Call": {
+    "price": 6.87,
+    "source": "last",
+    "last": 6.87,
+    "bid": 6.45,
+    "ask": 7.5,
+    "lastTrade": "2026-11-20",
+    "stale": false
+   },
+   "BMNR|BMNR 01/15/27 20 Call": {
+    "price": 0.32,
+    "source": "last",
+    "last": 0.32,
+    "bid": 0.29,
+    "ask": 0.35,
+    "lastTrade": "2026-11-20",
+    "stale": false
+   },
+   "SRPT|SRPT 12/18/26 17.5 Call": {
+    "price": 0.2,
+    "source": "last",
+    "last": 0.2,
+    "bid": 0.2,
+    "ask": 0.7,
+    "lastTrade": "2026-11-20",
+    "stale": false
+   },
+   "KGC|KGC 01/15/27 20 Call": {
+    "price": 0.67,
+    "source": "last",
+    "last": 0.67,
+    "bid": 0.6,
+    "ask": 0.77,
+    "lastTrade": "2026-11-20",
+    "stale": false
+   },
+   "XLI|XLI 01/15/2027 185 Call": {
+    "price": 0.18,
+    "source": "last",
+    "last": 0.18,
+    "bid": 0.1,
+    "ask": 1.0,
+    "lastTrade": "2026-11-20",
+    "stale": false
+   },
+   "RCAT|RCAT 01/15/27 10 Call": {
+    "price": 0.01,
+    "source": "last",
+    "last": 0.01,
+    "bid": null,
+    "ask": 0.01,
+    "lastTrade": "2026-11-20",
+    "stale": false
+   },
+   "ALB|ALB 11/20/26 115 Call": {
+    "error": "找不到該到期日"
+   },
+   "NVTS|NVTS 01/15/27 9 Call": {
+    "price": 0.26,
+    "source": "last",
+    "last": 0.26,
+    "bid": 0.21,
+    "ask": 0.32,
+    "lastTrade": "2026-11-20",
+    "stale": false
+   },
+   "MAGS|MAGS 11/20/26 74 Call": {
+    "error": "找不到該到期日"
+   },
+   "OXY|OXY 01/15/27 60 Call": {
+    "price": 0.77,
+    "source": "last",
+    "last": 0.77,
+    "bid": 0.72,
+    "ask": 0.83,
+    "lastTrade": "2026-11-20",
+    "stale": false
+   },
+   "CE|CE 12/18/26 55 Call": {
+    "price": 0.2,
+    "source": "last",
+    "last": 0.2,
+    "bid": 0.15,
+    "ask": 0.3,
+    "lastTrade": "2026-11-20",
     "stale": false
    }
   }
