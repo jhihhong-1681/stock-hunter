@@ -21,10 +21,10 @@
    ],
    "shares": 46,
    "cost_ntd": 50469.53337728119,
-   "last_px": 30.31999969482422,
+   "last_px": 29.0,
    "name": "Karman Holdings Inc.",
    "score": 57.8,
-   "target": 59227,
+   "target": 63911,
    "sector": "Industrials",
    "opened": "2026-10-21",
    "peak": 34.79406862258911
@@ -40,13 +40,13 @@
    ],
    "shares": 19,
    "cost_ntd": 22892.221249999995,
-   "last_px": 55.529998779296875,
+   "last_px": 58.65999984741211,
    "name": "Liquidia Corporation",
-   "score": 63.7,
-   "target": 103055,
+   "score": 62.7,
+   "target": 98424,
    "sector": "Healthcare",
    "opened": "2026-10-21",
-   "peak": 58.119998931884766
+   "peak": 58.65999984741211
   },
   "EQX": {
    "kind": "成長型",
@@ -59,10 +59,10 @@
    ],
    "shares": 55,
    "cost_ntd": 18212.724097642895,
-   "last_px": 8.979999542236328,
+   "last_px": 8.770000457763672,
    "name": "Equinox Gold Corp.",
    "score": 63.5,
-   "target": 100686,
+   "target": 108649,
    "sector": "Basic Materials",
    "opened": "2026-10-21",
    "peak": 12.09000015258789
@@ -78,10 +78,10 @@
    ],
    "shares": 25,
    "cost_ntd": 15616.459368610382,
-   "last_px": 18.579999923706055,
+   "last_px": 18.350000381469727,
    "name": "Allied Gold Corporation",
    "score": 56.6,
-   "target": 59227,
+   "target": 63911,
    "sector": "Basic Materials",
    "opened": "2026-10-21",
    "peak": 23.530000686645508
@@ -97,10 +97,10 @@
    ],
    "shares": 83,
    "cost_ntd": 25291.04669223308,
-   "last_px": 9.890000343322754,
+   "last_px": 9.869999885559082,
    "name": "MINISO Group Holding Limited",
    "score": 65.0,
-   "target": 75571,
+   "target": 98097,
    "sector": "Consumer Cyclical",
    "opened": "2026-10-21",
    "peak": 12.180000305175781
@@ -118,8 +118,8 @@
    "cost_ntd": 22312.337345607757,
    "last_px": 28.40999984741211,
    "name": "Clearway Energy, Inc.",
-   "score": 71.0,
-   "target": 120913,
+   "score": 61.6,
+   "target": 64744,
    "sector": "Utilities",
    "opened": "2026-10-21",
    "peak": 35.709999084472656
@@ -135,10 +135,10 @@
    ],
    "shares": 18,
    "cost_ntd": 18424.4670552063,
-   "last_px": 35.06999969482422,
+   "last_px": 35.59000015258789,
    "name": "General Mills, Inc.",
    "score": 68.5,
-   "target": 102020,
+   "target": 132431,
    "sector": "Consumer Defensive",
    "opened": "2026-10-21",
    "peak": 36.459999084472656
@@ -154,10 +154,10 @@
    ],
    "shares": 1,
    "cost_ntd": 10568.821743865965,
-   "last_px": 364.8299865722656,
+   "last_px": 347.67999267578125,
    "name": "Talen Energy Corporation",
-   "score": 59.7,
-   "target": 59227,
+   "score": 59.6,
+   "target": 63911,
    "sector": "Utilities",
    "opened": "2026-10-26",
    "peak": 386.67999267578125
@@ -178,10 +178,10 @@
    ],
    "shares": 271,
    "cost_ntd": 85724.95384712217,
-   "last_px": 10.350000381469727,
+   "last_px": 9.850000381469727,
    "name": "Harmonic Inc.",
-   "score": 72.5,
-   "target": 199002,
+   "score": 71.1,
+   "target": 196847,
    "sector": "Technology",
    "opened": "2026-10-27",
    "peak": 10.739999771118164
@@ -202,10 +202,10 @@
    ],
    "shares": 10,
    "cost_ntd": 51545.97502044677,
-   "last_px": 153.4199981689453,
+   "last_px": 135.00999450683594,
    "name": "Silicon Motion Technology Corporation",
-   "score": 64.1,
-   "target": 107793,
+   "score": 61.6,
+   "target": 84363,
    "sector": "Technology",
    "opened": "2026-11-11",
    "peak": 153.4199981689453
@@ -743,6 +743,18 @@
    "spy": 934290,
    "spy_day_ret": 0.04709,
    "unrealized": -4312,
+   "realized": -676
+  },
+  {
+   "date": "2026-11-24",
+   "equity": 984237,
+   "cash": 678266,
+   "invested": 305971,
+   "day_pnl": -10775,
+   "day_ret": -0.01083,
+   "spy": 929749,
+   "spy_day_ret": -0.00486,
+   "unrealized": -15088,
    "realized": -676
   }
  ],
@@ -2935,6 +2947,101 @@
      "day_ret": 0.1801
     }
    ]
+  },
+  {
+   "date": "2026-11-24",
+   "positions": [
+    {
+     "symbol": "KRMN",
+     "kind": "成長型",
+     "shares": 46,
+     "price": 29.0,
+     "value": 41354,
+     "ret": -0.1806,
+     "day_ret": -0.0435
+    },
+    {
+     "symbol": "LQDA",
+     "kind": "成長型",
+     "shares": 19,
+     "price": 58.65999984741211,
+     "value": 34551,
+     "ret": 0.5093,
+     "day_ret": 0.0564
+    },
+    {
+     "symbol": "EQX",
+     "kind": "成長型",
+     "shares": 55,
+     "price": 8.770000457763672,
+     "value": 14953,
+     "ret": -0.179,
+     "day_ret": -0.0234
+    },
+    {
+     "symbol": "AAUC",
+     "kind": "成長型",
+     "shares": 25,
+     "price": 18.350000381469727,
+     "value": 14221,
+     "ret": -0.0893,
+     "day_ret": -0.0124
+    },
+    {
+     "symbol": "MNSO",
+     "kind": "成熟型",
+     "shares": 83,
+     "price": 9.869999885559082,
+     "value": 25396,
+     "ret": 0.0041,
+     "day_ret": -0.002
+    },
+    {
+     "symbol": "CWEN",
+     "kind": "成熟型",
+     "shares": 23,
+     "price": 28.40999984741211,
+     "value": 20256,
+     "ret": -0.0921,
+     "day_ret": 0.0
+    },
+    {
+     "symbol": "GIS",
+     "kind": "成熟型",
+     "shares": 18,
+     "price": 35.59000015258789,
+     "value": 19859,
+     "ret": 0.0779,
+     "day_ret": 0.0148
+    },
+    {
+     "symbol": "TLN",
+     "kind": "成長型",
+     "shares": 1,
+     "price": 347.67999267578125,
+     "value": 10778,
+     "ret": 0.0198,
+     "day_ret": -0.047
+    },
+    {
+     "symbol": "HLIT",
+     "kind": "成長型",
+     "shares": 271,
+     "price": 9.850000381469727,
+     "value": 82750,
+     "ret": -0.0347,
+     "day_ret": -0.0483
+    },
+    {
+     "symbol": "SIMO",
+     "kind": "成長型",
+     "shares": 10,
+     "price": 135.00999450683594,
+     "value": 41853,
+     "ret": -0.188,
+     "day_ret": -0.12
+    }
+   ]
   }
  ],
  "journal": [
@@ -3138,9 +3245,16 @@
    "actions": [
     "成交 買進 SIMO @ $153.158（開盤 $152.7）：加碼第 2 批：收盤 $130.01 較上一批價 $175.023 再跌 26%"
    ]
+  },
+  {
+   "date": "2026-11-24",
+   "summary": "當日損益 NT$-10,775（-1.08%），SPY -0.49%；淨值 NT$984,237，持股 10 檔",
+   "actions": [
+    "今天沒有調整"
+   ]
   }
  ],
  "spy_start": 773.0900268554688,
- "last_date": "2026-11-23",
- "generated": "2026-11-24T18:54:26+00:00"
+ "last_date": "2026-11-24",
+ "generated": "2026-11-25T17:58:40+00:00"
 }
