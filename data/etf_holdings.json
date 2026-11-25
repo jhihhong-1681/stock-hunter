@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-24",
+  "date": "2026-11-25",
   "holdings": {
     "XLK": [
       {
@@ -504,6 +504,11 @@
         "代號": "NXE.TO",
         "名稱": "NexGen Energy Ltd",
         "權重": 5.66
+      },
+      {
+        "代號": "KAP",
+        "名稱": "National Atomic Co Kazatomprom JSC GDR - Regulation S",
+        "權重": 4.93
       },
       {
         "代號": "UEC",
@@ -1103,6 +1108,11 @@
         "代號": "LYC.AX",
         "名稱": "Lynas Rare Earths Ltd",
         "權重": 4.97
+      },
+      {
+        "代號": "KAP",
+        "名稱": "National Atomic Co Kazatomprom JSC GDR - Regulation S",
+        "權重": 4.27
       },
       {
         "代號": "TECK-B.TO",
