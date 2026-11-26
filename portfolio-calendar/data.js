@@ -148,5 +148,6 @@ window.PORTFOLIO_HISTORY = [
   { date: "2026-11-19", total: 793964, basis: "total_assets" },
   { date: "2026-11-20", total: 737601, basis: "total_assets" },
   { date: "2026-11-23", total: 786375, basis: "total_assets" },
-  { date: "2026-11-24", total: 719862, basis: "total_assets" }
+  { date: "2026-11-24", total: 719862, basis: "total_assets" },
+  { date: "2026-11-25", total: 722577, basis: "total_assets" }
 ];
